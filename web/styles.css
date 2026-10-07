@@ -1,0 +1,298 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
+ *
+ * The app's single stylesheet, compiled at build time by PostCSS + Tailwind.
+ *
+ * This replaces three runtime network dependencies that index.html used to
+ * carry: the cdn.tailwindcss.com script, the fonts.googleapis.com stylesheet,
+ * and an inline <style> block.
+ *
+ * ORDER IS LOAD-BEARING. In the old index.html the CDN injected its utilities
+ * into <head> before the author's <style> block, so the custom rules below won
+ * on ties — `.glass-panel`'s background beat a `bg-*` utility on the same
+ * element, and the universal transition rule beat preflight. Keeping the same
+ * order here reproduces that cascade exactly. Moving the custom block above
+ * `@tailwind utilities` would silently change the design.
+ */
+
+/* Self-hosted fonts. Weights match the old Google Fonts query exactly:
+   Montserrat 300..900, JetBrains Mono 400/700, Creepster, VT323. */
+@import '@fontsource/montserrat/300.css';
+@import '@fontsource/montserrat/400.css';
+@import '@fontsource/montserrat/500.css';
+@import '@fontsource/montserrat/600.css';
+@import '@fontsource/montserrat/700.css';
+@import '@fontsource/montserrat/800.css';
+@import '@fontsource/montserrat/900.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/700.css';
+@import '@fontsource/creepster/400.css';
+/* VT323 — and Special Elite, below — declared for every weight, so bold is never faked on them (see the file). */
+@import './one-weight-fonts.css';
+/* Chakra Petch, for the Cyberpunky theme's squared headings. */
+@import '@fontsource/chakra-petch/500.css';
+@import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/chakra-petch/700.css';
+/* Baloo 2, heavy and rounded, for the Emergency Meeting theme. */
+@import '@fontsource/baloo-2/600.css';
+@import '@fontsource/baloo-2/700.css';
+@import '@fontsource/baloo-2/800.css';
+/* Special Elite, a worn typewriter, for the Found Footage theme's case files and transcripts: in one-weight-fonts.css, above. */
+/* Pixelify Sans, a heavy pixel face, for the Mania Menu theme. Its weights stop at 700, which is what anything heavier gets. */
+@import '@fontsource/pixelify-sans/400.css';
+@import '@fontsource/pixelify-sans/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Everything below is copied verbatim from the inline <style> block that was
+ * in index.html. Do not reorder relative to the directives above.
+ * ------------------------------------------------------------------------- */
+
+body {
+  background-color: #050505;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background-image:
+    radial-gradient(circle at 15% 50%, rgba(244, 63, 94, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(147, 51, 234, 0.08), transparent 25%);
+  background-attachment: fixed;
+}
+
+/* Custom Selection */
+::selection {
+  background-color: rgba(244, 63, 94, 0.3); /* Rose-500 with opacity */
+  color: white;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(63, 63, 70, 0.5); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(113, 113, 122, 0.8); }
+
+.glass-panel {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(24, 24, 27, 0.4);
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Layer animations.
+ *
+ * Written out here rather than reached for through Tailwind's theme, because
+ * these keyframes are referenced from inline style — the layer's chosen speed
+ * becomes its duration — and Tailwind emits a @keyframes block only when the
+ * matching utility class appears in the source it scans. Named from the theme
+ * and used from inline style, they would be purged out of the build and the
+ * animation would simply not happen on stream.
+ *
+ * The entrances end on no transform at all rather than on a fixed value, so a
+ * layer that is also rotated is not straightened out on its last frame.
+ * ------------------------------------------------------------------------- */
+
+@keyframes layer-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes layer-in-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes layer-in-down {
+  from { opacity: 0; transform: translateY(-40px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes layer-in-left {
+  from { opacity: 0; transform: translateX(-60px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes layer-in-right {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes layer-in-zoom {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes layer-in-pop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes layer-idle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes layer-idle-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+@keyframes layer-idle-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+@keyframes layer-idle-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes layer-idle-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/*
+  Someone who has asked their system not to animate things is asking every
+  page, and an overlay is still a page. The layer stays exactly where it was
+  put; only the movement goes.
+*/
+@media (prefers-reduced-motion: reduce) {
+  [data-layer-animation] {
+    animation: none !important;
+  }
+}
+
+/*
+  What is playing, laid out as a grid of named areas.
+
+  The default is a small card: art on the left, the words beside it, the
+  progress under both. It is written here as ordinary classes rather than as
+  inline styles precisely so a stylesheet can replace it — an inline layout
+  would beat every rule and the layer would be reshapeable in theory only.
+
+  Reshaping it is one declaration. A bar is:
+
+    [data-spotify="player"] {
+      grid-template-areas: "art label title artist progress";
+      grid-template-columns: auto auto auto 1fr auto;
+      align-items: center;
+    }
+
+  Anything left out of the areas is still in the document, so a look that
+  wants no album line hides it rather than the component having a setting for
+  every combination anybody might want.
+*/
+.spotify-now-playing {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  align-content: center;
+  gap: 2px 12px;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas:
+    "art  label    elapsed  duration"
+    "art  title    title    title"
+    "art  artist   artist   artist"
+    "art  album    album    album"
+    "progress progress progress progress";
+}
+
+.spotify-art { grid-area: art; width: 4em; height: 4em; object-fit: cover; align-self: center; }
+.spotify-label { grid-area: label; font-size: .6em; font-weight: 900; text-transform: uppercase; letter-spacing: .2em; opacity: .7; }
+.spotify-title { grid-area: title; font-weight: 800; line-height: 1.15; }
+.spotify-artist { grid-area: artist; font-size: .78em; opacity: .75; }
+.spotify-album { grid-area: album; font-size: .66em; opacity: .5; }
+.spotify-elapsed { grid-area: elapsed; font-size: .66em; opacity: .6; font-variant-numeric: tabular-nums; }
+.spotify-duration { grid-area: duration; font-size: .66em; opacity: .6; font-variant-numeric: tabular-nums; }
+
+/* The words are the part that can be longer than the layer. */
+.spotify-title, .spotify-artist, .spotify-album { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.spotify-progress { grid-area: progress; height: 3px; margin-top: 6px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.spotify-fill { height: 100%; width: var(--spotify-progress, 0%); background: currentColor; }
+
+/*
+  What chat reads for the three values every message carries.
+
+  These were written inline on every row, which meant a chat stylesheet could
+  not argue with them: inline wins. The background and the padding next to them
+  were only written when somebody set one, so those obeyed — the same box
+  answered to CSS for half its properties and ignored it for the rest.
+
+  :where() holds them at no specificity at all, so a rule written anywhere
+  beats them, and each theme's own class still wins where no value is handed
+  over — which is how username colours stay off when they are switched off.
+*/
+:where([data-chat="text"]) { font-size: var(--chat-font-size); }
+:where([data-chat="user"]) { font-size: var(--chat-username-size); color: var(--chat-user-color); }
+
+/*
+  A plan line on its way out.
+
+  Crossing something off swaps one crossed-out line for another, and a swap
+  with no motion reads as the list having been rewritten rather than as having
+  moved on by one. The line being replaced goes up and out — the direction the
+  list just moved — and collapses as it goes, so the rest closes the gap
+  instead of jumping into it when it is removed.
+
+  The negative margin at the end cancels the row gap the parent still reserves
+  for a line of no height; without it the list settles a few pixels late.
+*/
+@keyframes plan-line-leaving {
+  from { opacity: 1; max-height: 1.8em; margin-bottom: 0; transform: translateY(0); }
+  to { opacity: 0; max-height: 0; margin-bottom: -0.375rem; transform: translateY(-0.7em); }
+}
+
+[data-plan-leaving] {
+  overflow: hidden;
+  animation: plan-line-leaving 460ms ease-in forwards;
+}
+
+/*
+  An omnibar slot that has just changed what it says.
+
+  Written here rather than as a utility on the element, which is where it
+  started and where it did nothing. Both bar themes set an animation on the
+  value to replace the built-in entrance, at the same specificity and from a
+  sheet injected later, so the theme won every time: the slot was marked, and
+  the mark had no effect anybody could see. Measured on a Marathon bar — the
+  attribute was there, the computed animation was the theme's, and the filter
+  never left none.
+
+  Naming the moment as well as the part puts this one step above what a theme
+  says about the value alone, so a theme that has no opinion about a value
+  changing still shows one. A theme that does have an opinion writes the same
+  pair and wins, being both scoped and later.
+
+  Brightness rather than a colour: it lifts whatever the theme painted,
+  including the cell behind the words, and needs to know nothing about it.
+*/
+@keyframes bar-fresh {
+  from { filter: brightness(2.4); }
+  to { filter: brightness(1); }
+}
+
+[data-omnibar-fresh="yes"] [data-omnibar="value"] {
+  animation: bar-fresh 900ms ease-out;
+}
+
+/*
+  A pinned omnibar slot takes the width its words need and no more.
+
+  Said here as well as in the themes, because a theme is copied into a layer
+  when it is applied and never updated after. Both bar themes grow every slot
+  to fill the bar with cells, and a layer that took Marathon before pinning
+  existed still does — so on his stream a kept slot claimed its own width
+  plus half of all the spare room: 1100 of 1920 pixels for "RAISED $412,908",
+  with the rotation squeezed into what was left and cut off mid-name.
+
+  Named by the moment and its place in the bar, one step above what a theme
+  says about slots in general, so an old copy cannot override it by accident.
+  A theme that genuinely wants a kept slot to grow writes the same pair.
+*/
+[data-omnibar="bar"] > [data-omnibar-state="pinned"] {
+  flex: 0 0 auto;
+}

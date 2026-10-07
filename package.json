@@ -1,0 +1,20 @@
+{
+  "name": "simonsays-v3",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Headless multi-platform stream automation. The server runs the show; the web UI only configures it.",
+  "scripts": {
+    "postinstall": "npm --prefix server install && npm --prefix web install",
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix server start",
+    "serve": "npm run build && npm start",
+    "bump": "node scripts/bump.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

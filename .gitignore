@@ -1,0 +1,19 @@
+node_modules/
+dist/
+
+# Runtime state — this is the live database, never commit it.
+data/
+assets/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Deploy tarball, built on demand by the push-to-phone step.
+update.tgz

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Simon Says</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f43f5e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2l9 5v10l-9 5-9-5V7l9-5z' /><path d='M16 9H8a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h1l2 2 2-2h3a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1z' /><circle cx='10' cy='12' r='0.5' fill='%23f43f5e' stroke='none' /><circle cx='12' cy='12' r='0.5' fill='%23f43f5e' stroke='none' /><circle cx='14' cy='12' r='0.5' fill='%23f43f5e' stroke='none' /></svg>" />
+    <!--
+      No CDN tags here by design. Tailwind, the fonts and the base styles are
+      all compiled into the bundle via web/styles.css, which index.tsx imports.
+      See web/styles.css and web/tailwind.config.js for what moved out of here
+      and why the ordering in that stylesheet matters.
+
+      Keep this comment free of angle-bracket tag syntax. Vite's HTML scanner
+      reads tag-like text inside comments as real tags and miscomputes where to
+      inject the built stylesheet link — it lands mid-comment and silently
+      comments out the rest of the document, including the root div.
+    -->
+  <!--
+    Fonts the user uploaded, declared by the server. Generated, so a font
+    added later needs no change here — a reload picks it up. Absent or
+    empty when none have been uploaded, which costs one 304.
+  -->
+  <link rel="stylesheet" href="/media/fonts.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
