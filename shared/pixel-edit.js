@@ -44,14 +44,17 @@ const inGrid = (x, y) => x >= 0 && y >= 0 && x < PIXEL_SIZE && y < PIXEL_SIZE;
  *   { kind: 'frame', action, outfit, index } a frame of something it does, over that outfit at rest
  *   { kind: 'front' }                       the front view of one that turns, whole
  *   { kind: 'front-face', name }            patches over the front view
+ *   { kind: 'front-outfit', name }          an outfit from the front, whole
+ *   { kind: 'front-extra', name }           an extra from the front, patches over the front view
  */
-export const isWhole = (target) => ['base', 'outfit', 'front'].includes(target?.kind);
+export const isWhole = (target) => ['base', 'outfit', 'front', 'front-outfit'].includes(target?.kind);
 
 /** The list a target's patches live in, or null for a whole drawing or one that is not there. */
 function patchesOf(pa, target) {
   if (target.kind === 'face') return pa.faces.find((f) => f.name === target.name)?.patches ?? null;
   if (target.kind === 'extra') return pa.extras.find((e) => e.name === target.name)?.patches ?? null;
   if (target.kind === 'front-face') return pa.turn?.front?.faces.find((f) => f.name === target.name)?.patches ?? null;
+  if (target.kind === 'front-extra') return pa.turn?.front?.extras?.find((e) => e.name === target.name)?.patches ?? null;
   if (target.kind === 'frame') return pa.actions.find((a) => a.name === target.action)?.outfits?.[target.outfit || '']?.[target.index]?.patches ?? null;
   const own = pa.outfits.find((o) => o.name === target.outfit)?.ownFace;
   if (target.kind === 'own-glasses') return own ? own.glasses : null;
@@ -65,6 +68,7 @@ function withPatches(pa, target, patches) {
   if (target.kind === 'face') next.faces.find((f) => f.name === target.name).patches = patches;
   if (target.kind === 'extra') next.extras.find((e) => e.name === target.name).patches = patches;
   if (target.kind === 'front-face') next.turn.front.faces.find((f) => f.name === target.name).patches = patches;
+  if (target.kind === 'front-extra') next.turn.front.extras.find((e) => e.name === target.name).patches = patches;
   if (target.kind === 'frame') next.actions.find((a) => a.name === target.action).outfits[target.outfit || ''][target.index].patches = patches;
   const own = next.outfits.find((o) => o.name === target.outfit)?.ownFace;
   if (own && target.kind === 'own-glasses') own.glasses = patches;
@@ -76,6 +80,7 @@ function wholeRows(pa, target) {
   if (target.kind === 'base') return pa.base;
   if (target.kind === 'outfit') return pa.outfits.find((o) => o.name === target.name)?.rows ?? null;
   if (target.kind === 'front') return pa.turn?.front?.base ?? null;
+  if (target.kind === 'front-outfit') return pa.turn?.front?.outfits?.find((o) => o.name === target.name)?.rows ?? null;
   return null;
 }
 
@@ -84,6 +89,7 @@ function withRows(pa, target, rows) {
   if (target.kind === 'base') next.base = rows;
   if (target.kind === 'outfit') next.outfits.find((o) => o.name === target.name).rows = rows;
   if (target.kind === 'front') next.turn.front.base = rows;
+  if (target.kind === 'front-outfit') next.turn.front.outfits.find((o) => o.name === target.name).rows = rows;
   return next;
 }
 
@@ -94,7 +100,7 @@ function withRows(pa, target, rows) {
  */
 export function beneath(pa, target) {
   if (isWhole(target)) return blankRows();
-  if (target.kind === 'front-face') return copy(pa.turn?.front?.base || blankRows());
+  if (target.kind === 'front-face' || target.kind === 'front-extra') return copy(pa.turn?.front?.base || blankRows());
   // An extra can be drawn over one of the outfits, to see it as it is worn there: the hair a hat hides in it.
   if (target.kind === 'extra' && target.outfit) return pixelGrid(pa, { faces: ['neutral'], outfit: target.outfit });
   if (target.kind === 'frame') {
@@ -156,7 +162,8 @@ export function paint(pa, target, cells) {
     const grid = whole.map((r) => r.split(''));
     for (const [x, y, v] of cells) {
       if (!inGrid(x, y)) continue;
-      grid[y][x] = v === '_' ? '.' : v === '.' ? (target.kind === 'outfit' ? pa.base[y][x] : '.') : v;
+      // Back to what is under it: on an outfit, the drawing as drawn — from the front, the front view.
+      grid[y][x] = v === '_' ? '.' : v === '.' ? (target.kind === 'outfit' ? pa.base[y][x] : target.kind === 'front-outfit' ? pa.turn.front.base[y][x] : '.') : v;
     }
     return withRows(pa, target, grid.map((r) => r.join('')));
   }
@@ -299,13 +306,14 @@ export function addPart(pa, { name, color }) {
 
 /** Every grid and patch of an avatar, as strings, to count or check what is drawn in it. */
 function everyRow(pa) {
-  const rows = [...pa.base, ...pa.outfits.flatMap((o) => o.rows), ...(pa.turn?.front?.base || [])];
+  const rows = [...pa.base, ...pa.outfits.flatMap((o) => o.rows), ...(pa.turn?.front?.base || []), ...(pa.turn?.front?.outfits || []).flatMap((o) => o.rows)];
   const patchRows = (ps) => (ps || []).flatMap((p) => p.rows);
   for (const f of pa.faces) rows.push(...patchRows(f.patches));
   for (const e of pa.extras) rows.push(...patchRows(e.patches));
   for (const o of pa.outfits) { rows.push(...patchRows(o.ownFace?.glasses)); for (const ps of Object.values(o.ownFace?.faces || {})) rows.push(...patchRows(ps)); }
   for (const a of pa.actions) for (const frames of Object.values(a.outfits || {})) for (const f of frames) rows.push(...patchRows(f.patches));
   for (const f of pa.turn?.front?.faces || []) rows.push(...patchRows(f.patches));
+  for (const e of pa.turn?.front?.extras || []) rows.push(...patchRows(e.patches));
   rows.push(...patchRows(pa.bubble));
   return rows;
 }
@@ -372,14 +380,19 @@ export function addOutfit(pa, { label = '', from = '' }) {
   return { avatar: { ...copy(pa), outfits: [...copy(pa.outfits), { name: n, label: String(label || '').slice(0, 40), rows, headwear: false, words: [] }] }, name: n };
 }
 
-/** A face, extra or outfit taken out, with every action frame drawn for that outfit. */
+/** A face, extra or outfit taken out, with every action frame drawn for that outfit, and its front version. */
 export function removeItem(pa, kind, name) {
   const next = copy(pa);
+  const front = next.turn?.front;
   if (kind === 'face') next.faces = next.faces.filter((f) => f.name !== name);
-  if (kind === 'extra') next.extras = next.extras.filter((e) => e.name !== name);
+  if (kind === 'extra') {
+    next.extras = next.extras.filter((e) => e.name !== name);
+    if (front) front.extras = (front.extras || []).filter((e) => e.name !== name);
+  }
   if (kind === 'outfit') {
     next.outfits = next.outfits.filter((o) => o.name !== name);
     for (const a of next.actions) delete a.outfits[name];
+    if (front) front.outfits = (front.outfits || []).filter((o) => o.name !== name);
   }
   if (kind === 'action') next.actions = next.actions.filter((a) => a.name !== name);
   return next;
@@ -627,8 +640,47 @@ export function framePixels(pa, action, outfit, index) {
 /** It turns, starting from a front view that is the drawing as it is; or it no longer turns, and its front view goes. */
 export function setTurns(pa, on) {
   const next = copy(pa);
-  next.turn = on ? (pa.turn || { front: { base: copy(pa.base), faces: [], headLastRow: pa.split?.headLastRow ?? 99 }, mirrorKeep: [] }) : null;
+  next.turn = on ? (pa.turn || { front: { base: copy(pa.base), faces: [], headLastRow: pa.split?.headLastRow ?? 99, outfits: [], extras: [] }, mirrorKeep: [] }) : null;
   return next;
+}
+
+/*
+  An outfit or an extra seen from the front. Without one, it does not show
+  while the avatar faces the front — and one that turns faces the front
+  most of the time — so every outfit and extra wants one. An outfit's
+  starts as the front view to redraw; an extra's, empty, to draw over it.
+*/
+export function addFrontOutfit(pa, name) {
+  if (!pa.turn || !pa.outfits.some((o) => o.name === name) || (pa.turn.front.outfits || []).some((o) => o.name === name)) return pa;
+  const next = copy(pa);
+  next.turn.front.outfits = [...(next.turn.front.outfits || []), { name, rows: copy(pa.turn.front.base) }];
+  return next;
+}
+
+export function addFrontExtra(pa, name) {
+  if (!pa.turn || !pa.extras.some((e) => e.name === name) || (pa.turn.front.extras || []).some((e) => e.name === name)) return pa;
+  const next = copy(pa);
+  next.turn.front.extras = [...(next.turn.front.extras || []), { name, patches: [] }];
+  return next;
+}
+
+/** An outfit's or extra's front version taken out: from the front it is not shown again. */
+export function removeFrontVersion(pa, kind, name) {
+  if (!pa.turn) return pa;
+  const next = copy(pa);
+  if (kind === 'outfit') next.turn.front.outfits = (next.turn.front.outfits || []).filter((o) => o.name !== name);
+  if (kind === 'extra') next.turn.front.extras = (next.turn.front.extras || []).filter((e) => e.name !== name);
+  return next;
+}
+
+/** Which outfits and extras have no front version yet: what is missing while it faces the front. */
+export function frontMissing(pa) {
+  if (!pa?.turn) return { outfits: [], extras: [] };
+  const has = (list, name) => (list || []).some((x) => x.name === name);
+  return {
+    outfits: pa.outfits.filter((o) => !has(pa.turn.front.outfits, o.name)).map((o) => o.name),
+    extras: pa.extras.filter((e) => !has(pa.turn.front.extras, e.name)).map((e) => e.name),
+  };
 }
 
 /** A face of the front view: talking, blink or blink-half — the ones it uses by itself. */
@@ -700,8 +752,9 @@ export function setOwnFaceBox(pa, outfit, { region, lashesTo } = {}) {
 
 /**
  * What an outfit has and has not got: for each thing it does, how many
- * frames are drawn in it; whether it wears hats; and, with a face of its
- * own, which faces have their own version in it.
+ * frames are drawn in it; whether it wears hats; with a face of its own,
+ * which faces have their own version in it; and, for one that turns,
+ * whether it is drawn from the front (null when it does not turn).
  */
 export function outfitChecklist(pa, outfit) {
   const o = pa.outfits.find((x) => x.name === outfit);
@@ -710,6 +763,7 @@ export function outfitChecklist(pa, outfit) {
     hats: o?.headwear ? null : pa.extras.filter((e) => e.hat).map((e) => e.name),
     faces: pa.faces.map((f) => f.name),
     ownFaces: o?.ownFace ? pa.faces.map((f) => ({ name: f.name, drawn: Boolean(o.ownFace.faces[f.name]?.length) })) : null,
+    front: pa.turn ? (pa.turn.front.outfits || []).some((x) => x.name === outfit) : null,
   };
 }
 
@@ -1005,6 +1059,10 @@ export function pixelWarnings(pa) {
       frames.forEach((f, i) => { if (!f.patches.length) out.push({ code: 'empty', kind: 'frame', name: a.name, outfit: o, index: i }); });
     }
   }
+  // One that turns faces the front most of the time: an outfit or extra with no front version is missing then.
+  const missing = frontMissing(pa);
+  for (const name of missing.outfits) out.push({ code: 'front-missing', kind: 'outfit', name });
+  for (const name of missing.extras) out.push({ code: 'front-missing', kind: 'extra', name });
   const unused = pa.parts.filter((p) => !partUse(pa, p.char)).map((p) => p.id);
   if (unused.length) out.push({ code: 'unused-colours', parts: unused });
   return out;

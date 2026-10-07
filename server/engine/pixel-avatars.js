@@ -8,12 +8,14 @@
  * The built-in pixel avatar is not one of them and is never touched from
  * here. The examples (shared/pixel-avatar-examples.js) are seeded once:
  * edited, they stay edited, deleted they stay deleted — unless put back from
- * the tab — and an example added later arrives on the next start.
+ * the tab — and an example added later arrives on the next start. One
+ * nobody has changed catches up with the example as shipped (catchUp).
  *
  * What is stored is only ever what cleanPixelAvatar (shared/pixel-avatars.js)
  * hands back, so every avatar kept is one the screens can draw.
  */
 
+import { createHash } from 'node:crypto';
 import { collection } from '../core/store.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { refusal } from '../core/refusal.js';
@@ -41,20 +43,89 @@ export function initPixelAvatars() {
   seedExamples();
 }
 
-/** Any example not seeded before, added: once each, so one deleted stays deleted. */
+/** Any example not seeded before, added: once each, so one deleted stays deleted. Then the unchanged ones catch up. */
 function seedExamples() {
   const { items, seeded } = db.get();
   const fresh = pixelAvatarExamples().filter((e) => !seeded.includes(e.example));
-  if (!fresh.length) return;
-  const added = [];
-  for (const e of fresh) {
-    try {
-      added.push(cleanPixelAvatar(e));
-    } catch (err) {
-      log.warn(`the ${e.example} example could not be made: ${err.message}`);
+  if (fresh.length) {
+    const added = [];
+    for (const e of fresh) {
+      try {
+        added.push(cleanPixelAvatar(e));
+      } catch (err) {
+        log.warn(`the ${e.example} example could not be made: ${err.message}`);
+      }
     }
+    const marks = { ...(db.get().seededAs || {}) };
+    for (const a of added) marks[a.example] = fingerprint(a);
+    db.set({ ...db.get(), items: [...added, ...items.filter((i) => !added.some((a) => a.id === i.id))], seeded: [...seeded, ...fresh.map((e) => e.example)], seededAs: marks });
   }
-  db.set({ items: [...added, ...items.filter((i) => !added.some((a) => a.id === i.id))], seeded: [...seeded, ...fresh.map((e) => e.example)] });
+  catchUp();
+}
+
+/** What an avatar is, as one short string: the same for the same avatar, to tell whether it was changed. */
+const fingerprint = (pa) => createHash('sha1').update(JSON.stringify(pa)).digest('hex');
+
+/** The same avatar with its front view's outfits and extras set aside: what no example had before they existed. */
+function frontless(pa) {
+  const c = structuredClone(pa);
+  if (c.turn?.front) { c.turn.front.outfits = []; c.turn.front.extras = []; }
+  return c;
+}
+
+/*
+  An example nobody has changed catches up with the example as shipped, so
+  an update that draws more of one — Sandwichxample's outfits and extras
+  from the front, added after it first shipped — reaches the copy in the
+  tab, under whatever name it has there. One changed in any way is left as
+  it is; "Put back" brings the new one. What it was is kept as a version.
+
+  Unchanged is: exactly the copy that was seeded or last caught up, by its
+  fingerprint (seededAs). A copy seeded before fingerprints were kept has
+  none; for it, unchanged is the example as shipped with what no example
+  had then — front outfits and extras — set aside on both sides.
+*/
+function catchUp(now = Date.now()) {
+  const state = db.get();
+  const items = [...state.items];
+  const marks = { ...(state.seededAs || {}) };
+  let changed = false;
+  for (const e of pixelAvatarExamples()) {
+    const at = items.findIndex((i) => i.id === e.id && i.example === e.example);
+    if (at < 0) continue;
+    let held; let shipped;
+    try {
+      held = cleanPixelAvatar(items[at]);
+      shipped = cleanPixelAvatar({ ...e, name: items[at].name });
+    } catch (err) {
+      log.warn(`the ${e.example} example could not be compared: ${err.message}`);
+      continue;
+    }
+    const untouched = marks[e.example]
+      ? fingerprint(items[at]) === marks[e.example]
+      : fingerprint(frontless(held)) === fingerprint(frontless(shipped));
+    if (!untouched) continue;
+    if (fingerprint(held) !== fingerprint(shipped)) {
+      const before = items[at];
+      versions.update((v) => {
+        const list = v.items[before.id] || [];
+        v.items[before.id] = [{ at: Math.max(now, (list[0]?.at ?? 0) + 1), avatar: before }, ...list].slice(0, VERSIONS_KEPT);
+      });
+      items[at] = shipped;
+      changed = true;
+      log.info(`the ${e.example} example caught up with the one shipped`);
+    }
+    // Saved only when something is new: nothing is written on a start that changes nothing.
+    const mark = fingerprint(items[at]);
+    if (marks[e.example] !== mark) { marks[e.example] = mark; changed = true; }
+  }
+  if (changed) db.set({ ...db.get(), items, seededAs: marks });
+}
+
+/** An example put back as shipped: from here on it catches up again. */
+function markShipped(avatar) {
+  if (!avatar?.example) return;
+  db.update((v) => { v.seededAs = { ...(v.seededAs || {}), [avatar.example]: fingerprint(find(avatar.id)) }; });
 }
 
 export const getPixelAvatars = () => db?.get().items ?? [];
@@ -120,7 +191,7 @@ export function control(payload = {}) {
   const avatar = find(payload.id);
   if (op === 'restore-examples') {
     const missing = pixelAvatarExamples().filter((e) => !getPixelAvatars().some((i) => i.id === e.id));
-    for (const e of missing) put(kept(e));
+    for (const e of missing) { const back = kept(e); put(back); markShipped(back); }
     return { ok: true, restored: missing.length };
   }
   if (!avatar) throw refusal('pixel_avatar_missing', 'there is no pixel avatar like that');
@@ -145,7 +216,9 @@ export function control(payload = {}) {
   if (op === 'reset') {
     const fresh = avatar.example && pixelAvatarExample(avatar.example);
     if (!fresh) throw refusal('pixel_avatar_not_example', 'only an example can be put back');
-    return put(kept({ ...fresh, id: avatar.id, name: avatar.name }));
+    const done = put(kept({ ...fresh, id: avatar.id, name: avatar.name }));
+    markShipped(avatar);
+    return done;
   }
   throw refusal('pixel_avatar_op', 'that is not something the pixel avatars do');
 }
@@ -155,6 +228,9 @@ export const snapshot = () => ({ pixelAvatars: getPixelAvatars() });
 /** For tests: everything back to how a fresh install starts. */
 export function resetForTests() {
   versions.set({ items: {} });
-  db.set({ items: [], seeded: [] });
+  db.set({ items: [], seeded: [], seededAs: {} });
   seedExamples();
 }
+
+/** For tests: the examples caught up as on a start. */
+export const catchUpForTests = (now) => catchUp(now);

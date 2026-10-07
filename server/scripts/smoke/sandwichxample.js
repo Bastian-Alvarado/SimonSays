@@ -65,6 +65,26 @@ test('its extras, hats, outfits and things it does are all there, and all drawn'
   assert.ok(pa.pixelActionFrames(S, 'drink', '').some((f) => f.eyes === 'shut'), 'it never shuts its eyes to sip');
 });
 
+test('from the front it wears everything too: every outfit and extra has a front version, and each shows', () => {
+  const front = (opts) => grid({ ...opts, facing: 'front' });
+  assert.deepEqual(S.turn.front.outfits.map((o) => o.name), S.outfits.map((o) => o.name), 'an outfit has no front version');
+  assert.deepEqual(S.turn.front.extras.map((e) => e.name), S.extras.map((e) => e.name), 'an extra has no front version');
+  for (const o of S.outfits) assert.notEqual(front({ outfit: o.name }), front({}), `${o.name} looks like the classic one from the front`);
+  for (const e of S.extras) assert.notEqual(front({ extras: [e.name] }), front({}), `${e.name} draws nothing from the front`);
+  // The same rules as from the side: one hat at a time, none over the club's pick, and faces over the outfit.
+  assert.equal(front({ extras: ['party-hat', 'crown'] }), front({ extras: ['crown'] }));
+  assert.equal(front({ outfit: 'club', extras: ['crown'] }), front({ outfit: 'club' }), 'a hat went on over the pick from the front');
+  for (const face of ['happy', 'angry', 'talking']) {
+    assert.notEqual(front({ outfit: 'toasted', faces: [face] }), front({ outfit: 'toasted' }), `${face} does not show on the toast from the front`);
+  }
+  // Hats sit on top of the bun: above the front view's first row, every one of them.
+  const top = S.turn.front.base.findIndex((r) => /[^.]/.test(r));
+  for (const hat of pa.pixelHats(S)) {
+    const rows = pa.pixelGrid(S, { extras: [hat], facing: 'front' });
+    assert.ok(rows.slice(0, top).some((r) => /[^.]/.test(r)), `${hat} is not on top of the bun from the front`);
+  }
+});
+
 test('viewers can name every outfit, hat and action of it, in English or Spanish', () => {
   assert.equal(pa.pixelDressName(S, 'outfit', 'tostado'), 'toasted');
   assert.equal(pa.pixelDressName(S, 'outfit', 'ajonjoli'), 'sesame');

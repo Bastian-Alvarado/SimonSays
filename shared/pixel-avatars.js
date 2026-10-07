@@ -50,7 +50,14 @@
  *   colouring           null, or which parts take a colour (see colours)
  *   bubble              the fast-asleep nose bubble, a patch a size
  *   turn                null, or a front view and what stays unmirrored,
- *                       for a drawing that turns to face whoever talks
+ *                       for a drawing that turns to face whoever talks.
+ *                       The front view is { base, faces, headLastRow,
+ *                       outfits, extras }: its own drawing and faces, and
+ *                       the outfits and extras as they look from the front
+ *                       — outfits [{ name, rows }] redrawn whole, extras
+ *                       [{ name, patches }] over it, by the names of the
+ *                       ones above. One with no front version of its own
+ *                       is not shown from the front.
  *   drawnFacing         which way the drawing faces as drawn: 'left' or 'right'
  *
  * A patch is { at: [x, y], rows }: placed at its top-left corner, '.' leaves
@@ -92,6 +99,8 @@ function tables(pa) {
     outfits: byName(pa.outfits),
     actions: byName(pa.actions),
     frontFaces: byName(pa.turn?.front?.faces),
+    frontOutfits: byName(pa.turn?.front?.outfits),
+    frontExtras: byName(pa.turn?.front?.extras),
   };
   TABLES.set(pa, t);
   return t;
@@ -137,15 +146,20 @@ function faceFor(t, name) {
  * half-shut (eyes); a frame of something it does goes over everything, last.
  *
  * Facing (an avatar that turns): its front view, or its drawing mirrored to
- * face the other way, with what is kept unmirrored copied back.
+ * face the other way, with what is kept unmirrored copied back. From the
+ * front, an outfit and the extras are their front versions, where they
+ * have them; what it does is drawn from the side only.
  */
 export function pixelGrid(pa, { faces = ['neutral'], extras = [], outfit = '', eyes = {}, action = null, facing = null } = {}) {
   if (!pa?.base) return [];
   const t = tables(pa);
   const front = facing === 'front' && pa.turn?.front ? pa.turn.front : null;
-  const out = front ? null : pixelOutfit(pa, outfit);
-  const own = out?.ownFace;
-  const grid = (front?.base || out?.rows || pa.base).map((row) => row.split(''));
+  const out = pixelOutfit(pa, outfit);
+  // The drawing faces go over, and that drawing redrawn as the outfit: from the side, or from the front.
+  const drawn = front ? front.base : pa.base;
+  const dressed = front ? (out && t.frontOutfits[out.name]?.rows) || null : out?.rows || null;
+  const own = front ? null : out?.ownFace;
+  const grid = (dressed || drawn).map((row) => row.split(''));
   const inOwnFace = (x, y) => own && x >= own.region[0] && x <= own.region[2] && y >= own.region[1] && y <= own.region[3];
   const lay = (patches, original = false) => {
     for (const { at: [x0, y0], rows } of patches || []) {
@@ -156,9 +170,9 @@ export function pixelGrid(pa, { faces = ['neutral'], extras = [], outfit = '', e
           const y = y0 + dy; const x = x0 + dx;
           if (y < 0 || y > 99 || x < 0 || x > 99) continue;
           let paint = c === '_' ? '.' : c;
-          if (original && out) {
+          if (original && dressed) {
             if (inOwnFace(x, y)) continue;
-            if (paint === pa.base[y][x]) paint = out.rows[y][x];
+            if (paint === drawn[y][x]) paint = dressed[y][x];
           }
           grid[y][x] = paint;
         }
@@ -183,16 +197,15 @@ export function pixelGrid(pa, { faces = ['neutral'], extras = [], outfit = '', e
     lay((faceTable || t.faces)['blink-half']?.patches);
   }
   if (own) lay(own.glasses);
-  if (!front) {
-    const wanted = (extras || []).filter((e) => t.extras[e]);
-    const hat = out?.headwear ? null : wanted.filter((e) => isHat(pa, e)).pop();
-    for (const e of pa.extras || []) {
-      if (!wanted.includes(e.name)) continue;
-      if (e.hat && e.name !== hat) continue;
-      lay(e.patches);
-    }
-    if (action) lay(pixelActionFrames(pa, action.name, outfit)?.[action.frame]?.patches);
+  // The extras, in their own order, one hat at a time and none with headwear: from the front, as drawn from the front.
+  const wanted = (extras || []).filter((e) => t.extras[e]);
+  const hat = out?.headwear ? null : wanted.filter((e) => isHat(pa, e)).pop();
+  for (const e of pa.extras || []) {
+    if (!wanted.includes(e.name)) continue;
+    if (e.hat && e.name !== hat) continue;
+    lay(front ? t.frontExtras[e.name]?.patches : e.patches);
   }
+  if (action && !front) lay(pixelActionFrames(pa, action.name, outfit)?.[action.frame]?.patches);
   let rows = grid.map((row) => row.join(''));
   if (pa.turn && (facing === 'left' || facing === 'right') && facing !== (pa.drawnFacing || 'left')) rows = mirrored(rows, pa.turn.mirrorKeep);
   return rows;
@@ -794,8 +807,31 @@ export function cleanPixelAvatar(raw) {
 
   let turn = null;
   if (raw.turn?.front) {
+    const F = raw.turn.front;
+    /*
+      Outfits and extras from the front, by the names of the ones above: one
+      whose outfit or extra is gone goes with it, as an action's frames for
+      an outfit no longer there do, and a second of one name is not kept.
+    */
+    const ofThese = (v, known, what, max) => {
+      const seen = new Set();
+      return list(v, max, what).filter((x) => {
+        const name = String(x?.name ?? '');
+        if (!known.has(name) || seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+    };
     turn = {
-      front: { base: grid(raw.turn.front.base, 'the front view'), faces: faceList(raw.turn.front.faces, 'the front view\'s faces'), headLastRow: int(raw.turn.front.headLastRow ?? 99, -1, 99, 'where the front view\'s head ends') },
+      front: {
+        base: grid(F.base, 'the front view'),
+        faces: faceList(F.faces, 'the front view\'s faces'),
+        headLastRow: int(F.headLastRow ?? 99, -1, 99, 'where the front view\'s head ends'),
+        outfits: ofThese(F.outfits, new Set(outfits.map((o) => o.name)), 'the front view\'s outfits', PIXEL_LIMITS.outfits)
+          .map((o) => ({ name: o.name, rows: grid(o.rows, `outfit "${o.name}" from the front`) })),
+        extras: ofThese(F.extras, new Set(extras.map((e) => e.name)), 'the front view\'s extras', PIXEL_LIMITS.extras)
+          .map((e) => ({ name: e.name, patches: patches(e.patches, `extra "${e.name}" from the front`) })),
+      },
       mirrorKeep: list(raw.turn.mirrorKeep, 8, 'parts kept unmirrored').map((b) => (Array.isArray(b) && b.length === 4 ? b.map((v) => int(v, 0, 99, 'a part kept unmirrored')) : fail('a part kept unmirrored needs a box'))),
     };
   }

@@ -279,6 +279,111 @@ test('a drawing made to turn gets a front view to draw, its own faces, and keeps
   assert.equal(edit.setTurns(kept, false).turn, null);
 });
 
+test('outfits and extras are drawn from the front too, worn from the front by the same rules, and go with what they belong to', () => {
+  let pa = edit.paint(pixel.blankPixelAvatar('pa-f', 'F'), { kind: 'base' }, [[40, 40, 'O'], [41, 40, 'O']]);
+  const coat = edit.addOutfit(pa, { label: 'Coat' }); pa = coat.avatar;
+  const cap = edit.addExtra(pa, { label: 'Cap', hat: true }); pa = cap.avatar;
+  const glow = edit.addExtra(pa, { label: 'Glow' }); pa = glow.avatar;
+  pa = edit.paint(pa, { kind: 'outfit', name: coat.name }, [[40, 60, 'S']]);
+  pa = edit.paint(pa, { kind: 'extra', name: cap.name }, [[40, 20, 'H']]);
+  pa = edit.setTurns(pa, true);
+  // Nothing from the front yet: said, and from the front the front view as it is.
+  assert.deepEqual(edit.frontMissing(pa), { outfits: [coat.name], extras: [cap.name, glow.name] });
+  assert.ok(edit.pixelWarnings(pa).some((w) => w.code === 'front-missing' && w.kind === 'outfit' && w.name === coat.name));
+  const plain = pixel.pixelGrid(pa, { facing: 'front' });
+  assert.deepEqual(pixel.pixelGrid(pa, { facing: 'front', outfit: coat.name, extras: [cap.name] }), plain);
+  // An outfit from the front starts as the front view; "back" on it is the front view again.
+  pa = edit.addFrontOutfit(pa, coat.name);
+  assert.deepEqual(pa.turn.front.outfits[0].rows, pa.turn.front.base);
+  pa = edit.paint(pa, { kind: 'front-outfit', name: coat.name }, [[45, 70, 'S'], [40, 40, 'W']]);
+  pa = edit.paint(pa, { kind: 'front-outfit', name: coat.name }, [[40, 40, '.']]);
+  assert.equal(pa.turn.front.outfits[0].rows[40][40], 'O', 'back on an outfit from the front was not the front view');
+  pa = edit.addFrontExtra(pa, cap.name);
+  pa = edit.addFrontExtra(pa, glow.name);
+  pa = edit.paint(pa, { kind: 'front-extra', name: cap.name }, [[45, 25, 'H']]);
+  pa = edit.paint(pa, { kind: 'front-extra', name: glow.name }, [[60, 50, 'W']]);
+  assert.deepEqual(edit.frontMissing(pa), { outfits: [], extras: [] });
+  assert.equal(edit.outfitChecklist(pa, coat.name).front, true);
+  // Kept by the server, worn from the front.
+  const kept = pixel.cleanPixelAvatar(pa);
+  const front = (opts) => pixel.pixelGrid(kept, { facing: 'front', ...opts });
+  assert.equal(front({ outfit: coat.name })[70][45], 'S');
+  assert.equal(front({ outfit: coat.name })[60][40], '.', 'the side\'s outfit showed from the front');
+  assert.equal(front({ extras: [cap.name, glow.name] })[25][45], 'H');
+  assert.equal(front({ extras: [cap.name, glow.name] })[50][60], 'W');
+  assert.equal(front({ extras: [cap.name] })[20][40], '.', 'the side\'s hat showed from the front');
+  // Headwear from the front too: no hat over it.
+  const hooded = edit.setItem(kept, 'outfit', coat.name, { headwear: true });
+  assert.equal(pixel.pixelGrid(hooded, { facing: 'front', outfit: coat.name, extras: [cap.name] })[25][45], '.');
+  // A face over the outfit keeps the outfit where it paints what the front view has there.
+  const withFace = pixel.cleanPixelAvatar({ ...kept, turn: { ...kept.turn, front: { ...kept.turn.front, faces: [{ name: 'talking', label: '', patches: [{ at: [44, 70], rows: ['.._'] }], glances: false, blinks: true }] } } });
+  const talking = pixel.pixelGrid(withFace, { facing: 'front', outfit: coat.name, faces: ['talking'] });
+  assert.equal(talking[70][45], 'S', 'a face wiped the outfit where it only kept the front view');
+  // What it does is drawn from the side only.
+  let acting = edit.addAction(kept, { label: 'Hop' }).avatar;
+  acting = edit.paint(acting, { kind: 'frame', action: 'hop', outfit: '', index: 0 }, [[70, 70, 'O']]);
+  assert.deepEqual(pixel.pixelGrid(acting, { facing: 'front', action: { name: 'hop', frame: 0 } }), pixel.pixelGrid(acting, { facing: 'front' }));
+  // A colour drawn only from the front is still a colour in use.
+  assert.ok(edit.partUse(kept, 'W') > 0);
+  // The server keeps only front versions of outfits and extras it has, once each.
+  const odd = pixel.cleanPixelAvatar({ ...kept, turn: { ...kept.turn, front: { ...kept.turn.front, outfits: [...kept.turn.front.outfits, { name: 'nope', rows: kept.turn.front.base }, kept.turn.front.outfits[0]] } } });
+  assert.deepEqual(odd.turn.front.outfits.map((o) => o.name), [coat.name]);
+  // Taken out with what it belongs to, or on its own.
+  assert.deepEqual(edit.removeItem(kept, 'outfit', coat.name).turn.front.outfits, []);
+  assert.deepEqual(edit.removeItem(kept, 'extra', glow.name).turn.front.extras.map((e) => e.name), [cap.name]);
+  assert.deepEqual(edit.removeFrontVersion(kept, 'extra', cap.name).turn.front.extras.map((e) => e.name), [glow.name]);
+  // An avatar from before there were front versions is kept as it was, with none.
+  const older = structuredClone(kept);
+  delete older.turn.front.outfits; delete older.turn.front.extras;
+  assert.deepEqual(pixel.cleanPixelAvatar(older).turn.front.outfits, []);
+});
+
+const read = (p) => fs.readFileSync(new URL(p, SCRIPT_URL), 'utf8');
+
+test('one that turns, doing something while it faces the front, turns to the side it was drawn for to do it', () => {
+  const layer = read('../../web/components/AvatarLayer.tsx');
+  assert.ok(layer.includes("facing={turns ? (acting && facingNow === 'front' ? kit.drawnFacing || 'left' : facingNow) : null}"));
+});
+
+// An example seeded before it was drawn from the front catches up on the next start — unless it was changed.
+const { collection } = await import('../../core/store.js');
+const avatarsKept = collection('pixel_avatars');
+const versionsKept = collection('pixel_avatar_versions');
+const keptBefore = structuredClone(avatarsKept.get());
+const versionsBefore = structuredClone(versionsKept.get());
+const SAND = 'example-sandwichxample';
+const firstShipped = (a) => { const c = structuredClone(a); delete c.turn.front.outfits; delete c.turn.front.extras; return c; };
+const asInstalled = (change = (a) => a) => avatarsKept.set({ ...avatarsKept.get(), items: avatarsKept.get().items.map((i) => (i.id === SAND ? change(firstShipped(i)) : i)), seededAs: {} });
+kept.resetForTests();
+const shippedSand = structuredClone(all().find((a) => a.id === SAND));
+asInstalled((a) => ({ ...a, name: 'Sandy' }));
+kept.catchUpForTests(Date.now());
+const caughtUp = structuredClone(all().find((a) => a.id === SAND));
+const caughtMark = avatarsKept.get().seededAs?.sandwichxample;
+const caughtVersions = (versionsKept.get().items[SAND] || []).length;
+kept.catchUpForTests(Date.now());
+const secondPass = structuredClone(all().find((a) => a.id === SAND));
+const secondVersions = (versionsKept.get().items[SAND] || []).length;
+asInstalled((a) => ({ ...a, base: ['o'.repeat(100), ...a.base.slice(1)] }));
+kept.catchUpForTests(Date.now());
+const leftAlone = structuredClone(all().find((a) => a.id === SAND));
+avatarsKept.set(keptBefore);
+versionsKept.set(versionsBefore);
+
+test('an example nobody changed catches up with the one shipped, keeping its name; one changed is left as it is', () => {
+  assert.ok(shippedSand.turn.front.outfits.length > 0, 'the example shipped has no outfits from the front');
+  assert.deepEqual(caughtUp.turn.front.outfits, shippedSand.turn.front.outfits, 'the copy from before did not catch up');
+  assert.deepEqual(caughtUp.turn.front.extras, shippedSand.turn.front.extras);
+  assert.equal(caughtUp.name, 'Sandy', 'catching up took its name');
+  assert.equal(caughtVersions, 1, 'what it was is not kept as a version');
+  assert.ok(caughtMark, 'what it is now is not remembered');
+  assert.deepEqual(secondPass, caughtUp, 'a second start changed it again');
+  assert.equal(secondVersions, caughtVersions, 'a second start kept another version');
+  assert.equal(leftAlone.base[0], 'o'.repeat(100), 'a changed copy was replaced');
+  assert.deepEqual(leftAlone.turn.front.outfits || [], [], 'a changed copy was given the new drawings');
+  assert.ok(read('../engine/pixel-avatars.js').includes('markShipped(avatar);'), 'putting one back does not let it catch up again');
+});
+
 // ------------------------------------------------------------------- outfits
 
 

@@ -396,7 +396,8 @@ export const LivingAvatar = ({
         <PixelKitAvatar
           kit={kit} faces={faces} extras={extras} colours={colours} outfit={costume} bubble={snoring ? AVATAR_BUBBLE_BREATH[snore] : 0}
           eyes={acting ? { look: 'right', sparkle: 'normal', half: false } : { look: eyesOn, sparkle, half: lid === 'half' }}
-          pose={acting ? {} : { bodyUp: breath[0], headUp: breath[1], turnX: head.x, turnY: head.y }} facing={turns ? facingNow : null}
+          // What it does is drawn from the side: facing the front, it turns to the side it was drawn facing while it does it.
+          pose={acting ? {} : { bodyUp: breath[0], headUp: breath[1], turnX: head.x, turnY: head.y }} facing={turns ? (acting && facingNow === 'front' ? kit.drawnFacing || 'left' : facingNow) : null}
           action={acting}
         />
       ) : (

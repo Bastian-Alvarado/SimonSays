@@ -975,6 +975,7 @@ export interface PixelAvatarDef {
   eyes: Record<string, any> | null;
   colouring: { main: string; coloured: string[]; eyes: string[]; suit: { armour: string; body: string[] } | null } | null;
   bubble: PixelPatch[];
-  turn: { front: { base: string[]; faces: PixelAvatarDef['faces']; headLastRow: number }; mirrorKeep: number[][] } | null;
+  /** The front view: its own drawing and faces, and the outfits and extras as they look from the front, by their names. */
+  turn: { front: { base: string[]; faces: PixelAvatarDef['faces']; headLastRow: number; outfits?: { name: string; rows: string[] }[]; extras?: { name: string; patches: PixelPatch[] }[] }; mirrorKeep: number[][] } | null;
   drawnFacing: 'left' | 'right';
 }

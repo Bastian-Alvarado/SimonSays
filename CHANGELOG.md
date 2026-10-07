@@ -10,6 +10,14 @@ Versions are numbered **major.minor.patch**:
 
 The app shows its version under Settings → About, and the server reports it at `/api/health`.
 
+## [1.0.1] — 2026-10-07
+
+A hot fix for pixel avatars that turn.
+
+- **Outfits, hats and extras from the front.** An avatar that turns faces the front most of the time, and from the front it showed none of its outfit, hat, blush, sweat drop or mic. Each can now be drawn from the front too, in the editor under "Worn from the front", which also says what is still missing. Sandwichxample has all of them.
+- **What it does is seen.** Drinking water or waving while it faces the front, it turns to its side to do it, then faces the front again.
+- **Examples catch up.** An example nobody has changed is brought up to date on the next start, keeping its name, and what it was is kept as a version. One you changed is left as it is.
+
 ## [1.0.0] — 2026-10-06
 
 The first public release.

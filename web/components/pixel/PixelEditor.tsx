@@ -37,6 +37,7 @@ import type { PixelLayer } from './PixelCanvas';
 import { PIXEL_SPECIAL_FACES } from '../../../shared/pixel-avatars.js';
 import { pixelFaceName, pixelOutfitName, pixelExtraName, pixelActionLabel } from '../pixelNames';
 import { addAction, framesOf, addFrame, removeFrame, moveFrame, setFrame, startOutfitFrames, framePixels, setTurns, addFrontFace, removeFrontFace, setTurn, setOwnFace, setOwnFaceBox, outfitChecklist, layPatches } from '../../../shared/pixel-edit.js';
+import { addFrontOutfit, addFrontExtra, removeFrontVersion } from '../../../shared/pixel-edit.js';
 import { pixelFaceCrop } from '../pixelNames';
 import { refusalWords, fill } from '../../words';
 import type { PixelAvatarDef } from '../../types';
@@ -50,9 +51,11 @@ export type PixelTarget =
   | { kind: 'hat'; name: string }
   /** A frame of something it does, in one outfit ('' the one it was drawn in). */
   | { kind: 'frame'; action: string; outfit: string; index: number }
-  /** The front view of a drawing that turns, and a face of it. */
+  /** The front view of a drawing that turns, a face of it, and an outfit and an extra as they look from the front. */
   | { kind: 'front' }
   | { kind: 'front-face'; name: string }
+  | { kind: 'front-outfit'; name: string }
+  | { kind: 'front-extra'; name: string }
   /** Setting it up: what takes a colour, where its eyes are. The canvas draws the drawing meanwhile. */
   | { kind: 'setup' }
   /** An outfit's own glasses, and its own version of a face. */
@@ -160,6 +163,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
     || ((tg.kind === 'own-glasses' || tg.kind === 'own-face') && Boolean(draft.outfits.find((o) => o.name === tg.outfit)?.ownFace) && (tg.kind === 'own-glasses' || draft.faces.some((f) => f.name === tg.name)))
     || (tg.kind === 'front' && Boolean(draft.turn))
     || (tg.kind === 'front-face' && Boolean(draft.turn?.front.faces.some((f) => f.name === tg.name)))
+    || (tg.kind === 'front-outfit' && Boolean(draft.turn?.front.outfits?.some((o) => o.name === tg.name)))
+    || (tg.kind === 'front-extra' && Boolean(draft.turn?.front.extras?.some((e) => e.name === tg.name)))
     || (tg.kind === 'outfit' && draft.outfits.some((o) => o.name === tg.name));
   const tgt: PixelTarget = exists(target) ? target : { kind: 'base' };
   useEffect(() => { if (!draft.parts.some((p) => p.char === char)) setChar(draft.parts[0]?.char || ''); }, [draft.parts, char]);
@@ -388,9 +393,9 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
 
   // The avatar alive, wearing whatever is being drawn.
   const previewFace = tgt.kind === 'face' || tgt.kind === 'own-face' ? tgt.name : 'neutral';
-  const previewOutfit = tgt.kind === 'outfit' ? tgt.name : tgt.kind === 'frame' || tgt.kind === 'own-face' || tgt.kind === 'own-glasses' ? tgt.outfit : '';
+  const previewOutfit = tgt.kind === 'outfit' || tgt.kind === 'front-outfit' ? tgt.name : tgt.kind === 'frame' || tgt.kind === 'own-face' || tgt.kind === 'own-glasses' ? tgt.outfit : '';
   // What the open outfit has and has not got.
-  const checklist = tgt.kind === 'outfit' ? outfitChecklist(draft, tgt.name) as { actions: { name: string; frames: number }[]; hats: string[] | null; faces: string[]; ownFaces: { name: string; drawn: boolean }[] | null } : null;
+  const checklist = tgt.kind === 'outfit' ? outfitChecklist(draft, tgt.name) as { actions: { name: string; frames: number }[]; hats: string[] | null; faces: string[]; ownFaces: { name: string; drawn: boolean }[] | null; front: boolean | null } : null;
   const openOutfit = tgt.kind === 'outfit' ? draft.outfits.find((o) => o.name === tgt.name) || null : null;
   const [ownBox, setOwnBox] = useState('');
   useEffect(() => { setOwnBox(openOutfit?.ownFace ? openOutfit.ownFace.region.join(', ') : ''); }, [tgt.kind, (tgt as any).name, openOutfit?.ownFace?.region.join(',')]);
@@ -411,7 +416,14 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
   };
   // Which of a face's, extra's, outfit's or action's own settings are being changed.
   const itemKind = tgt.kind === 'hat' ? 'extra' : tgt.kind === 'frame' ? 'action' : tgt.kind;
-  const previewExtras = tgt.kind === 'extra' || tgt.kind === 'hat' ? [tgt.name] : [];
+  const previewExtras = tgt.kind === 'extra' || tgt.kind === 'hat' || tgt.kind === 'front-extra' ? [tgt.name] : [];
+  // An outfit or extra from the front: drawn now, or started (an outfit from the front view as it is, an extra empty).
+  const drawFront = (kind: 'outfit' | 'extra', name: string) => {
+    const has = kind === 'outfit' ? draft.turn?.front.outfits?.some((o) => o.name === name) : draft.turn?.front.extras?.some((e) => e.name === name);
+    if (!has) commit((kind === 'outfit' ? addFrontOutfit(draft, name) : addFrontExtra(draft, name)) as PixelAvatarDef);
+    setTarget({ kind: kind === 'outfit' ? 'front-outfit' : 'front-extra', name });
+    setFacing('front');
+  };
 
   const addOne = (kind: 'face' | 'extra' | 'outfit', special?: string) => {
     const label = special ? '' : names[kind].trim();
@@ -485,11 +497,14 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                 {w.code === 'face-below-head' ? fill(t.pixelWarnFaceBelow || 'The face “{name}” draws below where the head ends: that part moves with the body as it breathes.', { name: pixelFaceName(draft, w.name, t) })
                   : w.code === 'hat-hair-pokes' ? fill(t.pixelWarnHair || 'Hair shows above the hat “{name}” in {outfit} ({n} pixels): rub it out in the hair it hides.', { name: pixelExtraName(draft, w.name, t), outfit: pixelOutfitName(draft, w.outfit, t), n: w.pixels })
                     : w.code === 'unused-colours' ? fill(t.pixelWarnUnused || '{n} colours are drawn nowhere.', { n: w.parts.length })
+                    : w.code === 'front-missing' ? fill(t.pixelWarnFrontMissing || '“{name}” is not drawn from the front: it does not show while the avatar faces the front, which is most of the time.', { name: w.kind === 'outfit' ? pixelOutfitName(draft, w.name, t) : pixelExtraName(draft, w.name, t) })
                       : w.kind === 'frame' ? fill(t.pixelWarnEmptyFrame || 'Frame {n} of “{name}” in {outfit} has nothing drawn in it.', { n: w.index + 1, name: pixelActionLabel(draft, w.name, t), outfit: pixelOutfitName(draft, w.outfit, t) })
                         : fill(t.pixelWarnEmpty || '“{name}” has nothing drawn in it yet.', { name: w.kind === 'face' ? pixelFaceName(draft, w.name, t) : pixelExtraName(draft, w.name, t) })}
               </span>
               {w.code === 'unused-colours' ? (
                 <button onClick={() => { let next = draft; for (const id of w.parts) next = removePart(next, id) as PixelAvatarDef; commit(next); }} className={small} data-pixel-warning-fix>{t.pixelTakeOut || 'Take them out'}</button>
+              ) : w.code === 'front-missing' ? (
+                <button onClick={() => { setShowWarnings(false); drawFront(w.kind, w.name); }} className={small} data-pixel-warning-draw-front>{t.pixelDrawFromFront || 'Draw it from the front'}</button>
               ) : (
                 <button
                   onClick={() => setTarget(w.code === 'hat-hair-pokes' ? { kind: 'extra', name: w.name, outfit: w.outfit } : w.kind === 'frame' ? { kind: 'frame', action: w.name, outfit: w.outfit, index: w.index } : w.kind === 'extra' ? { kind: 'extra', name: w.name } : { kind: 'face', name: w.name })}
@@ -518,6 +533,21 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                   <button key={n} onClick={() => { commit(addFrontFace(draft, n)); setTarget({ kind: 'front-face', name: n }); setFacing('front'); }} className="px-1.5 py-0.5 rounded border border-dashed border-zinc-700 text-[9px] text-zinc-500 hover:text-zinc-200" data-pixel-add-front-face={n}>+ {pixelFaceName(draft, n, t)}</button>
                 ))}
               </div>
+              {/* Every outfit and extra from the front: drawn, or a dashed one to start — without one it is not shown from the front. */}
+              {(draft.outfits.length > 0 || draft.extras.length > 0) && (
+                <div className="space-y-1 pt-1" data-pixel-front-versions>
+                  <span className={`${tag} block pl-1`}>{t.pixelFrontWorn || 'Worn from the front'}</span>
+                  {([
+                    ...draft.outfits.map((o) => ['outfit', o.name, pixelOutfitName(draft, o.name, t), Boolean(draft.turn!.front.outfits?.some((x) => x.name === o.name))] as const),
+                    ...draft.extras.map((e) => ['extra', e.name, pixelExtraName(draft, e.name, t), Boolean(draft.turn!.front.extras?.some((x) => x.name === e.name))] as const),
+                  ]).map(([kind, name, label, has]) => (has ? (
+                    <button key={`${kind}:${name}`} onClick={() => drawFront(kind, name)} className={`${item((tgt.kind === 'front-outfit' && kind === 'outfit' || tgt.kind === 'front-extra' && kind === 'extra') && (tgt as any).name === name)} pl-4`} data-pixel-target={`front-${kind}:${name}`}>{label}</button>
+                  ) : (
+                    <button key={`${kind}:${name}`} onClick={() => drawFront(kind, name)} title={t.pixelFrontMissingHint || 'Not drawn from the front yet: it does not show while the avatar faces the front'}
+                      className="ml-3 px-1.5 py-0.5 rounded border border-dashed border-zinc-700 text-[9px] text-zinc-500 hover:text-zinc-200" data-pixel-add-front={`${kind}:${name}`}>+ {label}</button>
+                  )))}
+                </div>
+              )}
             </div>
           )}
           <div className="space-y-1">
@@ -616,7 +646,7 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           <div className="overflow-auto max-h-[75vh] rounded-lg">
             <PixelCanvas
               rows={rows} parts={hatPic ? hatPic.parts : draft.parts} tool={tool} char={hatPic ? hatChar : char} zoom={hatPic ? hatZoom : zoom} grid={grid} mirror={mirror} boxes={boxes}
-              headLastRow={hatPic ? null : (tgt.kind === 'front' || tgt.kind === 'front-face') ? draft.turn?.front.headLastRow ?? null : draft.split?.headLastRow ?? null} canRestore={canRestore} under={under} over={over}
+              headLastRow={hatPic ? null : (tgt.kind === 'front' || tgt.kind === 'front-face' || tgt.kind === 'front-outfit' || tgt.kind === 'front-extra') ? draft.turn?.front.headLastRow ?? null : draft.split?.headLastRow ?? null} canRestore={canRestore} under={under} over={over}
               // The reference sits on the drawing; on a drawn hat's own grid it is where the hat sits over it.
               reference={reference?.shown && referenceImage ? {
                 image: referenceImage, opacity: reference.opacity, over: reference.over,
@@ -644,6 +674,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
               : tgt.kind === 'own-face' ? (t.pixelDrawOwnFaceHint || 'This face as it is in this outfit, inside its own face’s box — where the face drawn on the drawing keeps out. Its glasses show faintly over it.')
               : tgt.kind === 'front' ? (t.pixelDrawFrontHint || 'The front view: shown between facing one way and the other, as it turns, and while nobody is talking.')
               : tgt.kind === 'front-face' ? (t.pixelDrawFrontFaceHint || 'A face of the front view, drawn over it: the mouth open while they talk, the eyes shut and half shut as it blinks.')
+              : tgt.kind === 'front-outfit' ? (t.pixelDrawFrontOutfitHint || 'This outfit as it looks from the front: the front view, redrawn whole. Faces still go over it, as they do over the outfit from the side.')
+              : tgt.kind === 'front-extra' ? (t.pixelDrawFrontExtraHint || 'This extra as it looks from the front, drawn over the front view. What you draw is all it changes; yellow boxes are its patches.')
               : tgt.kind === 'frame' ? (t.pixelDrawFrameHint || 'A frame of it, drawn over this outfit at rest — with its eyes shut, when the frame shuts them. What you draw is all it changes; the frame before shows faintly under it.')
               : tgt.kind === 'hat' ? (t.pixelDrawHatHint || 'The hat’s own picture, with its own colours, over the avatar where it sits. Move it, size its pixels and give it room on the right; then draw the hair it hides.')
               : tgt.kind === 'extra' && drawnHat ? (t.pixelDrawHidesHint || 'The hair this hat hides: rub out what would stick up through it. The hat shows faintly over it.')
@@ -656,6 +688,12 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           {checklist && openOutfit && (
             <div className="space-y-3 rounded-xl border border-zinc-800 p-3" data-pixel-checklist>
               <span className={tag}>{fill(t.pixelInOutfit || 'In {outfit}', { outfit: pixelOutfitName(draft, openOutfit.name, t) })}</span>
+              {checklist.front !== null && (
+                <button onClick={() => drawFront('outfit', openOutfit.name)} data-pixel-checklist-front={checklist.front ? 'drawn' : 'missing'}
+                  className={`px-2 py-1 rounded-md border text-[9px] ${checklist.front ? 'border-zinc-700 text-zinc-300' : 'border-dashed border-amber-700/60 text-amber-400'}`}>
+                  {t.pixelFrontView || 'Front view'} · {checklist.front ? (t.pixelDrawn || 'drawn') : (t.pixelNotDrawn || 'not drawn yet')}
+                </button>
+              )}
               {checklist.actions.length > 0 && (
                 <div className="space-y-1">
                   <span className="block text-[10px] text-zinc-500">{t.pixelActions || 'Things it does'}</span>
@@ -989,6 +1027,9 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           )}
           {tgt.kind === 'front-face' && (
             <button onClick={() => { if (window.confirm(t.pixelRemoveItemConfirm || 'Take this out of the avatar?')) { commit(removeFrontFace(draft, tgt.name)); setTarget({ kind: 'front' }); } }} className={`${small} w-full hover:text-rose-400 hover:border-rose-900`} data-pixel-front-face-remove><Trash2 size={11} /> {t.delete || 'Delete'}</button>
+          )}
+          {(tgt.kind === 'front-outfit' || tgt.kind === 'front-extra') && (
+            <button onClick={() => { if (window.confirm(t.pixelRemoveFrontConfirm || 'Take out how this looks from the front? It will not show while the avatar faces the front.')) { commit(removeFrontVersion(draft, tgt.kind === 'front-outfit' ? 'outfit' : 'extra', tgt.name) as PixelAvatarDef); setTarget({ kind: 'front' }); } }} className={`${small} w-full hover:text-rose-400 hover:border-rose-900`} data-pixel-front-version-remove><Trash2 size={11} /> {t.delete || 'Delete'}</button>
           )}
 
           <div className="space-y-1.5">
