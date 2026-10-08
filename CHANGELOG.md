@@ -2,6 +2,11 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.1.1] — 2026-10-08
+
+- Dock Actions on a phone: the page scrolls, so the deck preview shows in full, and the columns, rows and Open deck controls wrap instead of running off the screen.
+- Deck: the page buttons are 40px, and the editor can put them above the buttons or below.
+
 ## [1.1.0] — 2026-10-08
 
 - Alerts: Skip and Pause / resume, on the Alerts screen and as deck buttons; waiting alerts can be dropped.

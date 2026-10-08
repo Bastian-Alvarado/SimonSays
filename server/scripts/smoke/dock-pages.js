@@ -85,7 +85,7 @@ test('the server keeps the pages, their names, and each button\'s page', () => {
 test('the deck turns pages by its bar or a swipe, and each screen remembers its own', () => {
   const deck = read('../../web/components/DockDeck.tsx');
   assert.ok(deck.includes('<DockActionsGrid {...gridProps} page={page} pages={pages} />'), 'the deck does not draw one page');
-  assert.ok(deck.includes('data-dock-pager') && deck.includes('{pages > 1 && ('), 'there is no page bar, or one with a single page');
+  assert.ok(deck.includes('data-dock-pager') && deck.includes('const pager = pages > 1 && ('), 'there is no page bar, or one with a single page');
   assert.ok(deck.includes("touchAction: 'pan-y'") && deck.includes('go(page + (dx < 0 ? 1 : -1))'), 'a swipe does not turn the page');
   assert.ok(deck.includes('onClickCapture={onClickCapture}'), 'a swipe also presses the button it started on');
   assert.ok(deck.includes('localStorage.setItem(remember, String(next))'), 'the page is forgotten');
@@ -103,4 +103,35 @@ test('the dock screen adds to the page showing, and moves a button by its page\'
   assert.ok(view.includes('pageOf(b, pages) === page);'), 'a button trades places with one on another page');
   assert.ok(view.includes('data-dock-page={i}') && view.includes('dragOverPage(i)'), 'a tab is not somewhere to drop');
   assert.ok(view.includes('setDockButtons(removePage(dockButtons, page, pages) as DockButton[]);'), 'removing a page leaves its buttons stranded');
+});
+
+test('the deck editor scrolls on a phone instead of squeezing the preview to nothing', () => {
+  /*
+    It fills the window's height on a wide screen. On a phone the two panels
+    stack, and squeezing both into one screen left the preview 0px tall with
+    the deck inside it needing 302 — so below lg the page scrolls and each
+    part keeps the room it needs.
+  */
+  const view = read('../../web/components/views/DockActionsView.tsx');
+  assert.ok(view.includes('className="animate-fade-in lg:h-full flex flex-col gap-6 lg:min-h-0 pb-20 lg:pb-0"'), 'the editor squeezes itself into one screen on a phone');
+  assert.ok(view.includes('className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:flex-1 lg:min-h-0"'), 'the panels share one screen on a phone');
+  assert.ok(view.includes('className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto flex"'), 'the preview scrolls inside a box with no height on a phone');
+  assert.ok(view.includes('className="pt-4 border-t border-zinc-800/50 lg:flex-1 min-h-[9rem] flex flex-col" data-dock-preview'), 'the preview takes no room of its own on a phone');
+  // Columns, rows and Open ran 290px past a phone's edge.
+  assert.ok(view.includes('className="flex flex-wrap items-center gap-3" data-dock-grid-controls'), 'the grid controls run off a phone');
+});
+
+test('the page buttons go over the grid or under it, as the editor says, and are 40px', () => {
+  const before = engine.store.getDockGrid ? engine.store.getDockGrid() : null;
+  // Under, as always, until somebody says otherwise; anything else stored reads as under.
+  assert.equal(engine.store.setDockGrid({ pages: 2 }).pagerAt, 'bottom');
+  assert.equal(engine.store.setDockGrid({ pagerAt: 'top' }).pagerAt, 'top');
+  assert.equal(engine.store.setDockGrid({ columns: 4 }).pagerAt, 'top', 'changing the columns moved the page buttons back');
+  assert.equal(engine.store.setDockGrid({ pagerAt: 'sideways' }).pagerAt, 'bottom');
+  engine.store.setDockGrid({ pagerAt: 'bottom', pages: before?.pages ?? 1, pageNames: before?.pageNames ?? [''], columns: before?.columns ?? 3 });
+  const deck = read('../../web/components/DockDeck.tsx');
+  assert.ok(deck.includes('{onTop && pager}') && deck.includes('{!onTop && pager}'), 'the page buttons cannot go over the grid');
+  assert.ok(deck.includes("const box = 'max-w-[2.5rem] h-10 text-xs';"), 'the page buttons are not 40px');
+  const view = read('../../web/components/views/DockActionsView.tsx');
+  assert.ok(view.includes('data-dock-pager-place') && view.includes('onClick={() => setDockGrid({ pagerAt: place })}'), 'the editor has no say in where they go');
 });

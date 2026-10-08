@@ -20,6 +20,12 @@ export function pageCount(grid) {
   return Number.isFinite(n) ? Math.min(MAX_DOCK_PAGES, Math.max(1, n)) : 1;
 }
 
+/**
+ * Where the deck draws its numbered page buttons: under the grid, as it
+ * always has, or over it. Anything else stored reads as under.
+ */
+export const pagerPlace = (grid) => (grid?.pagerAt === 'top' ? 'top' : 'bottom');
+
 /** One name per page, '' where none was given. */
 export function cleanPageNames(names, pages) {
   const list = Array.isArray(names) ? names : [];

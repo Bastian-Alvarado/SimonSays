@@ -5,23 +5,23 @@
  * The button grid with its pages, as the deck draws it: on its own
  * (?mode=dock-actions) and in the chat dock's tab.
  *
- * One page at a time. With more than one there is a bar under the grid — a
- * numbered button for each page, so page 5 is one tap away rather than four,
- * with the page's name over them when it has one — and on a touch screen a
- * sideways swipe turns the page. Which page is showing belongs to the screen
+ * One page at a time. With more than one there is a bar under the grid, or
+ * over it if the Dock Actions screen says so — a numbered button for each
+ * page, so page 5 is one tap away rather than four, with the page's name over
+ * them when it has one — and on a touch screen a sideways swipe turns the page. Which page is showing belongs to the screen
  * it is on, not to the dock, so a phone and OBS can each be on their own;
  * each remembers where it was.
  */
 import React, { useRef, useState } from 'react';
 import { DockActionsGrid } from './DockActionsGrid';
-import { cleanPageNames, pageCount } from '../../shared/dock-pages.js';
+import { cleanPageNames, pageCount, pagerPlace } from '../../shared/dock-pages.js';
 import { fill } from '../words';
 
 type GridProps = React.ComponentProps<typeof DockActionsGrid>;
 
 type Props = Omit<GridProps, 'page' | 'pages' | 'preview' | 'arrange'> & {
-  /** The grid's settings: how many pages, and what each is called. */
-  grid: { pages?: number; pageNames?: string[] };
+  /** The grid's settings: how many pages, what each is called, and whether their buttons go over the grid or under it. */
+  grid: { pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' };
   /** Where this screen keeps the page it was on. */
   remember: string;
 };
@@ -79,11 +79,40 @@ export const DockDeck = ({ grid, remember, ...gridProps }: Props) => {
 
   // A page's own name, or "Page 3" — for the tooltip; the button itself says 3.
   const nameOf = (i: number) => names[i] || fill(t.dockPageNumber || 'Page {n}', { n: String(i + 1) });
-  // Big enough for a thumb, and narrowing a little on a small phone, so all ten stay on one row.
-  const box = compact ? 'max-w-[1.75rem] h-7 text-[10px]' : 'max-w-[2rem] h-8 text-[11px]';
+  // 40px, big enough for a thumb, and narrowing on a small phone so all ten stay on one row.
+  const box = 'max-w-[2.5rem] h-10 text-xs';
+  const onTop = pagerPlace(grid) === 'top';
+
+  const pager = pages > 1 && (
+    <div className={`flex-shrink-0 flex flex-col items-center gap-1.5 ${onTop ? (compact ? 'pb-2' : 'pb-3') : (compact ? 'pt-2' : 'pt-3')}`} data-dock-pager data-dock-pager-at={onTop ? 'top' : 'bottom'}>
+      {names[page] && (
+        <span className={`font-black uppercase tracking-widest text-zinc-300 truncate max-w-full ${compact ? 'text-[8px]' : 'text-[10px]'}`} data-dock-page-name>{names[page]}</span>
+      )}
+      <div className="w-full flex items-center justify-center gap-1">
+        {names.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => go(i)}
+            title={nameOf(i)}
+            aria-label={nameOf(i)}
+            aria-current={i === page ? 'page' : undefined}
+            className={`${box} flex-1 min-w-0 rounded-lg border font-black tabular-nums transition-colors ${
+              i === page
+                ? 'bg-current-accent border-transparent text-white'
+                : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600'
+            }`}
+            data-dock-page-number={i}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="w-full h-full min-h-0 flex flex-col" data-dock-deck data-dock-deck-page={page}>
+      {onTop && pager}
       <div
         className="flex-1 min-h-0"
         style={pages > 1 ? { touchAction: 'pan-y' } : undefined}
@@ -94,32 +123,7 @@ export const DockDeck = ({ grid, remember, ...gridProps }: Props) => {
       >
         <DockActionsGrid {...gridProps} page={page} pages={pages} />
       </div>
-      {pages > 1 && (
-        <div className={`flex-shrink-0 flex flex-col items-center gap-1.5 ${compact ? 'pt-2' : 'pt-3'}`} data-dock-pager>
-          {names[page] && (
-            <span className={`font-black uppercase tracking-widest text-zinc-300 truncate max-w-full ${compact ? 'text-[8px]' : 'text-[10px]'}`} data-dock-page-name>{names[page]}</span>
-          )}
-          <div className="w-full flex items-center justify-center gap-1">
-            {names.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => go(i)}
-                title={nameOf(i)}
-                aria-label={nameOf(i)}
-                aria-current={i === page ? 'page' : undefined}
-                className={`${box} flex-1 min-w-0 rounded-lg border font-black tabular-nums transition-colors ${
-                  i === page
-                    ? 'bg-current-accent border-transparent text-white'
-                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600'
-                }`}
-                data-dock-page-number={i}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {!onTop && pager}
     </div>
   );
 };

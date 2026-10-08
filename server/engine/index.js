@@ -14,7 +14,7 @@ import { collection } from '../core/store.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { DEFAULT_CHAT, cleanChatSettings, normaliseChatLayer, isWholeChat } from './chat-settings.js';
 import { dockBuiltin, DOCK_FACE_SECONDS } from '../../shared/dock-builtins.js';
-import { MAX_DOCK_PAGES, pageCount, cleanPageNames } from '../../shared/dock-pages.js';
+import { MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace } from '../../shared/dock-pages.js';
 import { AVATAR_ACTIONS_LIST } from '../../shared/avatar.js';
 import { HOUSE_CHARACTER } from '../../shared/house-avatar.js';
 import { youtubeCategoryName } from '../../shared/youtube-categories.js';
@@ -457,7 +457,7 @@ export function initEngine(platformServices) {
       Rows at zero means as many as the buttons need, each cell square —
       which is what the grid did before there was anything to say otherwise.
     */
-    dockGrid: collection('dock_grid', { columns: 3, rows: 0, pages: 1, pageNames: [''] }),
+    dockGrid: collection('dock_grid', { columns: 3, rows: 0, pages: 1, pageNames: [''], pagerAt: 'bottom' }),
     recentChat: collection('recent_chat', []),
     // The rotating bar along the bottom of the stream. Server-side because it
     // is stream configuration rather than a display preference: the overlay in
@@ -1528,6 +1528,8 @@ export const store = {
       rows: bounded(next?.rows, 0, 8, prev.rows),
       pages,
       pageNames: cleanPageNames(next?.pageNames !== undefined ? next.pageNames : prev.pageNames, pages),
+      // The numbered page buttons, over the grid or under it.
+      pagerAt: pagerPlace(next?.pagerAt !== undefined ? next : prev),
     });
   },
   getDockGrid: () => db.dockGrid.get(),

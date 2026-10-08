@@ -22,7 +22,7 @@ import { copyText } from '../../utils';
 import { builtinName, refusalWords, fill } from '../../words';
 import { CommittedInput } from '../CommittedInput';
 import {
-  MAX_DOCK_PAGES, pageCount, cleanPageNames, pageOf, buttonsOnPage, firstFreeSlot, moveToPage, removePage,
+  MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace, pageOf, buttonsOnPage, firstFreeSlot, moveToPage, removePage,
 } from '../../../shared/dock-pages.js';
 import { StillImg } from '../StillPicture';
 
@@ -32,8 +32,8 @@ interface DockActionsViewProps {
   dockButtons: DockButton[];
   streamActions: StreamAction[];
   setDockButtons: (buttons: DockButton[]) => void;
-  dockGrid: { columns: number; rows: number; pages?: number; pageNames?: string[] };
-  setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[] }) => void;
+  dockGrid: { columns: number; rows: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' };
+  setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' }) => void;
   runDockAction: (id: string) => Promise<any>;
   /** The server's live numbers, so the preview shows a state button's state. */
   stats?: Record<string, any>;
@@ -274,10 +274,13 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
   };
 
   return (
-    // Fills the height the app gives a view, so the lists below can grow into
-    // whatever space is actually there rather than scrolling inside a fixed
-    // max-height with empty page beneath them.
-    <div className="animate-fade-in h-full flex flex-col gap-6 min-h-0">
+    // On a wide screen it fills the height the app gives a view, so the lists
+    // below can grow into whatever space is actually there rather than
+    // scrolling inside a fixed max-height with empty page beneath them. On a
+    // phone the two panels sit one above the other, and squeezing both into
+    // one screen's height left the preview 0px tall — so there the page
+    // scrolls instead, and each part takes the room it needs.
+    <div className="animate-fade-in lg:h-full flex flex-col gap-6 lg:min-h-0 pb-20 lg:pb-0" data-dock-editor>
       {/* One input reused by every button's upload control. */}
       <input
         ref={fileInput}
@@ -289,7 +292,7 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 flex-shrink-0">
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3" data-dock-grid-controls>
           <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
             <span className="px-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">
               {t.dockActionsColumns}
@@ -343,11 +346,11 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
-        {/* Picker */}
-        <div className={`glass-panel p-6 rounded-[32px] border ${activeTheme.borderClass} ${activeTheme.panelClass} flex flex-col min-h-0`}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:flex-1 lg:min-h-0">
+        {/* Picker. On a phone its list stops at about half a screen and scrolls, so the deck is not a long way down. */}
+        <div className={`glass-panel p-6 rounded-[32px] border ${activeTheme.borderClass} ${activeTheme.panelClass} flex flex-col lg:min-h-0`}>
           <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-4 flex-shrink-0">{t.dockActionsAvailable}</h3>
-          <div className="space-y-2 flex-1 min-h-0 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[50vh] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1" data-dock-picker-list>
             {/*
               Two sections: the buttons that come with the app, then the ones
               made from actions. Run together, the Spotify controls sat
@@ -429,7 +432,7 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
         </div>
 
         {/* Arrangement + live preview */}
-        <div className={`glass-panel p-6 rounded-[32px] border ${activeTheme.borderClass} ${activeTheme.panelClass} flex flex-col gap-4 min-h-0`}>
+        <div className={`glass-panel p-6 rounded-[32px] border ${activeTheme.borderClass} ${activeTheme.panelClass} flex flex-col gap-4 lg:min-h-0`}>
           <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex-shrink-0">{t.dockActionsOnDeck}</h3>
 
           {/* Sized to its contents up to a cap, rather than taking all the
@@ -585,7 +588,7 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
           {/* min-h keeps the deck from being squeezed to a sliver on a short
               screen: the list above shrinks and scrolls first, since scrolling
               a list costs less than a preview you cannot see. */}
-          <div className="pt-4 border-t border-zinc-800/50 flex-1 min-h-[9rem] flex flex-col">
+          <div className="pt-4 border-t border-zinc-800/50 lg:flex-1 min-h-[9rem] flex flex-col" data-dock-preview>
             <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600 mb-3 flex-shrink-0">{t.dockActionsPreview}</p>
             {/*
               The pages: one tab each, and one to add another. A tab is also
@@ -638,6 +641,26 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
             {pages > 1 && (
               <p className="text-[9px] text-zinc-600 mb-2 flex-shrink-0">{t.dockPageDropHint || 'New buttons go on the page showing. Drag a button onto another page\'s tab to move it there.'}</p>
             )}
+            {/* Where the deck puts its numbered page buttons: over the grid or under it. */}
+            {pages > 1 && (
+              <div className="flex items-center gap-2 mb-3 flex-shrink-0" data-dock-pager-place>
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600 whitespace-nowrap">{t.dockPagerPlace || 'Page buttons'}</span>
+                <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+                  {(['top', 'bottom'] as const).map((place) => (
+                    <button
+                      key={place}
+                      onClick={() => setDockGrid({ pagerAt: place })}
+                      className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-colors ${
+                        pagerPlace(dockGrid) === place ? 'bg-current-accent/10 text-current-accent' : 'text-zinc-600 hover:text-zinc-300'
+                      }`}
+                      data-dock-pager-at={place}
+                    >
+                      {place === 'top' ? (t.dockPagerTop || 'Above') : (t.dockPagerBottom || 'Below')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* The deck sits centred in whatever room is left, so it reads as a
                 thing on a shelf rather than something that fell to the corner.
                 Width-capped rather than reshaped: a scaled-down deck still
@@ -646,7 +669,7 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
                 zero when the deck is taller than the space, so it scrolls from
                 the top instead of having its first row clipped above the
                 scroll origin — which is what centring does on overflow. */}
-            <div className="flex-1 min-h-0 overflow-y-auto flex">
+            <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto flex">
               {/*
                 With rows, the box takes the grid’s own proportions so the rows
                 have a height to divide. Without one it collapses: the cells are
