@@ -2,6 +2,13 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.0.5] — 2026-10-08
+
+- Alerts read aloud now play from the stream page that follows your OBS scene, instead of the chat dock.
+- Alerts screen: every label in both languages, new alerts start with Spanish captions, and "Fires on" names the platform.
+- "Fire on stream" fills every field (level, prize, reward, Super Chat amount), and the preview shows {words.*} as the stream will.
+- A failed alert upload says why, and deleting an alert asks first.
+
 ## [1.0.4] — 2026-10-08
 
 - Pixel avatars: the page uses the full width, like the overlay editor, and the canvas grows to fit.

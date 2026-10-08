@@ -16,6 +16,7 @@ import { cleanCss, MAX_ALERT_CSS } from '../../shared/clean-css.js';
 import { createLogger } from '../core/logger.js';
 import { readSettings, lookColour, SETTINGS_VERSION } from './layouts.js';
 import { currentLook } from '../../shared/looks-history.js';
+import { sampleEvent } from '../../shared/alert-samples.js';
 
 const log = createLogger('alerts');
 
@@ -394,29 +395,15 @@ export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null) 
   return hits.length;
 }
 
-/** Build a synthetic event so the UI's "Test" button exercises the real path. */
+/**
+ * Build a synthetic event so the UI's "Test" button exercises the real path.
+ *
+ * Its fields come from shared/alert-samples.js, which the editor's preview
+ * reads too. An alert for a kind ("follow") is tested as that kind on a real
+ * platform, so {platform} and {words.*} say what they would on stream.
+ */
 export function buildTestEvent(alertConfig) {
-  const samples = {
-    twitch_cheer: { amount: 500, bits: 500, currency: 'BITS', message: 'Esto es una prueba del mensaje' },
-    twitch_raid: { amount: 42, viewers: 42, currency: 'VIEWERS' },
-    twitch_sub: { tier: '1000', months: 3, message: 'Esto es una prueba del mensaje' },
-    // Every field a real one carries, so a message using any of them tests true.
-    twitch_sub_gift_bulk: { count: 5, amount: 5, tier: 1 },
-    youtube_sub_gift_bulk: { count: 5, amount: 5 },
-    sub_gift_bulk: { count: 5, amount: 5, tier: 1 },
-    raid: { amount: 42, viewers: 42, currency: 'VIEWERS' },
-    cheer: { amount: 500, bits: 500, currency: 'BITS', message: 'Esto es una prueba del mensaje' },
-    gift: { giftName: 'Rose', count: 10, amount: 10, diamonds: 10, currency: 'DIAMONDS' },
-    twitch_redemption: { rewardId: alertConfig.redemptionRewardId, rewardName: 'Test Reward', input: 'Esto es una prueba del mensaje' },
-    tiktok_gift: { giftName: 'Rose', count: 10, amount: 10, diamonds: 10, currency: 'DIAMONDS' },
-  };
-
-  return {
-    id: 'test',
-    type: alertConfig.type,
-    platform: alertConfig.type.split('_')[0],
-    user: 'TestUser',
-    data: samples[alertConfig.type] ?? {},
-    timestamp: Date.now(),
-  };
+  const event = sampleEvent(alertConfig.type);
+  if (event.type === 'twitch_redemption') event.data.rewardId = alertConfig.redemptionRewardId;
+  return { id: 'test', ...event, timestamp: Date.now() };
 }

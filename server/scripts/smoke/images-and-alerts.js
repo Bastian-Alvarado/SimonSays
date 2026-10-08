@@ -685,4 +685,109 @@ test('the bundle alert is offered in the editor and accepted by the server', () 
     assert.ok(hook.includes('const speak = currentAlert?.speak;') && hook.includes('speakAloud(speak)'), 'the page never reads the alert');
     assert.ok(read('../../web/components/views/AlertsView.tsx').includes('data-alert-read-toggle'), 'the alert editor has no way to turn it on');
   });
+
+  test('a canvas that follows the OBS scene speaks when the layout on stream has the alerts, by the same rule it draws by', () => {
+    const bound = [
+      { id: 'main', scenes: ['Gameplay'], layers: [{ type: 'alerts' }] },
+      { id: 'chat', scenes: ['Just Chatting'], layers: [{ type: 'chat' }] },
+      { id: 'omni', layers: [{ type: 'alerts' }] },
+    ];
+    const following = { mode: 'canvas', isLocal: false, connectedAt: 5 };
+    assert.equal(showsAlerts(following, bound, 'Gameplay'), true, 'the scene\'s layout has the alerts, yet the canvas showing it does not count');
+    assert.equal(showsAlerts(following, bound, 'Just Chatting'), false);
+    assert.equal(showsAlerts(following, bound, 'Nobody bound this'), false, 'a scene showing nothing counted as showing the alerts');
+    // Nothing bound to any scene: the first layout, as the page draws it.
+    assert.equal(showsAlerts(following, [{ id: 'a', layers: [{ type: 'alerts' }] }, { id: 'b', layers: [] }], ''), true);
+    assert.equal(showsAlerts(following, [{ id: 'b', layers: [] }, { id: 'a', layers: [{ type: 'alerts' }] }], ''), false);
+    // The Omnilayer's live layout, while OBS is on its scene.
+    const omnilayer = { enabled: true, live: 'omni', scene: 'Omnilayer' };
+    assert.equal(showsAlerts(following, bound, 'Omnilayer', omnilayer), true);
+    assert.equal(showsAlerts(following, bound, 'Just Chatting', omnilayer), false);
+    // A pinned canvas is still its own layout, whatever the scene.
+    assert.equal(showsAlerts({ mode: 'canvas', layoutId: 'chat' }, bound, 'Gameplay'), false);
+    const dock = { mode: 'dock', isLocal: true, connectedAt: 1 };
+    assert.equal(preferred(following, dock, bound, { scene: 'Gameplay' }), true, 'the dock read the alert over the stream page');
+    assert.equal(preferred(dock, following, bound, { scene: 'Just Chatting' }), true);
+    const ws = read('../api/ws.js');
+    assert.ok(ws.includes('return liveLayout(layouts, scene, omnilayer);'), 'the server and the page pick the live layout by different rules');
+    assert.ok(ws.includes("const live = { scene: obs.currentScene(), omnilayer: engine.store.omnilayerState?.() || null };"), 'the speaker is chosen without the scene');
+  });
+}
+
+// ------------------------------------------------- the Alerts audit
+
+{
+  const { buildTestEvent, dispatch: dispatchAlert } = await import('../../engine/alerts.js');
+  const read = (path) => fs.readFileSync(new URL(path, SCRIPT_URL), 'utf8');
+  const view = read('../../web/components/views/AlertsView.tsx');
+  const words = read('../../web/constants.ts');
+  const enBlock = words.slice(words.indexOf('\n  en: {'), words.indexOf('\n  es: {'));
+  const esBlock = words.slice(words.indexOf('\n  es: {'));
+  const inBoth = (key) => new RegExp(`\\n\\s+${key}:`).test(enBlock) && new RegExp(`\\n\\s+${key}:`).test(esBlock);
+  const keyPart = (s) => s.split(/[_ ]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+  // Every event the screen offers, with the caption a new alert starts with.
+  const offered = [...view.matchAll(/\{ type: '([a-z_]+)', label: '[^']*', sample: '([^']*)' \}/g)].map((m) => ({ type: m[1], sample: m[2] }));
+
+  test('a test alert is a real event on a real platform, with every field a real one carries', () => {
+    assert.ok(offered.length >= 25, `expected the editor's event list, found ${offered.length}`);
+    // An alert for a kind fires as that kind somewhere, so {platform} and {words.*} say what they would on stream.
+    assert.deepEqual([buildTestEvent({ type: 'follow' }).type, buildTestEvent({ type: 'follow' }).platform], ['twitch_follow', 'twitch']);
+    assert.equal(buildTestEvent({ type: 'sub_gift_bulk' }).platform, 'twitch', 'a gift bundle tested on a platform called "sub"');
+    assert.equal(buildTestEvent({ type: 'gift' }).platform, 'tiktok');
+    // Levels, giveaways and the shop happen to a viewer in a chat.
+    for (const type of ['level_up', 'giveaway_winner', 'points_redeem']) assert.equal(buildTestEvent({ type }).platform, 'twitch', `${type} tested on no platform`);
+    assert.equal(buildTestEvent({ type: 'level_up' }).data.level, 5);
+    assert.equal(buildTestEvent({ type: 'giveaway_winner' }).data.prize, 'Premio de prueba');
+    assert.equal(buildTestEvent({ type: 'points_redeem' }).data.item, 'Hidratarse');
+    assert.equal(buildTestEvent({ type: 'youtube_cheer' }).data.amount, '$5.00');
+    assert.equal(buildTestEvent({ type: 'twitch_sub' }).data.tier, 1, 'a test sub says tier "1000", which no real one does');
+    const reward = buildTestEvent({ type: 'twitch_redemption', redemptionRewardId: 'r-1' }).data;
+    assert.deepEqual([reward.rewardId, reward.reward, reward.rewardName], ['r-1', 'Recompensa de prueba', 'Recompensa de prueba']);
+    assert.equal(buildTestEvent({ type: 'obs_scene_changed' }).user, 'Gameplay');
+    // One table for the test and the preview.
+    assert.ok(read('../engine/alerts.js').includes("import { sampleEvent } from '../../shared/alert-samples.js';"));
+    assert.ok(view.includes("import { sampleEvent } from '../../../shared/alert-samples.js';") && view.includes("sampleEvent(draft?.type || '', SAMPLE_USER)"), 'the preview fills captions from its own guesses');
+  });
+
+  test('every caption a new alert starts with is in Spanish, and fires on stream with nothing left in braces', () => {
+    const english = /\b(just|gifted|raided|subscribed|cheered|redeemed|sent|shared|joined|boosted|is a|is the|now playing|we are|that is|switching|member!)\b/i;
+    const heard = [];
+    const listen = (a) => heard.push(a);
+    bus.on(EVENTS.ALERT, listen);
+    try {
+      for (const { type, sample } of offered) {
+        assert.ok(!english.test(sample), `the ${type} alert starts out saying "${sample}" on a Spanish stream`);
+        heard.length = 0;
+        const config = normaliseAlert({ id: `audit-${type}`, type, messageTemplate: sample });
+        dispatchAlert([config], buildTestEvent(config), { name: 'Blue Monday', artist: 'New Order' });
+        assert.equal(heard.length, 1, `testing the ${type} alert showed nothing`);
+        assert.ok(!heard[0].text.includes('{'), `testing the ${type} alert put "${heard[0].text}" on stream`);
+      }
+    } finally {
+      bus.off(EVENTS.ALERT, listen);
+    }
+  });
+
+  test('the Alerts screen speaks the screen\'s language: events, groups, numbers, layouts, entrances', () => {
+    for (const { type } of offered) assert.ok(inBoth(`alertType${keyPart(type)}`), `the ${type} event has no name in one of the languages`);
+    for (const group of ['Any platform', 'Levels', 'Stream']) assert.ok(inBoth(`alertGroup${keyPart(group)}`), `the "${group}" heading is English only`);
+    const fields = view.slice(view.indexOf('const CONDITION_FIELDS'), view.indexOf('const OP_LABEL'));
+    for (const [, field] of fields.matchAll(/field: '([a-z]+)'/g)) assert.ok(inBoth(`alertsField${keyPart(field)}`), `the "${field}" condition is English only`);
+    for (const [, key] of view.matchAll(/key: '(alertsLayout[A-Za-z]+)'/g)) assert.ok(inBoth(key), `${key} is missing a language`);
+    for (const [, key] of view.matchAll(/': '(alertsAnim[A-Za-z]+)'/g)) assert.ok(inBoth(key), `${key} is missing a language`);
+    for (const key of ['alertsAnd', 'alertsDefaultName', 'alertsVariationDefaultName', 'alertsUrlPlaceholder', 'alertsVariationUp', 'alertsVariationDown', 'alertsVariationRemove', 'alertsConditionRemove', 'alertsDeleteConfirm', 'alertsUploadFailed']) {
+      assert.ok(inBoth(key), `${key} is missing a language`);
+    }
+    // Read through t, not printed raw.
+    for (const raw of ['{g.group}</span>', '<Plus size={10} /> {x.label}', "join(' and ')", 'placeholder="https://', '{a.label}</option>)}', '{f.label}</option>', '`${info?.label || type} alert`']) {
+      assert.ok(!view.includes(raw), `the Alerts screen still prints ${raw}`);
+    }
+  });
+
+  test('a failed upload on the Alerts screen says why, and deleting an alert asks first', () => {
+    assert.ok(view.includes("setUploadError({ kind, text: refusalWords(t, err)"), 'an upload that fails is not explained');
+    assert.ok(view.includes("uploadError?.kind === 'image'") && view.includes("uploadError?.kind === 'sound'"), 'the reason does not show under the box it was for');
+    assert.ok(!view.includes('the button returning to normal is the failure signal'));
+    assert.ok(view.includes('if (!window.confirm(fill(t.alertsDeleteConfirm'), 'an alert is deleted without asking');
+  });
 }

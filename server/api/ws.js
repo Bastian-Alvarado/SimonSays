@@ -16,6 +16,7 @@ import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import { C2S, S2C } from '../../shared/protocol.js';
 import { VERSION } from '../../shared/version.js';
+import { liveLayout } from '../../shared/live-layout.js';
 import * as engine from '../engine/index.js';
 import * as tags from '../engine/tags.js';
 import * as discordRoles from '../engine/discord-roles.js';
@@ -111,21 +112,32 @@ let audioSink = null;
 const isOpen = (ws) => ws && ws.readyState === WebSocket.OPEN;
 
 /**
+ * The layout a canvas draws: the one its link names, or — naming none, the
+ * link the Overlays screen hands out first — whatever is on stream, by the
+ * same rule the page itself uses (liveLayout), from the OBS scene and the
+ * Omnilayer as they are now.
+ */
+export function canvasLayout(client, layouts = [], scene = '', omnilayer = null) {
+  if (client?.layoutId) return layouts.find((l) => l.id === client.layoutId) || null;
+  return liveLayout(layouts, scene, omnilayer);
+}
+
+/**
  * Does this surface show the alerts? The alerts page always does; a canvas
  * does when its layout has a visible alerts layer. The chat overlay does not:
  * it is chat only, since beside either of those it showed every alert twice.
  */
-export function showsAlerts(client, layouts = []) {
+export function showsAlerts(client, layouts = [], scene = '', omnilayer = null) {
   if (client?.mode === 'alerts') return true;
-  if (client?.mode !== 'canvas' || !client.layoutId) return false;
-  const layout = layouts.find((l) => l.id === client.layoutId);
+  if (client?.mode !== 'canvas') return false;
+  const layout = canvasLayout(client, layouts, scene, omnilayer);
   return Boolean(layout?.layers?.some((l) => l.type === 'alerts' && l.visible !== false));
 }
 
-/** Is `a` a better audio surface than `b`? */
-export function preferred(a, b, layouts = []) {
-  const aAlerts = showsAlerts(a, layouts);
-  const bAlerts = showsAlerts(b, layouts);
+/** Is `a` a better audio surface than `b`? `live` is the OBS scene and the Omnilayer, for a canvas that follows them. */
+export function preferred(a, b, layouts = [], live = {}) {
+  const aAlerts = showsAlerts(a, layouts, live.scene, live.omnilayer);
+  const bAlerts = showsAlerts(b, layouts, live.scene, live.omnilayer);
   if (aAlerts !== bAlerts) return aAlerts;
   const aDock = a.mode === 'dock';
   const bDock = b.mode === 'dock';
@@ -140,9 +152,11 @@ function ensureAudioSink() {
   // comparator is total, so equal inputs always yield the same winner.
   let best = null;
   const layouts = engine.store.getLayouts?.() || [];
+  // Asked again on every call, so a canvas following the scene speaks for whatever the scene is now.
+  const live = { scene: obs.currentScene(), omnilayer: engine.store.omnilayerState?.() || null };
   for (const ws of clients) {
     if (!isOpen(ws)) continue;
-    if (!best || preferred(ws, best, layouts)) best = ws;
+    if (!best || preferred(ws, best, layouts, live)) best = ws;
   }
 
   if (best !== audioSink) {

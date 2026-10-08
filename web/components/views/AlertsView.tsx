@@ -23,6 +23,9 @@ import { StylesheetPanel } from '../StylesheetPanel';
 import { AutoColourRow } from '../AutoSwatch';
 import { VariablePicker } from '../VariablePicker';
 import { Button } from '../Button';
+import { refusalWords, fill } from '../../words';
+import { says } from '../../../shared/platforms.js';
+import { sampleEvent } from '../../../shared/alert-samples.js';
 import {
   Bell, Plus, Trash2, Play, Eye, EyeOff, Upload, Volume2, VolumeX, Image as ImageIcon, Check, ArrowUp, ArrowDown, MessageSquareText,
 } from 'lucide-react';
@@ -42,23 +45,28 @@ const TYPE_GROUPS: { group: string; types: { type: AlertType; label: string; sam
       you genuinely want them to differ.
     */
     group: 'Any platform',
+    /*
+      Each sample is the caption a new alert starts with, so it is in
+      Spanish, like everything else on stream. The labels are the screen's
+      and come in its language (typeLabel); the English here is the fallback.
+    */
     types: [
-      { type: 'follow', label: 'New follower or subscriber', sample: '{user} is a new {words.follower}!' },
-      { type: 'sub', label: 'Paid support', sample: '{user} is a {words.supporter}!' },
-      { type: 'sub_gift_bulk', label: 'Gift bundle', sample: '{user} gifted {event.count}!' },
-      { type: 'cheer', label: 'Tip', sample: '{user} sent {words.tip}!' },
-      { type: 'raid', label: 'Raid', sample: '{user} raided with {event.viewers} viewers!' },
+      { type: 'follow', label: 'New follower or subscriber', sample: '¡{user} ya es {words.follower}!' },
+      { type: 'sub', label: 'Paid support', sample: '¡{user} ya es {words.supporter}!' },
+      { type: 'sub_gift_bulk', label: 'Gift bundle', sample: '¡{user} regaló {event.count}!' },
+      { type: 'cheer', label: 'Tip', sample: '¡{user} envió {words.tip}!' },
+      { type: 'raid', label: 'Raid', sample: '¡Raid de {user} con {event.viewers} espectadores!' },
     ],
   },
   {
     group: 'Twitch',
     types: [
-      { type: 'twitch_follow', label: 'Follow', sample: '{user} just followed!' },
-      { type: 'twitch_sub', label: 'Subscription', sample: '{user} subscribed at tier {event.tier}!' },
-      { type: 'twitch_sub_gift_bulk', label: 'Gift bundle', sample: '{user} gifted {event.count} subs!' },
-      { type: 'twitch_cheer', label: 'Cheer', sample: '{user} cheered {event.bits} bits!' },
-      { type: 'twitch_raid', label: 'Raid', sample: '{user} raided with {event.viewers} viewers!' },
-      { type: 'twitch_redemption', label: 'Channel points', sample: '{user} redeemed {event.reward}!' },
+      { type: 'twitch_follow', label: 'Follow', sample: '¡Gracias por el follow, {user}!' },
+      { type: 'twitch_sub', label: 'Subscription', sample: '¡{user} se suscribió con nivel {event.tier}!' },
+      { type: 'twitch_sub_gift_bulk', label: 'Gift bundle', sample: '¡{user} regaló {event.count} subs!' },
+      { type: 'twitch_cheer', label: 'Cheer', sample: '¡{user} envió {event.bits} bits!' },
+      { type: 'twitch_raid', label: 'Raid', sample: '¡Raid de {user} con {event.viewers} espectadores!' },
+      { type: 'twitch_redemption', label: 'Channel points', sample: '¡{user} canjeó {event.reward}!' },
     ],
   },
   {
@@ -69,25 +77,25 @@ const TYPE_GROUPS: { group: string; types: { type: AlertType; label: string; sam
         subscribes for free and never says whether a chatter is one, so the
         alert could be made and would never fire.
       */
-      { type: 'youtube_sub', label: 'Member', sample: '{user} is a member!' },
-      { type: 'youtube_sub_gift_bulk', label: 'Gift memberships', sample: '{user} gifted {event.count} memberships!' },
-      { type: 'youtube_cheer', label: 'Super Chat', sample: '{user} sent a Super Chat!' },
+      { type: 'youtube_sub', label: 'Member', sample: '¡{user} ahora es miembro!' },
+      { type: 'youtube_sub_gift_bulk', label: 'Gift memberships', sample: '¡{user} regaló {event.count} membresías!' },
+      { type: 'youtube_cheer', label: 'Super Chat', sample: '¡{user} envió un Super Chat de {event.amount}!' },
     ],
   },
   {
     group: 'TikTok',
     types: [
-      { type: 'tiktok_follow', label: 'Follow', sample: '{user} just followed!' },
-      { type: 'tiktok_sub', label: 'Subscription', sample: '{user} subscribed!' },
-      { type: 'tiktok_gift', label: 'Gift', sample: '{user} sent {event.giftName} x{event.count}!' },
-      { type: 'tiktok_share', label: 'Share', sample: '{user} shared the stream!' },
+      { type: 'tiktok_follow', label: 'Follow', sample: '¡Gracias por seguir, {user}!' },
+      { type: 'tiktok_sub', label: 'Subscription', sample: '¡{user} se suscribió!' },
+      { type: 'tiktok_gift', label: 'Gift', sample: '¡{user} envió {event.giftName} x{event.count}!' },
+      { type: 'tiktok_share', label: 'Share', sample: '¡{user} compartió el directo!' },
     ],
   },
   {
     group: 'Discord',
     types: [
-      { type: 'discord_join', label: 'Joined the Discord', sample: '{user} joined the Discord!' },
-      { type: 'discord_boost', label: 'Boosted the Discord', sample: '{user} boosted the Discord!' },
+      { type: 'discord_join', label: 'Joined the Discord', sample: '¡{user} se unió al Discord!' },
+      { type: 'discord_boost', label: 'Boosted the Discord', sample: '¡{user} mejoró el servidor de Discord!' },
     ],
   },
   {
@@ -101,10 +109,10 @@ const TYPE_GROUPS: { group: string; types: { type: AlertType; label: string; sam
   {
     group: 'Stream',
     types: [
-      { type: 'obs_stream_started', label: 'Stream started', sample: 'We are live!' },
-      { type: 'obs_stream_stopped', label: 'Stream stopped', sample: 'That is a wrap.' },
-      { type: 'obs_scene_changed', label: 'Scene changed', sample: 'Switching things up.' },
-      { type: 'spotify_track_change', label: 'Track changed', sample: 'Now playing {spotify.track}' },
+      { type: 'obs_stream_started', label: 'Stream started', sample: '¡Estamos en directo!' },
+      { type: 'obs_stream_stopped', label: 'Stream stopped', sample: '¡Eso es todo por hoy!' },
+      { type: 'obs_scene_changed', label: 'Scene changed', sample: 'Cambiando de escena…' },
+      { type: 'spotify_track_change', label: 'Track changed', sample: 'Suena {spotify.track}' },
     ],
   },
 ];
@@ -112,12 +120,33 @@ const TYPE_GROUPS: { group: string; types: { type: AlertType; label: string; sam
 const ALL_TYPES = TYPE_GROUPS.flatMap((g) => g.types);
 const typeInfo = (t: string) => ALL_TYPES.find((x) => x.type === t);
 
-const LAYOUTS: { value: AlertConfig['layout']; label: string }[] = [
-  { value: 'image-above', label: 'Above' },
-  { value: 'image-left', label: 'Left' },
-  { value: 'image-right', label: 'Right' },
-  { value: 'image-cover', label: 'Behind' },
+/** "twitch_sub_gift_bulk" or "Any platform" as the end of a words key: TwitchSubGiftBulk, AnyPlatform. */
+const keyPart = (s: string) => s.split(/[_ ]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+/** An event's name in the screen's language (t.alertType…), or the English above. */
+const typeLabel = (t: any, type: string) => t?.[`alertType${keyPart(type)}`] || typeInfo(type)?.label || type;
+/** Which group an event is listed under. */
+const typeGroup = (type: string) => TYPE_GROUPS.find((g) => g.types.some((x) => x.type === type))?.group;
+/** A group's heading the same way; the platforms' own names need no words. */
+const groupLabel = (t: any, group: string) => t?.[`alertGroup${keyPart(group)}`] || group;
+
+const LAYOUTS: { value: AlertConfig['layout']; label: string; key: string }[] = [
+  { value: 'image-above', label: 'Above', key: 'alertsLayoutAbove' },
+  { value: 'image-left', label: 'Left', key: 'alertsLayoutLeft' },
+  { value: 'image-right', label: 'Right', key: 'alertsLayoutRight' },
+  { value: 'image-cover', label: 'Behind', key: 'alertsLayoutBehind' },
 ];
+
+/** The entrances' and exits' names in the screen's language; AlertOverlay's own labels are the English. */
+const ANIMATION_KEYS: Record<string, string> = {
+  'animate-pop-in': 'alertsAnimPop',
+  'animate-fade-in': 'alertsAnimFade',
+  'animate-zoom-in': 'alertsAnimZoom',
+  'animate-slide-up': 'alertsAnimSlideUp',
+  'animate-slide-down': 'alertsAnimSlideDown',
+  'animate-fade-out': 'alertsAnimFade',
+  'animate-pop-out': 'alertsAnimShrink',
+  'animate-slide-out-up': 'alertsAnimSlideUp',
+};
 
 const FONTS = ['Montserrat', 'Inter', 'JetBrains Mono', 'Creepster', 'VT323', 'Impact', 'Georgia'];
 
@@ -161,7 +190,8 @@ const ALERT_PARTS = [
   '[data-alert="name"]',
 ];
 
-const fieldLabel = (f: string) => CONDITION_FIELDS.find((x) => x.field === f)?.label || f;
+/** A condition's number by name, in the screen's language (t.alertsField…), or the English above. */
+const fieldLabel = (t: any, f: string) => t?.[`alertsField${keyPart(f)}`] || CONDITION_FIELDS.find((x) => x.field === f)?.label || f;
 
 
 /** The stand-in viewer in the preview. Awkward on purpose: accents and an
@@ -205,6 +235,8 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [uploading, setUploading] = useState<'image' | 'sound' | null>(null);
+  // Why the last upload failed, under the box it was for.
+  const [uploadError, setUploadError] = useState<{ kind: 'image' | 'sound'; text: string } | null>(null);
   const [editingVariation, setEditingVariation] = useState<string | null>(null);
   const [previewVariation, setPreviewVariation] = useState<string | null>(null);
   // This browser's voices, to choose the one alerts are read in.
@@ -254,7 +286,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
       // says the right thing for this event — the old builder created every
       // alert reading "{user} triggered an alert!" and named after the wrong
       // platform, so every one had to be rewritten before it was usable.
-      name: `${info?.label || type} alert`,
+      name: fill(t.alertsDefaultName || '{type} alert', { type: typeLabel(t, type) }),
       type,
       enabled: true,
       layout: 'image-above',
@@ -284,7 +316,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
     const field = CONDITION_FIELDS.find((f) => f.types.includes(draft!.type))?.field || 'amount';
     writeVariations([...variations(), {
       id: Math.random().toString(36).slice(2, 11),
-      name: `Big ${typeInfo(draft!.type)?.label.toLowerCase() || 'one'}`,
+      name: fill(t.alertsVariationDefaultName || 'Big {type}', { type: typeLabel(t, draft!.type).toLowerCase() }),
       // Starts with a condition rather than empty: a variation with no
       // conditions always holds, which as a first row would silently shadow
       // every one added after it.
@@ -335,13 +367,15 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
   const onUpload = async (kind: 'image' | 'sound', file?: File | null) => {
     if (!file || !uploadAsset) return;
     setUploading(kind);
+    setUploadError(null);
     try {
       const res = await uploadAsset(file);
       const url = res?.url || res?.path || '';
       if (url) patch(kind === 'image' ? { imageUrl: url } : { soundUrl: url });
       refreshAssets?.();
-    } catch {
-      /* the button returning to normal is the failure signal */
+    } catch (err: any) {
+      // Said, and why — too big, not a picture — rather than the button just going back to normal.
+      setUploadError({ kind, text: refusalWords(t, err) || t.alertsUploadFailed || 'That file could not be uploaded.' });
     } finally {
       setUploading(null);
     }
@@ -356,6 +390,32 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
    * you nothing about whether the alert will look right — which is the only
    * question the preview exists to answer.
    */
+  /*
+    A caption with this alert's pretend event in it: the fields a real one
+    carries (shared/alert-samples.js, the same "Fire on stream" sends), the
+    platform's own words for {words.*}, and the same short names the server
+    knows ({user}, {message}). Anything left is a field this event does not
+    carry; it shows as a word, braces off, rather than as broken markup.
+  */
+  const fillPreview = useMemo(() => {
+    const ev = sampleEvent(draft?.type || '', SAMPLE_USER);
+    const said = ev.data.message ?? ev.data.input ?? (t.alertsReadSampleMessage || 'good luck tonight');
+    const ctx: any = {
+      user: { name: SAMPLE_USER, platform: ev.platform },
+      platform: ev.platform,
+      event: { type: ev.type, ...ev.data },
+      message: { content: said, raw: said, args: said },
+      input: said,
+      words: Object.fromEntries(['follower', 'followers', 'followed', 'supporter', 'supporters', 'gift', 'tip'].map((k) => [k, says(ev.platform, k)])),
+      spotify: { track: 'Blue Monday', artist: 'New Order' },
+    };
+    const SHORT: Record<string, string> = { user: 'user.name', username: 'user.name', message: 'message.content', args: 'message.args' };
+    return (template: string, extra: Record<string, any> = {}) => String(template || '').replace(/[{]([a-zA-Z0-9_.-]+)[}]/g, (_m, key) => {
+      const value = (SHORT[key] || key).split('.').reduce((at: any, k: string) => (at == null ? undefined : at[k]), { ...ctx, ...extra });
+      return value === undefined || value === null || typeof value === 'object' ? key : String(value);
+    });
+  }, [draft?.type, t]);
+
   const previewAlert = useMemo(() => {
     if (!draft) return null;
     /*
@@ -373,28 +433,9 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
         )),
       ]) as AlertConfig
       : draft;
-    const samples: Record<string, string> = {
-      '{user}': SAMPLE_USER,
-      '{event.bits}': '500',
-      '{event.viewers}': '42',
-      '{event.tier}': '1',
-      '{event.months}': '12',
-      '{event.giftName}': 'Rose',
-      '{event.count}': '25',
-      '{event.reward}': 'Hydrate',
-      '{event.amount}': '10',
-      '{event.currency}': 'USD',
-      '{event.message}': 'good luck tonight',
-      '{spotify.track}': 'Blue Monday',
-      '{spotify.artist}': 'New Order',
-    };
-    let text = config.messageTemplate;
-    for (const [token, value] of Object.entries(samples)) text = text.split(token).join(value);
-    // Anything left is a token with no stand-in; strip the braces so it reads
-    // as a word rather than as broken markup.
-    text = text.replace(/\{([a-zA-Z0-9_.]+)\}/g, '$1');
+    const text = fillPreview(config.messageTemplate);
     return { id: `preview-${previewKey}-${previewVariation || 'base'}`, config, user: SAMPLE_USER, text };
-  }, [draft, previewKey, previewVariation]);
+  }, [draft, previewKey, previewVariation, fillPreview]);
 
   const heading = activeTheme.id === 'light' ? 'text-zinc-900' : 'text-zinc-100';
   const input = 'w-full bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2 text-xs font-bold text-zinc-200 outline-none focus:border-current-accent';
@@ -411,7 +452,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
         <div className="space-y-3">
           {TYPE_GROUPS.map((g) => (
             <div key={g.group} className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600 w-14 shrink-0">{g.group}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600 w-20 shrink-0">{groupLabel(t, g.group)}</span>
               {g.types.map((x) => (
                 <button
                   key={x.type}
@@ -419,7 +460,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                   title={x.sample}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:border-zinc-700 transition-all"
                 >
-                  <Plus size={10} /> {x.label}
+                  <Plus size={10} /> {typeLabel(t, x.type)}
                 </button>
               ))}
             </div>
@@ -495,7 +536,10 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                   </label>
                   <div className="flex items-center justify-between mb-3">
                     <Label>{t.alertsEvent || 'Fires on'}</Label>
-                    <span className="text-[10px] font-bold text-zinc-400">{typeInfo(draft.type)?.label || draft.type}</span>
+                    {/* With its group: Twitch and TikTok both have a "Follow". */}
+                    <span className="text-[10px] font-bold text-zinc-400" data-alert-fires-on>
+                      {typeGroup(draft.type) ? `${groupLabel(t, typeGroup(draft.type)!)} · ${typeLabel(t, draft.type)}` : typeLabel(t, draft.type)}
+                    </span>
                   </div>
 
                   {/*
@@ -574,7 +618,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                     open={showPicker}
                     onClose={() => setShowPicker(false)}
                     triggerType={draft.type}
-                    triggerLabel={typeInfo(draft.type)?.label}
+                    triggerLabel={typeLabel(t, draft.type)}
                     t={t}
                   />
                   <button
@@ -593,7 +637,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                 <Section title={t.alertsMedia || 'Image and sound'}>
                   <Label>{t.alertsImage || 'Image'}</Label>
                   <div className="flex gap-2 mb-2">
-                    <input className={input} placeholder="https://… or /media/…" value={draft.imageUrl || ''} onChange={(e) => patch({ imageUrl: e.target.value })} />
+                    <input className={input} placeholder={t.alertsUrlPlaceholder || 'https://… or /media/…'} value={draft.imageUrl || ''} onChange={(e) => patch({ imageUrl: e.target.value })} />
                     <button onClick={() => imageInput.current?.click()} title={t.upload || 'Upload'} className="px-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white">
                       {uploading === 'image' ? <span className="text-[9px]">…</span> : <Upload size={13} />}
                     </button>
@@ -601,6 +645,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                         the only thing that would not let one be chosen. */}
                     <input ref={imageInput} type="file" accept="image/*,video/*" hidden onChange={(e) => onUpload('image', e.target.files?.[0])} />
                   </div>
+                  {uploadError?.kind === 'image' && <p className="text-[9px] text-rose-400 -mt-1 mb-2 leading-snug" data-alert-upload-error>{uploadError.text}</p>}
                   {draft.imageUrl && (
                     <button onClick={() => patch({ imageUrl: '' })} className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 hover:text-rose-500 mb-3">
                       {t.alertsClearImage || 'Remove image'}
@@ -616,19 +661,20 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                           draft.layout === l.value ? 'bg-current-accent text-white border-transparent' : 'bg-zinc-900/60 text-zinc-500 border-zinc-800 hover:text-zinc-300'
                         }`}
                       >
-                        {l.label}
+                        {t[l.key] || l.label}
                       </button>
                     ))}
                   </div>
 
                   <Label>{t.alertsSound || 'Sound'}</Label>
                   <div className="flex gap-2">
-                    <input className={input} placeholder="https://… or /media/…" value={draft.soundUrl || ''} onChange={(e) => patch({ soundUrl: e.target.value })} />
+                    <input className={input} placeholder={t.alertsUrlPlaceholder || 'https://… or /media/…'} value={draft.soundUrl || ''} onChange={(e) => patch({ soundUrl: e.target.value })} />
                     <button onClick={() => soundInput.current?.click()} title={t.upload || 'Upload'} className="px-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white">
                       {uploading === 'sound' ? <span className="text-[9px]">…</span> : <Upload size={13} />}
                     </button>
                     <input ref={soundInput} type="file" accept="audio/*" hidden onChange={(e) => onUpload('sound', e.target.files?.[0])} />
                   </div>
+                  {uploadError?.kind === 'sound' && <p className="text-[9px] text-rose-400 mt-1.5 leading-snug" data-alert-upload-error>{uploadError.text}</p>}
                   {draft.soundUrl && (
                     <>
                       <div className="flex items-center gap-2 mt-3">
@@ -658,11 +704,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                   const tts = { enabled: false, text: '{alert} {message}', voice: '', rate: 1, pitch: 1, volume: 1, delayMs: 1000, ...(draft.tts || {}) };
                   const setTts = (p: Partial<typeof tts>) => patch({ tts: { ...tts, ...p } });
                   // What it would say, with the preview's stand-ins: the caption as previewed, and a sample message.
-                  const sample = tts.text
-                    .split('{alert}').join(previewAlert?.text || '')
-                    .split('{message}').join(t.alertsReadSampleMessage || 'good luck tonight')
-                    .split('{input}').join(t.alertsReadSampleMessage || 'good luck tonight')
-                    .replace(/\{([a-zA-Z0-9_.]+)\}/g, '$1').replace(/\s+/g, ' ').trim();
+                  const sample = fillPreview(tts.text, { alert: previewAlert?.text || '' }).replace(/ +/g, ' ').trim();
                   const listen = () => {
                     if (!window.speechSynthesis || !sample) return;
                     const u = new SpeechSynthesisUtterance(sample);
@@ -789,13 +831,13 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                               <span className="text-[10px] font-black uppercase tracking-widest text-zinc-200">{v.name}</span>
                               <span className="block text-[9px] text-zinc-500 font-mono mt-0.5">
                                 {v.conditions.length
-                                  ? v.conditions.map((c) => `${fieldLabel(c.field)} ${OP_LABEL[c.op]} ${c.value}`).join(' and ')
+                                  ? v.conditions.map((c) => `${fieldLabel(t, c.field)} ${OP_LABEL[c.op]} ${c.value}`).join(` ${t.alertsAnd || 'and'} `)
                                   : (t.alertsVariationAlways || 'always — a catch-all')}
                               </span>
                             </button>
-                            <button onClick={() => moveVariation(v.id, -1)} disabled={i === 0} className="p-1 text-zinc-500 hover:text-white disabled:opacity-25"><ArrowUp size={12} /></button>
-                            <button onClick={() => moveVariation(v.id, 1)} disabled={i === (draft.variations!.length - 1)} className="p-1 text-zinc-500 hover:text-white disabled:opacity-25"><ArrowDown size={12} /></button>
-                            <button onClick={() => removeVariation(v.id)} className="p-1 text-zinc-500 hover:text-rose-500"><Trash2 size={12} /></button>
+                            <button onClick={() => moveVariation(v.id, -1)} disabled={i === 0} title={t.alertsVariationUp || 'Check this one earlier'} className="p-1 text-zinc-500 hover:text-white disabled:opacity-25"><ArrowUp size={12} /></button>
+                            <button onClick={() => moveVariation(v.id, 1)} disabled={i === (draft.variations!.length - 1)} title={t.alertsVariationDown || 'Check this one later'} className="p-1 text-zinc-500 hover:text-white disabled:opacity-25"><ArrowDown size={12} /></button>
+                            <button onClick={() => removeVariation(v.id)} title={t.alertsVariationRemove || 'Remove this variation'} className="p-1 text-zinc-500 hover:text-rose-500"><Trash2 size={12} /></button>
                           </div>
 
                           {open && (
@@ -814,7 +856,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                                     onChange={(e) => patchCondition(v.id, ci, { field: e.target.value as any })}
                                   >
                                     {CONDITION_FIELDS.filter((f) => f.types.includes(draft.type)).map((f) => (
-                                      <option key={f.field} value={f.field}>{f.label}</option>
+                                      <option key={f.field} value={f.field}>{fieldLabel(t, f.field)}</option>
                                     ))}
                                   </select>
                                   <select
@@ -832,7 +874,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                                     value={c.value}
                                     onChange={(e) => patchCondition(v.id, ci, { value: Number(e.target.value) || 0 })}
                                   />
-                                  <button onClick={() => removeCondition(v.id, ci)} className="px-2 text-zinc-600 hover:text-rose-500"><Trash2 size={11} /></button>
+                                  <button onClick={() => removeCondition(v.id, ci)} title={t.alertsConditionRemove || 'Remove this condition'} className="px-2 text-zinc-600 hover:text-rose-500"><Trash2 size={11} /></button>
                                 </div>
                               ))}
 
@@ -908,13 +950,13 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                     <label className="flex-1">
                       <Label>{t.alertsIn || 'Enter'}</Label>
                       <select className={input} value={draft.animationIn} onChange={(e) => patch({ animationIn: e.target.value })}>
-                        {ALERT_ANIMATIONS_IN.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+                        {ALERT_ANIMATIONS_IN.map((a) => <option key={a.value} value={a.value}>{t[ANIMATION_KEYS[a.value]] || a.label}</option>)}
                       </select>
                     </label>
                     <label className="flex-1">
                       <Label>{t.alertsOut || 'Exit'}</Label>
                       <select className={input} value={draft.animationOut} onChange={(e) => patch({ animationOut: e.target.value })}>
-                        {ALERT_ANIMATIONS_OUT.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+                        {ALERT_ANIMATIONS_OUT.map((a) => <option key={a.value} value={a.value}>{t[ANIMATION_KEYS[a.value]] || a.label}</option>)}
                       </select>
                     </label>
                   </div>
@@ -940,7 +982,8 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                 </Section>
 
                 <button
-                  onClick={() => { deleteAlert(draft.id); setSelectedId(null); }}
+                  onClick={() => { if (!window.confirm(fill(t.alertsDeleteConfirm || 'Delete "{name}"? It cannot be brought back.', { name: draft.name }))) return; deleteAlert(draft.id); setSelectedId(null); }}
+                  data-alert-delete
                   className="w-full mt-6 py-2.5 rounded-xl border border-zinc-800 text-[9px] font-black uppercase tracking-widest text-zinc-600 hover:text-rose-500 hover:border-rose-900 transition-all"
                 >
                   <Trash2 size={11} className="inline mr-1.5 -mt-0.5" />
