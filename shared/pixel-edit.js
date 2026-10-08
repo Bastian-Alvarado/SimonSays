@@ -683,11 +683,16 @@ export function frontMissing(pa) {
   };
 }
 
-/** A face of the front view: talking, blink or blink-half — the ones it uses by itself. */
+/**
+ * A face of the front view: any face it has from the side, or talking,
+ * blink or blink-half — the ones it uses by itself. It blinks as the side's
+ * face of that name does; from the front the eyes never glance.
+ */
 export function addFrontFace(pa, name) {
-  if (!pa.turn || !['talking', 'blink', 'blink-half'].includes(name) || pa.turn.front.faces.some((f) => f.name === name)) return pa;
+  const side = pa.faces.find((f) => f.name === name);
+  if (!pa.turn || !(side || ['talking', 'blink', 'blink-half'].includes(name)) || pa.turn.front.faces.some((f) => f.name === name)) return pa;
   const next = copy(pa);
-  next.turn.front.faces.push({ name, label: '', patches: [], glances: false, blinks: name === 'talking' });
+  next.turn.front.faces.push({ name, label: '', patches: [], glances: false, blinks: side ? side.blinks : name === 'talking' });
   return next;
 }
 

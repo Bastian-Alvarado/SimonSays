@@ -340,6 +340,47 @@ test('outfits and extras are drawn from the front too, worn from the front by th
 
 const read = (p) => fs.readFileSync(new URL(p, SCRIPT_URL), 'utf8');
 
+test('the editor has one list for both views: Side | Front over the canvas opens what is picked in the view chosen', () => {
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  // The switch, and no list of the front view's own any more.
+  for (const s of ['data-pixel-views', 'data-pixel-view="side"', 'data-pixel-view="front"']) assert.ok(editor.includes(s), `${s} is not in the editor`);
+  for (const s of ['data-pixel-front-toggle', 'data-pixel-front-versions', 'data-pixel-side-heading']) assert.ok(!editor.includes(s), `${s} is still in the editor`);
+  // Each thing's front version: the drawing, a face, an outfit, an extra or hat; what it does and the set-up have none.
+  for (const s of ["if (tg.kind === 'base') return { kind: 'front' };", "if (tg.kind === 'face') return { kind: 'front-face', name: tg.name };",
+    "if (tg.kind === 'outfit') return { kind: 'front-outfit', name: tg.name };", "if (tg.kind === 'extra' || tg.kind === 'hat') return { kind: 'front-extra', name: tg.name };"]) {
+    assert.ok(editor.includes(s), `${s} is gone`);
+  }
+  // On Front, picking something else opens its front version; a face drawn only from the front opens there.
+  assert.ok(editor.includes('if (front && exists(front) && (stayFront || !exists(tg))) { setTarget(front); return; }'));
+  // Every list item goes through it, and an outfit or extra missing from the front is marked.
+  for (const s of ["pick({ kind: 'base' })", "pick({ kind: 'outfit', name: o.name })", "pick({ kind: 'face', name })", "pick({ kind: 'extra', name: e.name })", "pick({ kind: 'hat', name: e.name })"]) {
+    assert.ok(editor.includes(s), `a list item does not open through the switch: ${s}`);
+  }
+  for (const s of ["setTarget({ kind: 'face', name: f.name })", "setTarget({ kind: 'extra', name: e.name })", "setTarget({ kind: 'hat', name: e.name })", "setTarget({ kind: 'outfit', name: o.name })"]) {
+    assert.ok(!editor.includes(s), `a list item still opens past the switch: ${s}`);
+  }
+  assert.ok(editor.includes("{frontDot('outfit', o.name)}") && editor.includes("{frontDot('extra', e.name)}"));
+  // Hats of both kinds under Hats; Extras keeps the rest.
+  assert.ok(editor.includes('draft.extras.filter((e) => !e.art && !e.hat)'));
+  assert.ok(editor.includes('draft.extras.filter((e) => e.hat || e.art)'));
+  // The preview faces the way of what is being drawn.
+  assert.ok(editor.includes("setFacing(FRONT_KINDS.includes(tgt.kind) ? 'front' : (draft.drawnFacing || 'left'));"));
+  const strings = read('../../web/constants.ts');
+  for (const key of ['pixelViewSide', 'pixelViewFront', 'pixelViewSideHint', 'pixelViewFrontHint', 'pixelViewBoth', 'pixelViewActionsSide', 'pixelViewSideOnly', 'pixelViewFrontNote', 'pixelViewFrontOnly', 'pixelSideMirrorHint', 'pixelHatsList', 'pixelWarnFrontMissing', 'pixelDrawFromFront']) {
+    assert.equal(strings.split(`    ${key}: `).length - 1, 2, `${key} is not in both languages`);
+  }
+});
+
+test('any face it has from the side can be started from the front, blinking as the side\'s does; one it has not, cannot', () => {
+  let pa = edit.setTurns(pixel.blankPixelAvatar('pa-ff', 'FF'), true);
+  pa = edit.addFace(pa, { name: 'happy' }).avatar;
+  pa = edit.setItem(pa, 'face', 'happy', { blinks: false });
+  pa = edit.addFrontFace(pa, 'happy');
+  pa = edit.addFrontFace(pa, 'grumpy');
+  pa = edit.addFrontFace(pa, 'blink');
+  assert.deepEqual(pa.turn.front.faces.map((f) => [f.name, f.blinks, f.glances]), [['happy', false, false], ['blink', false, false]]);
+});
+
 test('one that turns, doing something while it faces the front, turns to the side it was drawn for to do it', () => {
   const layer = read('../../web/components/AvatarLayer.tsx');
   assert.ok(layer.includes("facing={turns ? (acting && facingNow === 'front' ? kit.drawnFacing || 'left' : facingNow) : null}"));
@@ -367,6 +408,10 @@ const secondVersions = (versionsKept.get().items[SAND] || []).length;
 asInstalled((a) => ({ ...a, base: ['o'.repeat(100), ...a.base.slice(1)] }));
 kept.catchUpForTests(Date.now());
 const leftAlone = structuredClone(all().find((a) => a.id === SAND));
+// Edited until it is the one shipped again, under a fingerprint of before: unchanged from here, so it catches up again.
+avatarsKept.set({ ...avatarsKept.get(), items: avatarsKept.get().items.map((i) => (i.id === SAND ? structuredClone(shippedSand) : i)), seededAs: { sandwichxample: 'from-an-older-copy' } });
+kept.catchUpForTests(Date.now());
+const remarked = avatarsKept.get().seededAs?.sandwichxample;
 avatarsKept.set(keptBefore);
 versionsKept.set(versionsBefore);
 
@@ -381,6 +426,7 @@ test('an example nobody changed catches up with the one shipped, keeping its nam
   assert.equal(secondVersions, caughtVersions, 'a second start kept another version');
   assert.equal(leftAlone.base[0], 'o'.repeat(100), 'a changed copy was replaced');
   assert.deepEqual(leftAlone.turn.front.outfits || [], [], 'a changed copy was given the new drawings');
+  assert.ok(remarked && remarked !== 'from-an-older-copy', 'a copy that is the one shipped again is not taken as unchanged');
   assert.ok(read('../engine/pixel-avatars.js').includes('markShipped(avatar);'), 'putting one back does not let it catch up again');
 });
 

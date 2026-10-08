@@ -417,12 +417,80 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
   // Which of a face's, extra's, outfit's or action's own settings are being changed.
   const itemKind = tgt.kind === 'hat' ? 'extra' : tgt.kind === 'frame' ? 'action' : tgt.kind;
   const previewExtras = tgt.kind === 'extra' || tgt.kind === 'hat' || tgt.kind === 'front-extra' ? [tgt.name] : [];
-  // An outfit or extra from the front: drawn now, or started (an outfit from the front view as it is, an extra empty).
+  /*
+    One list for both views of an avatar that turns, and Side | Front over
+    the canvas: whatever is picked is drawn in the view chosen. The drawing,
+    a face, an outfit and an extra each have a front version; what it does,
+    an outfit's own face and the set-up are the side's alone.
+  */
+  const FRONT_KINDS = ['front', 'front-face', 'front-outfit', 'front-extra'];
+  const onFront = FRONT_KINDS.includes(tgt.kind);
+  const frontOf = (tg: PixelTarget): PixelTarget | null => {
+    if (!draft.turn) return null;
+    if (tg.kind === 'base') return { kind: 'front' };
+    if (tg.kind === 'face') return { kind: 'front-face', name: tg.name };
+    if (tg.kind === 'outfit') return { kind: 'front-outfit', name: tg.name };
+    if (tg.kind === 'extra' || tg.kind === 'hat') return { kind: 'front-extra', name: tg.name };
+    return null;
+  };
+  const sideOf = (tg: PixelTarget): PixelTarget => {
+    if (tg.kind === 'front') return { kind: 'base' };
+    if (tg.kind === 'front-face') return { kind: 'face', name: tg.name };
+    if (tg.kind === 'front-outfit') return { kind: 'outfit', name: tg.name };
+    if (tg.kind === 'front-extra') return draft.extras.find((e) => e.name === tg.name)?.art ? { kind: 'hat', name: tg.name } : { kind: 'extra', name: tg.name };
+    return tg;
+  };
+  // The view chosen stays chosen: on Front, picking something else opens its front version, where it has one.
+  const [stayFront, setStayFront] = useState(false);
+  const pick = (tg: PixelTarget) => {
+    const front = frontOf(tg);
+    if (front && exists(front) && (stayFront || !exists(tg))) { setTarget(front); return; }
+    setTarget(tg);
+  };
+  // What the switch stands on: the thing picked, from the side and from the front.
+  const sideTarget = onFront ? sideOf(tgt) : tgt;
+  const frontTarget = onFront ? tgt : frontOf(tgt);
+  const hasSide = exists(sideTarget);
+  const hasFront = Boolean(frontTarget && exists(frontTarget));
+  const isOpen = (kind: string, name?: string) => sideTarget.kind === kind && (name === undefined || (sideTarget as any).name === name);
+  // Started from the front: a face empty, an outfit as the front view is, an extra empty.
+  const startFront = (tg: PixelTarget) => {
+    const next = tg.kind === 'front-face' ? addFrontFace(draft, tg.name) : tg.kind === 'front-outfit' ? addFrontOutfit(draft, tg.name) : tg.kind === 'front-extra' ? addFrontExtra(draft, tg.name) : draft;
+    commit(next as PixelAvatarDef);
+    setTarget(tg);
+  };
+  const showFront = () => {
+    if (!frontTarget) return;
+    setStayFront(true);
+    if (hasFront) setTarget(frontTarget); else startFront(frontTarget);
+  };
+  const showSide = () => {
+    setStayFront(false);
+    if (hasSide) { setTarget(sideTarget); return; }
+    // A face drawn only from the front, started from the side.
+    if (sideTarget.kind === 'face') { const made = addFace(draft, { name: sideTarget.name }); commit(made.avatar); setTarget({ kind: 'face', name: made.name }); }
+  };
+  // An outfit or extra not drawn from the front yet: marked in the list, since from the front it does not show.
+  const lacksFront = (kind: 'outfit' | 'extra', name: string) => Boolean(draft.turn) && !(kind === 'outfit' ? draft.turn!.front.outfits : draft.turn!.front.extras)?.some((x) => x.name === name);
+  const frontDot = (kind: 'outfit' | 'extra', name: string) => (lacksFront(kind, name)
+    ? <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 ml-1.5 align-middle" title={t.pixelFrontMissingHint || 'Not drawn from the front yet: it does not show while the avatar faces the front'} data-pixel-lacks-front />
+    : null);
+  /*
+    The preview faces the way of what is opened to draw: the front for the
+    front view, the side it was drawn facing for the rest — rather than
+    turning by itself, which faces the front most of the time. It can
+    still be set to turn by itself, or held either way, under it.
+  */
+  useEffect(() => {
+    if (!draft.turn) return;
+    setFacing(FRONT_KINDS.includes(tgt.kind) ? 'front' : (draft.drawnFacing || 'left'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [where]);
+  // An outfit or extra from the front, as a warning or the checklist asks: opened, or started.
   const drawFront = (kind: 'outfit' | 'extra', name: string) => {
-    const has = kind === 'outfit' ? draft.turn?.front.outfits?.some((o) => o.name === name) : draft.turn?.front.extras?.some((e) => e.name === name);
-    if (!has) commit((kind === 'outfit' ? addFrontOutfit(draft, name) : addFrontExtra(draft, name)) as PixelAvatarDef);
-    setTarget({ kind: kind === 'outfit' ? 'front-outfit' : 'front-extra', name });
-    setFacing('front');
+    const tg = { kind: kind === 'outfit' ? 'front-outfit' : 'front-extra', name } as PixelTarget;
+    setStayFront(true);
+    if (exists(tg)) setTarget(tg); else startFront(tg);
   };
 
   const addOne = (kind: 'face' | 'extra' | 'outfit', special?: string) => {
@@ -520,40 +588,13 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
       <div className="grid grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)] 2xl:grid-cols-[11rem_minmax(0,1fr)_15rem] gap-4 items-start">
         {/* ------------------------------------------------- what is being drawn */}
         <div className="space-y-3 text-[11px]" data-pixel-targets>
-          <button onClick={() => setTarget({ kind: 'base' })} className={item(tgt.kind === 'base')} data-pixel-target="base">{t.pixelTheDrawing || 'The drawing'}</button>
+          {/* One list for both views: Side | Front over the canvas says which one each is drawn in. */}
+          <button onClick={() => pick({ kind: 'base' })} className={item(isOpen('base'))} data-pixel-target="base">{t.pixelTheDrawing || 'The drawing'}</button>
           <button onClick={() => setTarget({ kind: 'setup' })} className={item(tgt.kind === 'setup')} data-pixel-target="setup">{t.pixelSetUp || 'Set up: colour and eyes'}</button>
-          {draft.turn && (
-            <div className="space-y-1" data-pixel-front>
-              <button onClick={() => { setTarget({ kind: 'front' }); setFacing('front'); }} className={item(tgt.kind === 'front')} data-pixel-target="front">{t.pixelFrontView || 'Front view'}</button>
-              {draft.turn.front.faces.map((f) => (
-                <button key={f.name} onClick={() => { setTarget({ kind: 'front-face', name: f.name }); setFacing('front'); }} className={`${item(tgt.kind === 'front-face' && tgt.name === f.name)} pl-4`} data-pixel-target={`front-face:${f.name}`}>{pixelFaceName(draft, f.name, t)}</button>
-              ))}
-              <div className="flex flex-wrap gap-1 pl-3">
-                {['talking', 'blink', 'blink-half'].filter((n) => !draft.turn!.front.faces.some((f) => f.name === n)).map((n) => (
-                  <button key={n} onClick={() => { commit(addFrontFace(draft, n)); setTarget({ kind: 'front-face', name: n }); setFacing('front'); }} className="px-1.5 py-0.5 rounded border border-dashed border-zinc-700 text-[9px] text-zinc-500 hover:text-zinc-200" data-pixel-add-front-face={n}>+ {pixelFaceName(draft, n, t)}</button>
-                ))}
-              </div>
-              {/* Every outfit and extra from the front: drawn, or a dashed one to start — without one it is not shown from the front. */}
-              {(draft.outfits.length > 0 || draft.extras.length > 0) && (
-                <div className="space-y-1 pt-1" data-pixel-front-versions>
-                  <span className={`${tag} block pl-1`}>{t.pixelFrontWorn || 'Worn from the front'}</span>
-                  {([
-                    ...draft.outfits.map((o) => ['outfit', o.name, pixelOutfitName(draft, o.name, t), Boolean(draft.turn!.front.outfits?.some((x) => x.name === o.name))] as const),
-                    ...draft.extras.map((e) => ['extra', e.name, pixelExtraName(draft, e.name, t), Boolean(draft.turn!.front.extras?.some((x) => x.name === e.name))] as const),
-                  ]).map(([kind, name, label, has]) => (has ? (
-                    <button key={`${kind}:${name}`} onClick={() => drawFront(kind, name)} className={`${item((tgt.kind === 'front-outfit' && kind === 'outfit' || tgt.kind === 'front-extra' && kind === 'extra') && (tgt as any).name === name)} pl-4`} data-pixel-target={`front-${kind}:${name}`}>{label}</button>
-                  ) : (
-                    <button key={`${kind}:${name}`} onClick={() => drawFront(kind, name)} title={t.pixelFrontMissingHint || 'Not drawn from the front yet: it does not show while the avatar faces the front'}
-                      className="ml-3 px-1.5 py-0.5 rounded border border-dashed border-zinc-700 text-[9px] text-zinc-500 hover:text-zinc-200" data-pixel-add-front={`${kind}:${name}`}>+ {label}</button>
-                  )))}
-                </div>
-              )}
-            </div>
-          )}
           <div className="space-y-1">
             <span className={tag}>{t.avatarCostume || 'Outfits'}</span>
             {draft.outfits.map((o) => (
-              <button key={o.name} onClick={() => setTarget({ kind: 'outfit', name: o.name })} className={item(tgt.kind === 'outfit' && tgt.name === o.name)} data-pixel-target={`outfit:${o.name}`}>{pixelOutfitName(draft, o.name, t)}</button>
+              <button key={o.name} onClick={() => pick({ kind: 'outfit', name: o.name })} className={item(isOpen('outfit', o.name))} data-pixel-target={`outfit:${o.name}`}>{pixelOutfitName(draft, o.name, t)}{frontDot('outfit', o.name)}</button>
             ))}
             <div className="flex gap-1">
               <input value={names.outfit} onChange={(e) => setNames({ ...names, outfit: e.target.value })} placeholder={t.pixelNewOutfit || 'New outfit'} className={box} maxLength={40} data-pixel-new-outfit
@@ -564,8 +605,9 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           <div className="space-y-1">
             <span className={tag}>{t.avatarFace || 'Faces'}</span>
             <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
-              {draft.faces.map((f) => (
-                <button key={f.name} onClick={() => setTarget({ kind: 'face', name: f.name })} className={item(tgt.kind === 'face' && tgt.name === f.name)} data-pixel-target={`face:${f.name}`}>{pixelFaceName(draft, f.name, t)}</button>
+              {/* Its faces, and any drawn only from the front. */}
+              {[...draft.faces.map((f) => f.name), ...(draft.turn?.front.faces || []).map((f) => f.name).filter((n) => !draft.faces.some((f) => f.name === n))].map((name) => (
+                <button key={name} onClick={() => pick({ kind: 'face', name })} className={item(isOpen('face', name))} data-pixel-target={`face:${name}`}>{pixelFaceName(draft, name, t)}</button>
               ))}
             </div>
             <div className="flex gap-1">
@@ -585,8 +627,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           </div>
           <div className="space-y-1">
             <span className={tag}>{t.pixelExtras || 'Extras'}</span>
-            {draft.extras.filter((e) => !e.art).map((e) => (
-              <button key={e.name} onClick={() => setTarget({ kind: 'extra', name: e.name })} className={item(tgt.kind === 'extra' && tgt.name === e.name)} data-pixel-target={`extra:${e.name}`}>{pixelExtraName(draft, e.name, t)}</button>
+            {draft.extras.filter((e) => !e.art && !e.hat).map((e) => (
+              <button key={e.name} onClick={() => pick({ kind: 'extra', name: e.name })} className={item(isOpen('extra', e.name))} data-pixel-target={`extra:${e.name}`}>{pixelExtraName(draft, e.name, t)}{frontDot('extra', e.name)}</button>
             ))}
             <div className="flex gap-1">
               <input value={names.extra} onChange={(e) => setNames({ ...names, extra: e.target.value })} placeholder={t.pixelNewExtra || 'New extra'} className={box} maxLength={40} data-pixel-new-extra
@@ -596,10 +638,13 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
             <label className="flex items-center gap-1.5 text-[10px] text-zinc-500"><input type="checkbox" checked={hatNew} onChange={(e) => setHatNew(e.target.checked)} className="accent-current-accent" /> {t.pixelIsHat || 'It is a hat (one at a time)'}</label>
           </div>
           <div className="space-y-1">
-            <span className={tag}>{t.pixelDrawnHats || 'Drawn hats'}</span>
-            {draft.extras.filter((e) => e.art).map((e) => (
-              <button key={e.name} onClick={() => setTarget({ kind: 'hat', name: e.name })} className={item((tgt.kind === 'hat' || tgt.kind === 'extra') && tgt.name === e.name)} data-pixel-target={`hat:${e.name}`}>{pixelExtraName(draft, e.name, t)}</button>
-            ))}
+            {/* Every hat, whichever kind: drawn on the avatar's own grid (an extra worn one at a time), or a picture of its own. */}
+            <span className={tag}>{t.pixelHatsList || 'Hats'}</span>
+            {draft.extras.filter((e) => e.hat || e.art).map((e) => (e.art ? (
+              <button key={e.name} onClick={() => pick({ kind: 'hat', name: e.name })} className={item(isOpen('hat', e.name) || isOpen('extra', e.name))} data-pixel-target={`hat:${e.name}`}>{pixelExtraName(draft, e.name, t)}{frontDot('extra', e.name)}</button>
+            ) : (
+              <button key={e.name} onClick={() => pick({ kind: 'extra', name: e.name })} className={item(isOpen('extra', e.name))} data-pixel-target={`extra:${e.name}`}>{pixelExtraName(draft, e.name, t)}{frontDot('extra', e.name)}</button>
+            )))}
             <div className="flex gap-1">
               <input value={names.hat} onChange={(e) => setNames({ ...names, hat: e.target.value })} placeholder={t.pixelNewHat || 'New drawn hat'} className={box} maxLength={40} data-pixel-new-hat
                 onKeyDown={(e) => { if (e.key === 'Enter') addHat(); }} />
@@ -621,6 +666,30 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
 
         {/* ------------------------------------------------------- the canvas */}
         <div className="space-y-2 min-w-0" ref={canvasColumn}>
+          {/* Side | Front, for one that turns: the thing picked, drawn in either view — "+" where that view is not drawn yet, to start it. */}
+          {draft.turn && (
+            <div className="flex flex-wrap items-center gap-2" data-pixel-views>
+              <div className="inline-flex rounded-lg border border-zinc-800 overflow-hidden">
+                <button onClick={showSide} data-pixel-view="side" title={t.pixelViewSideHint || 'The side view. The other side is this one, mirrored.'}
+                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest ${!onFront ? 'bg-current-accent/15 text-current-accent' : !hasSide ? 'text-amber-400' : 'text-zinc-400 hover:text-white'}`}>
+                  {onFront && !hasSide ? '+ ' : ''}{t.pixelViewSide || 'Side'}
+                </button>
+                <button onClick={showFront} disabled={!frontTarget} data-pixel-view="front" title={t.pixelViewFrontHint || 'From the front: one that turns faces the front most of the time.'}
+                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest border-l border-zinc-800 disabled:opacity-30 ${onFront ? 'bg-current-accent/15 text-current-accent' : frontTarget && !hasFront ? 'text-amber-400' : 'text-zinc-400 hover:text-white'}`}>
+                  {frontTarget && !hasFront ? '+ ' : ''}{t.pixelViewFront || 'Front'}
+                </button>
+              </div>
+              <span className="text-[10px] text-zinc-500" data-pixel-view-note>
+                {!frontTarget
+                  ? (tgt.kind === 'setup' ? (t.pixelViewBoth || 'The same from the side and the front.')
+                    : tgt.kind === 'frame' ? (t.pixelViewActionsSide || 'Drawn from the side only: it turns to its side to do it.')
+                      : (t.pixelViewSideOnly || 'Drawn from the side only.'))
+                  : onFront ? (hasSide ? (t.pixelViewFrontNote || 'From the front.') : (t.pixelViewFrontOnly || 'Drawn from the front only: “+ Side” starts it from the side.'))
+                    : !hasFront ? (t.pixelFrontMissingHint || 'Not drawn from the front yet: it does not show while the avatar faces the front')
+                      : (t.pixelSideMirrorHint || 'The other side is this one, mirrored.')}
+              </span>
+            </div>
+          )}
           {referencing && (
             <PixelReferencePanel
               reference={reference} setReference={setReference} image={referenceImage} moving={movingReference} setMoving={setMovingReference}

@@ -101,9 +101,10 @@ function catchUp(now = Date.now()) {
       log.warn(`the ${e.example} example could not be compared: ${err.message}`);
       continue;
     }
-    const untouched = marks[e.example]
+    // A copy that is the one shipped is unchanged whatever came before — edited into it, or shipped from it — and catches up from here.
+    const untouched = fingerprint(held) === fingerprint(shipped) || (marks[e.example]
       ? fingerprint(items[at]) === marks[e.example]
-      : fingerprint(frontless(held)) === fingerprint(frontless(shipped));
+      : fingerprint(frontless(held)) === fingerprint(frontless(shipped)));
     if (!untouched) continue;
     if (fingerprint(held) !== fingerprint(shipped)) {
       const before = items[at];

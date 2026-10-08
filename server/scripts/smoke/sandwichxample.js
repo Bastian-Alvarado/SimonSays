@@ -77,6 +77,15 @@ test('from the front it wears everything too: every outfit and extra has a front
   for (const face of ['happy', 'angry', 'talking']) {
     assert.notEqual(front({ outfit: 'toasted', faces: [face] }), front({ outfit: 'toasted' }), `${face} does not show on the toast from the front`);
   }
+  // The hats share one middle, as centred by hand: from the side within a pixel of each other, from the front on the bun's middle.
+  const middle = (opts) => {
+    const g = pa.pixelGrid(S, opts); const b = pa.pixelGrid(S, { facing: opts.facing });
+    const xs = []; g.forEach((r, y) => [...r].forEach((c, x) => { if (c !== b[y][x]) xs.push(x); }));
+    return (Math.min(...xs) + Math.max(...xs)) / 2;
+  };
+  const sideMiddles = pa.pixelHats(S).map((hat) => middle({ extras: [hat] }));
+  assert.ok(Math.max(...sideMiddles) - Math.min(...sideMiddles) <= 1, `the hats are not on one middle from the side: ${sideMiddles}`);
+  for (const hat of pa.pixelHats(S)) assert.ok(Math.abs(middle({ extras: [hat], facing: 'front' }) - 49) <= 1, `${hat} is off the bun's middle from the front`);
   // Hats sit on top of the bun: above the front view's first row, every one of them.
   const top = S.turn.front.base.findIndex((r) => /[^.]/.test(r));
   for (const hat of pa.pixelHats(S)) {
