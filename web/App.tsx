@@ -678,7 +678,7 @@ export default function App() {
   if (notFound) return <>{accentStyles}<NotFoundPage asked={unknownPath ? window.location.pathname : `?mode=${mode}`} t={t} /></>;
 
   // Standalone Modes
-  if (mode === 'alerts') { return ( <div className="min-h-screen bg-transparent overflow-hidden relative"> <style>{`body, html { background-color: transparent !important; background-image: none !important; overflow: hidden; }`}</style>{accentStyles} {system.data.currentAlert && <AlertOverlay alert={system.data.currentAlert} playSound />} </div> ); }
+  if (mode === 'alerts') { return ( <div className="min-h-screen bg-transparent overflow-hidden relative"> <style>{`body, html { background-color: transparent !important; background-image: none !important; overflow: hidden; }`}</style>{accentStyles} {system.data.currentAlert && <AlertOverlay alert={system.data.currentAlert} playSound={Boolean(system.data.currentAlert.audible)} />} </div> ); }
   
   // Spotify Standalone Overlay
   // A standalone button grid: an OBS custom browser dock, a phone propped up
@@ -1457,6 +1457,8 @@ export default function App() {
                 saveAlert={system.actions.saveAlertConfig}
                 deleteAlert={system.actions.deleteAlert}
                 testAlert={system.actions.testAlert}
+                alertGate={(system.data as any).alertGate}
+                alertControl={(system.actions as any).alertControl}
                 rewards={system.connections.availableRewards}
                 fetchRewards={system.actions.fetchTwitchRewards}
                 uploadAsset={system.actions.uploadAsset}

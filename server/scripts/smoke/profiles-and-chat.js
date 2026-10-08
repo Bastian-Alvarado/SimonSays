@@ -691,8 +691,12 @@ test('every built-in button names something the player can actually do', () => {
   const runsBuiltins = engineSrc.slice(engineSrc.indexOf('export async function runDockBuiltin'), engineSrc.indexOf('export async function runDockAction'));
   for (const b of DOCK_BUILTINS) {
     // A category this does not know is a button nothing here checks.
-    assert.ok(['spotify', 'plan', 'timer', 'youtube', 'avatar', 'twitch', 'questions', 'deaths', 'countdown'].includes(b.category), `${b.id} is ${b.category}, which this test does not cover yet`);
-    if (b.category === 'countdown') {
+    assert.ok(['spotify', 'plan', 'timer', 'youtube', 'avatar', 'twitch', 'questions', 'deaths', 'countdown', 'alerts'].includes(b.category), `${b.id} is ${b.category}, which this test does not cover yet`);
+    if (b.category === 'alerts') {
+      const gate = fs.readFileSync(new URL('../engine/alert-gate.js', SCRIPT_URL), 'utf8');
+      assert.ok(runsBuiltins.includes("builtin.category === 'alerts'") && gate.includes(`case '${b.op}':`),
+        `the alerts cannot do "${b.op}", which ${b.id} asks for`);
+    } else if (b.category === 'countdown') {
       const countdownSrc = fs.readFileSync(new URL('../engine/countdown.js', SCRIPT_URL), 'utf8');
       const ops = countdownSrc.slice(countdownSrc.indexOf('COUNTDOWN_OPS = ['), countdownSrc.indexOf('];', countdownSrc.indexOf('COUNTDOWN_OPS = [')));
       assert.ok(runsBuiltins.includes("builtin.category === 'countdown'") && ops.includes(`'${b.op}'`),
@@ -876,10 +880,11 @@ test('each platform is asked what it calls a thing, rather than told', () => {
     nothing and become a member for money. Showing Twitch's words to somebody
     streaming to YouTube is the wrong word for a thing they use all day.
   */
-  assert.equal(says('twitch', 'follower'), 'Follower');
-  assert.equal(says('twitch', 'supporter'), 'Subscriber');
-  assert.equal(says('youtube', 'follower'), 'Subscriber');
-  assert.equal(says('youtube', 'supporter'), 'Member');
+  // In Spanish: they are only read on stream, in chat and in posts.
+  assert.equal(says('twitch', 'follower'), 'seguidor');
+  assert.equal(says('twitch', 'supporter'), 'suscriptor');
+  assert.equal(says('youtube', 'follower'), 'suscriptor');
+  assert.equal(says('youtube', 'supporter'), 'miembro');
   assert.equal(says('youtube', 'tip'), 'Super Chat');
 
   /* And where a platform has no such thing, it says so rather than guessing. */
@@ -888,7 +893,7 @@ test('each platform is asked what it calls a thing, rather than told', () => {
   assert.deepEqual(platformsWith('vip'), ['Twitch'], 'somebody else claims to have VIPs');
 
   /* An unknown platform falls back rather than drawing an empty label. */
-  assert.equal(says('myspace', 'followers'), 'Followers');
+  assert.equal(says('myspace', 'followers'), 'seguidores');
 });
 
 test('the one rule that keeps the inside honest is written down', () => {
@@ -1002,14 +1007,14 @@ test('one caption reads correctly wherever it fires', () => {
   const reads = (template, platform) => interp(
     template, bc({ user: { name: 'somebody', platform }, platform }),
   );
-  assert.equal(reads('{user} is a new {words.follower}!', 'twitch'), 'somebody is a new Follower!');
-  assert.equal(reads('{user} is a new {words.follower}!', 'youtube'), 'somebody is a new Subscriber!');
-  assert.equal(reads('{user} is a {words.supporter}!', 'twitch'), 'somebody is a Subscriber!');
-  assert.equal(reads('{user} is a {words.supporter}!', 'youtube'), 'somebody is a Member!');
+  assert.equal(reads('¡{user} ya es {words.follower}!', 'twitch'), '¡somebody ya es seguidor!');
+  assert.equal(reads('¡{user} ya es {words.follower}!', 'youtube'), '¡somebody ya es suscriptor!');
+  assert.equal(reads('¡{user} ya es {words.supporter}!', 'twitch'), '¡somebody ya es suscriptor!');
+  assert.equal(reads('¡{user} ya es {words.supporter}!', 'youtube'), '¡somebody ya es miembro!');
   assert.equal(reads('{words.tip}', 'youtube'), 'Super Chat');
 
   /* Something with no platform still reads, rather than going blank. */
-  assert.equal(reads('{user} is a new {words.follower}!', 'system'), 'somebody is a new Follower!');
+  assert.equal(reads('¡{user} ya es {words.follower}!', 'system'), '¡somebody ya es seguidor!');
 });
 
 test('the alerts screen offers a kind before it offers a platform', () => {

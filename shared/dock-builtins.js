@@ -134,6 +134,14 @@ export const DOCK_BUILTINS = [
     one goes up. Says so when nothing approved is left.
   */
   { id: 'question_next', category: 'questions', name: 'Next question', op: 'next', icon: '❓' },
+  /*
+    Alerts: the one on screen ended now, and new ones held until pressed
+    again (engine/alert-gate.js). Skip says so when nothing is showing. Pause
+    and resume are one button, as play and pause are. Neither repeats — a
+    double-tap on Skip would take the next alert too.
+  */
+  { id: 'alert_skip', category: 'alerts', name: 'Skip alert', op: 'skip', icon: '⏭' },
+  { id: 'alert_pause', category: 'alerts', name: 'Pause / resume alerts', op: 'toggle', icon: '⏸' },
 ];
 
 /** How long a face from the dock stays on, in seconds. */

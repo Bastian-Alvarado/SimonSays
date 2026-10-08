@@ -845,7 +845,7 @@ export type AlertType =
 
 /** A number an alert variation can test against the event that fired it. */
 export interface AlertCondition {
-  field: 'bits' | 'tier' | 'months' | 'viewers' | 'cost' | 'count' | 'diamonds' | 'amount' | 'level';
+  field: 'bits' | 'value' | 'tier' | 'months' | 'viewers' | 'cost' | 'count' | 'diamonds' | 'amount' | 'level';
   op: 'gte' | 'lte' | 'eq';
   value: number;
 }
@@ -925,6 +925,13 @@ export interface ActiveAlert {
   avatar?: string;
   /** What to read aloud, sent only to the one page that speaks. */
   speak?: { text: string; voiceURI?: string; rate?: number; pitch?: number; volume?: number; delayMs?: number };
+  /**
+   * True on the one page that speaks, which alone plays the alert's sound:
+   * with the alerts page and a stream page both in OBS, it is heard once.
+   */
+  audible?: boolean;
+  /** A test or a replay: somebody asked to see it now, so a pause did not hold it. */
+  manual?: boolean;
 }
 
 // --- Theme & Language Types ---

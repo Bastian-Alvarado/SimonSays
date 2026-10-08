@@ -2,6 +2,15 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.1.0] — 2026-10-08
+
+- Alerts: Skip and Pause / resume, on the Alerts screen and as deck buttons; waiting alerts can be dropped.
+- An alert that fires while the scene on stream shows none waits for one that does (up to 30 minutes; can be turned off).
+- An alert's sound plays once, from the page that reads it aloud, even with two alert pages in OBS.
+- {words.*} are in Spanish (seguidor, suscriptor, miembro…) and listed under Variables.
+- Variations for any-platform and YouTube alerts (Super Chats by amount), with every field, uploads, and "Fire this one on stream".
+- Deck: the pages are numbered buttons, one tap to any page.
+
 ## [1.0.5] — 2026-10-08
 
 - Alerts read aloud now play from the stream page that follows your OBS scene, instead of the chat dock.

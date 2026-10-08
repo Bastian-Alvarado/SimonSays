@@ -5,14 +5,14 @@
  * The button grid with its pages, as the deck draws it: on its own
  * (?mode=dock-actions) and in the chat dock's tab.
  *
- * One page at a time. With more than one there is a bar under the grid —
- * back, a dot for each page, forward, and the page's name — and on a touch
- * screen a sideways swipe turns the page. Which page is showing belongs to
- * the screen it is on, not to the dock, so a phone and OBS can each be on
- * their own; each remembers where it was.
+ * One page at a time. With more than one there is a bar under the grid — a
+ * numbered button for each page, so page 5 is one tap away rather than four,
+ * with the page's name over them when it has one — and on a touch screen a
+ * sideways swipe turns the page. Which page is showing belongs to the screen
+ * it is on, not to the dock, so a phone and OBS can each be on their own;
+ * each remembers where it was.
  */
 import React, { useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DockActionsGrid } from './DockActionsGrid';
 import { cleanPageNames, pageCount } from '../../shared/dock-pages.js';
 import { fill } from '../words';
@@ -77,8 +77,10 @@ export const DockDeck = ({ grid, remember, ...gridProps }: Props) => {
     e.preventDefault();
   };
 
-  const label = names[page] || fill(t.dockPageNumber || 'Page {n}', { n: String(page + 1) });
-  const arrow = `rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors ${compact ? 'p-1' : 'p-1.5'}`;
+  // A page's own name, or "Page 3" — for the tooltip; the button itself says 3.
+  const nameOf = (i: number) => names[i] || fill(t.dockPageNumber || 'Page {n}', { n: String(i + 1) });
+  // Big enough for a thumb, and narrowing a little on a small phone, so all ten stay on one row.
+  const box = compact ? 'max-w-[1.75rem] h-7 text-[10px]' : 'max-w-[2rem] h-8 text-[11px]';
 
   return (
     <div className="w-full h-full min-h-0 flex flex-col" data-dock-deck data-dock-deck-page={page}>
@@ -93,27 +95,29 @@ export const DockDeck = ({ grid, remember, ...gridProps }: Props) => {
         <DockActionsGrid {...gridProps} page={page} pages={pages} />
       </div>
       {pages > 1 && (
-        <div className={`flex-shrink-0 flex items-center justify-center gap-2 ${compact ? 'pt-2' : 'pt-3'}`} data-dock-pager>
-          <button onClick={() => go(page - 1)} title={t.dockPagePrev || 'Previous page'} className={arrow} data-dock-page-prev>
-            <ChevronLeft size={compact ? 14 : 18} />
-          </button>
-          <div className="flex flex-col items-center gap-1 min-w-0">
-            <span className={`font-black uppercase tracking-widest text-zinc-300 truncate max-w-[12rem] ${compact ? 'text-[8px]' : 'text-[10px]'}`}>{label}</span>
-            <div className="flex items-center gap-1.5">
-              {names.map((name, i) => (
-                <button
-                  key={i}
-                  onClick={() => go(i)}
-                  title={name || fill(t.dockPageNumber || 'Page {n}', { n: String(i + 1) })}
-                  className={`rounded-full transition-all ${i === page ? 'w-4 h-1.5 bg-current-accent' : 'w-1.5 h-1.5 bg-zinc-700 hover:bg-zinc-500'}`}
-                  data-dock-page-dot={i}
-                />
-              ))}
-            </div>
+        <div className={`flex-shrink-0 flex flex-col items-center gap-1.5 ${compact ? 'pt-2' : 'pt-3'}`} data-dock-pager>
+          {names[page] && (
+            <span className={`font-black uppercase tracking-widest text-zinc-300 truncate max-w-full ${compact ? 'text-[8px]' : 'text-[10px]'}`} data-dock-page-name>{names[page]}</span>
+          )}
+          <div className="w-full flex items-center justify-center gap-1">
+            {names.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => go(i)}
+                title={nameOf(i)}
+                aria-label={nameOf(i)}
+                aria-current={i === page ? 'page' : undefined}
+                className={`${box} flex-1 min-w-0 rounded-lg border font-black tabular-nums transition-colors ${
+                  i === page
+                    ? 'bg-current-accent border-transparent text-white'
+                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600'
+                }`}
+                data-dock-page-number={i}
+              >
+                {i + 1}
+              </button>
+            ))}
           </div>
-          <button onClick={() => go(page + 1)} title={t.dockPageNext || 'Next page'} className={arrow} data-dock-page-next>
-            <ChevronRight size={compact ? 14 : 18} />
-          </button>
         </div>
       )}
     </div>

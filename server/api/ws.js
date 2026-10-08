@@ -17,6 +17,7 @@ import { createLogger } from '../core/logger.js';
 import { C2S, S2C } from '../../shared/protocol.js';
 import { VERSION } from '../../shared/version.js';
 import { liveLayout } from '../../shared/live-layout.js';
+import { connectAlertGate, offerAlert, alertGateState, controlAlerts } from '../engine/alert-gate.js';
 import * as engine from '../engine/index.js';
 import * as tags from '../engine/tags.js';
 import * as discordRoles from '../engine/discord-roles.js';
@@ -146,6 +147,16 @@ export function preferred(a, b, layouts = [], live = {}) {
   return a.connectedAt < b.connectedAt;
 }
 
+/** The OBS scene and the Omnilayer as they are now, for a canvas that follows them. */
+const liveNow = () => ({ scene: obs.currentScene(), omnilayer: engine.store.omnilayerState?.() || null });
+
+/** One alert out to every page: what to read and the sound only to the one that speaks. */
+function deliverAlert(a) {
+  const sink = ensureAudioSink();
+  const { speak, ...shown } = a;
+  for (const ws of clients) if (isOpen(ws)) send(ws, S2C.ALERT, ws === sink ? { ...a, audible: true } : shown);
+}
+
 function ensureAudioSink() {
   // Recomputed every time rather than sticking with the incumbent, so a dock
   // opened after the dashboard takes over instead of being ignored. The
@@ -153,7 +164,7 @@ function ensureAudioSink() {
   let best = null;
   const layouts = engine.store.getLayouts?.() || [];
   // Asked again on every call, so a canvas following the scene speaks for whatever the scene is now.
-  const live = { scene: obs.currentScene(), omnilayer: engine.store.omnilayerState?.() || null };
+  const live = liveNow();
   for (const ws of clients) {
     if (!isOpen(ws)) continue;
     if (!best || preferred(ws, best, layouts, live)) best = ws;
@@ -259,15 +270,25 @@ function wireBusToClients() {
   bus.on(EVENTS.CHAT, (m) => broadcast(S2C.CHAT, m));
   bus.on(EVENTS.EVENT, (e) => broadcast(S2C.EVENT, e));
   /*
-    Every surface shows an alert; only the one that speaks is told what to
-    read, so an alert set to be read aloud is heard once, not once per tab.
+    An alert goes through the gate (engine/alert-gate.js), which holds it
+    while alerts are paused or nothing on stream shows them, and lets it out
+    here. Every surface shows it; only the one that speaks is told what to
+    read and allowed to play its sound, so an alert is heard once — not once
+    per tab, and not twice when the alerts page and a stream page are both in
+    OBS.
   */
-  bus.on(EVENTS.ALERT, (a) => {
-    if (!a?.speak) return broadcast(S2C.ALERT, a);
-    const sink = ensureAudioSink();
-    const { speak, ...shown } = a;
-    for (const ws of clients) if (isOpen(ws)) send(ws, S2C.ALERT, ws === sink ? a : shown);
+  connectAlertGate({
+    deliver: deliverAlert,
+    anyoneShows: () => {
+      const layouts = engine.store.getLayouts?.() || [];
+      const live = liveNow();
+      return [...clients].some((ws) => isOpen(ws) && showsAlerts(ws, layouts, live.scene, live.omnilayer));
+    },
+    // OBS is open when one of its pages is: a stream page or the alerts page.
+    streamOpen: () => [...clients].some((ws) => isOpen(ws) && (ws.mode === 'canvas' || ws.mode === 'alerts')),
+    tellPages: (p) => broadcast(S2C.ALERT_CONTROL, p),
   });
+  bus.on(EVENTS.ALERT, (a) => offerAlert(a));
   bus.on(EVENTS.TAGS, (t) => broadcast(S2C.TAGS, t));
   bus.on(EVENTS.STATUS, (s) => {
     broadcast(S2C.STATUS, s);
@@ -358,6 +379,8 @@ function buildConnections() {
 function buildSnapshot() {
   return {
     ...engine.snapshot(),
+    // Paused, how many wait, and whether alerts nothing shows are held.
+    alertGate: alertGateState(),
     ...discordRoles.snapshot(),
     ...roleSync.snapshot(),
     announce: announcer.getAnnounce(),
@@ -788,8 +811,12 @@ async function handleMessage(ws, raw) {
         return reply({ ok: true });
 
       case C2S.TEST_ALERT:
-        engine.testAlert(payload.id);
+        // With a variation's id, that variation, at numbers its conditions hold for.
+        engine.testAlert(payload.id, payload.variationId);
         return reply({ ok: true });
+
+      case C2S.ALERT_CONTROL:
+        return reply(controlAlerts(payload?.op, payload?.value));
 
       /*
         From the dock's box, to Twitch, YouTube or both. Both is each tried on

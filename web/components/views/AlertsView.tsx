@@ -27,7 +27,7 @@ import { refusalWords, fill } from '../../words';
 import { says } from '../../../shared/platforms.js';
 import { sampleEvent } from '../../../shared/alert-samples.js';
 import {
-  Bell, Plus, Trash2, Play, Eye, EyeOff, Upload, Volume2, VolumeX, Image as ImageIcon, Check, ArrowUp, ArrowDown, MessageSquareText,
+  Bell, Plus, Trash2, Play, Pause, SkipForward, Eye, EyeOff, Upload, Volume2, VolumeX, Image as ImageIcon, Check, ArrowUp, ArrowDown, MessageSquareText,
 } from 'lucide-react';
 
 /**
@@ -158,13 +158,14 @@ const FONTS = ['Montserrat', 'Inter', 'JetBrains Mono', 'Creepster', 'VT323', 'I
  * fires.
  */
 const CONDITION_FIELDS: { field: AlertCondition['field']; label: string; types: string[] }[] = [
-  { field: 'bits', label: 'Bits', types: ['twitch_cheer'] },
-  { field: 'tier', label: 'Tier', types: ['twitch_sub'] },
-  { field: 'months', label: 'Months subbed', types: ['twitch_sub'] },
-  { field: 'viewers', label: 'Viewers', types: ['twitch_raid'] },
-  { field: 'cost', label: 'Point cost', types: ['twitch_redemption'] },
-  { field: 'count', label: 'Gift count', types: ['tiktok_gift', 'twitch_sub_gift_bulk'] },
-  { field: 'diamonds', label: 'Diamonds', types: ['tiktok_gift'] },
+  { field: 'bits', label: 'Bits', types: ['twitch_cheer', 'cheer'] },
+  { field: 'value', label: 'Money', types: ['youtube_cheer', 'cheer'] },
+  { field: 'tier', label: 'Tier', types: ['twitch_sub', 'sub'] },
+  { field: 'months', label: 'Months subbed', types: ['twitch_sub', 'youtube_sub', 'sub'] },
+  { field: 'viewers', label: 'Viewers', types: ['twitch_raid', 'raid'] },
+  { field: 'cost', label: 'Point cost', types: ['twitch_redemption', 'points_redeem'] },
+  { field: 'count', label: 'Gift count', types: ['tiktok_gift', 'twitch_sub_gift_bulk', 'youtube_sub_gift_bulk', 'sub_gift_bulk', 'gift'] },
+  { field: 'diamonds', label: 'Diamonds', types: ['tiktok_gift', 'gift'] },
   { field: 'amount', label: 'Amount', types: ['twitch_cheer', 'twitch_raid'] },
   { field: 'level', label: 'Level', types: ['level_up'] },
 ];
@@ -214,7 +215,12 @@ interface AlertsViewProps {
   alerts: AlertConfig[];
   saveAlert: (a: AlertConfig) => void;
   deleteAlert: (id: string) => void;
-  testAlert: (id: string) => void;
+  /** Fires it on stream; with a variation's id, that variation at its numbers. */
+  testAlert: (id: string, variationId?: string) => void;
+  /** The server's side of the line: paused, how many wait, and whether alerts nothing shows are held. */
+  alertGate?: { paused: boolean; held: number; holdUnseen: boolean };
+  /** Skip, pause, resume, clear, or hold (true/false). Answers, or refuses. */
+  alertControl?: (op: string, value?: any) => Promise<any>;
   /** Uploaded media, so an alert can pick an image or sound already on the server. */
   assets?: { name: string; url: string }[];
   uploadAsset?: (file: File) => Promise<any>;
@@ -227,16 +233,29 @@ interface AlertsViewProps {
 }
 
 export const AlertsView: React.FC<AlertsViewProps> = ({
-  alerts, saveAlert, deleteAlert, testAlert, assets = [], uploadAsset, refreshAssets,
+  alerts, saveAlert, deleteAlert, testAlert, alertGate, alertControl, assets = [], uploadAsset, refreshAssets,
   rewards = [], fetchRewards, activeTheme, t,
 }) => {
+  // What the last press of Skip, Pause or Clear said, when it refused (nothing on screen to skip).
+  const [controlNote, setControlNote] = useState('');
+  const control = async (op: string, value?: any) => {
+    setControlNote('');
+    try {
+      await alertControl?.(op, value);
+    } catch (err: any) {
+      setControlNote(refusalWords(t, err) || String(err?.message || err));
+    }
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<AlertConfig | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
-  const [uploading, setUploading] = useState<'image' | 'sound' | null>(null);
-  // Why the last upload failed, under the box it was for.
-  const [uploadError, setUploadError] = useState<{ kind: 'image' | 'sound'; text: string } | null>(null);
+  const [uploading, setUploading] = useState<'image' | 'sound' | 'variation-image' | 'variation-sound' | null>(null);
+  // Why the last upload failed, under the box it was for: the alert's, or a variation's.
+  const [uploadError, setUploadError] = useState<{ kind: 'image' | 'sound' | 'variation'; id?: string; text: string } | null>(null);
+  // One file box for every variation: which one, and picture or sound, is set as it opens.
+  const variationInput = useRef<HTMLInputElement | null>(null);
+  const variationUploadFor = useRef<{ id: string; kind: 'image' | 'sound' } | null>(null);
   const [editingVariation, setEditingVariation] = useState<string | null>(null);
   const [previewVariation, setPreviewVariation] = useState<string | null>(null);
   // This browser's voices, to choose the one alerts are read in.
@@ -381,6 +400,25 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
     }
   };
 
+  /** A variation's own picture or sound, uploaded the same way. */
+  const onVariationUpload = async (file?: File | null) => {
+    const target = variationUploadFor.current;
+    if (!file || !uploadAsset || !target) return;
+    setUploading(`variation-${target.kind}`);
+    setUploadError(null);
+    try {
+      const res = await uploadAsset(file);
+      const url = res?.url || res?.path || '';
+      if (url) patchVariation(target.id, target.kind === 'image' ? { imageUrl: url } : { soundUrl: url });
+      refreshAssets?.();
+    } catch (err: any) {
+      setUploadError({ kind: 'variation', id: target.id, text: refusalWords(t, err) || t.alertsUploadFailed || 'That file could not be uploaded.' });
+    } finally {
+      setUploading(null);
+      if (variationInput.current) variationInput.current.value = '';
+    }
+  };
+
   /**
    * What the preview renders.
    *
@@ -439,12 +477,62 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
 
   const heading = activeTheme.id === 'light' ? 'text-zinc-900' : 'text-zinc-100';
   const input = 'w-full bg-zinc-900/60 border border-zinc-800 rounded-xl px-3 py-2 text-xs font-bold text-zinc-200 outline-none focus:border-current-accent';
+  // The same box sized by whoever uses it: with w-full as well, a w-20 beside it loses and a row of three squeezes the first to nothing.
+  const box = input.replace('w-full ', '');
 
   return (
     <div className="animate-fade-in space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
         
       </div>
+
+      {/*
+        The line alerts wait in (engine/alert-gate.js): the one on screen
+        skipped, new ones paused, and whether they wait while the scene on
+        stream shows none. The deck has Skip and Pause as buttons too.
+      */}
+      {alertControl && (
+        <div className="glass-panel rounded-3xl border border-zinc-800 p-5 flex flex-wrap items-center gap-2" data-alert-gate>
+          <div className="flex items-center gap-2 mr-auto min-w-0">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${alertGate?.paused ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300" data-alert-gate-state>
+              {alertGate?.paused ? (t.alertsPausedState || 'Alerts paused') : (t.alertsLiveState || 'Alerts are live')}
+            </span>
+            {Boolean(alertGate?.held) && (
+              <span className="text-[10px] font-bold text-amber-400" data-alert-gate-held>
+                {alertGate!.held === 1 ? (t.alertsWaitingOne || '1 waiting') : fill(t.alertsWaiting || '{n} waiting', { n: alertGate!.held })}
+              </span>
+            )}
+          </div>
+          <Button size="sm" variant="secondary" icon={<SkipForward size={13} />} onClick={() => control('skip')} title={t.alertsSkipHint || 'Ends the alert on screen now; the next one in line starts.'} data-alert-skip>
+            {t.alertsSkip || 'Skip'}
+          </Button>
+          <Button
+            size="sm"
+            variant={alertGate?.paused ? 'primary' : 'secondary'}
+            icon={alertGate?.paused ? <Play size={13} /> : <Pause size={13} />}
+            onClick={() => control(alertGate?.paused ? 'resume' : 'pause')}
+            title={alertGate?.paused ? (t.alertsResumeHint || 'Lets the waiting alerts out, in order.') : (t.alertsPauseHint || 'New alerts wait until you resume; the one on screen finishes.')}
+            data-alert-pause
+          >
+            {alertGate?.paused ? (t.alertsResume || 'Resume') : (t.alertsPause || 'Pause')}
+          </Button>
+          {Boolean(alertGate?.held) && (
+            <Button size="sm" variant="secondary" icon={<Trash2 size={13} />} onClick={() => control('clear')} data-alert-clear>
+              {t.alertsClearWaiting || 'Drop the waiting ones'}
+            </Button>
+          )}
+          <label className="w-full flex items-start gap-2 cursor-pointer pt-1" data-alert-hold>
+            <input type="checkbox" checked={alertGate?.holdUnseen !== false} onChange={(e) => control('hold', e.target.checked)} className="accent-current-accent mt-0.5" />
+            <span className="text-[10px] text-zinc-500 leading-snug">
+              <span className="font-bold text-zinc-300">{t.alertsHold || 'Hold alerts while the scene on stream shows none'}</span>
+              {' — '}
+              {t.alertsHoldHint || 'with OBS open on a scene that has no alerts layer, like a BRB screen, they wait and play once one shows them, for up to 30 minutes. Off, they play on no page and are missed.'}
+            </span>
+          </label>
+          {controlNote && <p className="w-full text-[10px] text-rose-400" data-alert-gate-note>{controlNote}</p>}
+        </div>
+      )}
 
       {/* pick an event to create one — no modal, the choice is the creation */}
       <div className="glass-panel rounded-3xl border border-zinc-800 p-5">
@@ -815,6 +903,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                 */}
                 {CONDITION_FIELDS.some((f) => f.types.includes(draft.type)) && (
                   <Section title={t.alertsVariations || 'Variations'}>
+                    <input ref={variationInput} type="file" hidden onChange={(e) => onVariationUpload(e.target.files?.[0])} data-alert-variation-file />
                     <p className="text-[9px] text-zinc-600 mb-3 leading-snug">
                       {t.alertsVariationsHint || 'A different look when the event is big. The first one whose conditions all hold is the one that plays, so order matters.'}
                     </p>
@@ -851,7 +940,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                               {v.conditions.map((c, ci) => (
                                 <div key={ci} className="flex gap-1.5">
                                   <select
-                                    className={`${input} flex-1`}
+                                    className={`${box} flex-1 min-w-0`}
                                     value={c.field}
                                     onChange={(e) => patchCondition(v.id, ci, { field: e.target.value as any })}
                                   >
@@ -860,7 +949,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                                     ))}
                                   </select>
                                   <select
-                                    className={`${input} w-20`}
+                                    className={`${box} w-14 shrink-0 px-2`}
                                     value={c.op}
                                     onChange={(e) => patchCondition(v.id, ci, { op: e.target.value as any })}
                                   >
@@ -870,7 +959,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                                   </select>
                                   <input
                                     type="number"
-                                    className={`${input} w-24`}
+                                    className={`${box} w-20 shrink-0`}
                                     value={c.value}
                                     onChange={(e) => patchCondition(v.id, ci, { value: Number(e.target.value) || 0 })}
                                   />
@@ -888,39 +977,130 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                                 <p className="text-[9px] text-zinc-600 mb-2 leading-snug">
                                   {t.alertsVariationOverrides || 'Anything left blank uses the alert above.'}
                                 </p>
-                                <div className="grid grid-cols-2 gap-1.5">
+                                <div className="space-y-1.5" data-alert-variation-fields>
                                   <input
                                     className={input}
                                     placeholder={t.alertsMessage || 'Message'}
                                     value={v.messageTemplate ?? ''}
-                                    onChange={(e) => patchVariation(v.id, { messageTemplate: e.target.value })}
+                                    onChange={(e) => patchVariation(v.id, { messageTemplate: e.target.value || undefined })}
                                   />
-                                  <input
-                                    className={input}
-                                    placeholder={t.alertsImage || 'Image'}
-                                    value={v.imageUrl ?? ''}
-                                    onChange={(e) => patchVariation(v.id, { imageUrl: e.target.value })}
-                                  />
-                                  <input
-                                    className={input}
-                                    placeholder={t.alertsSound || 'Sound'}
-                                    value={v.soundUrl ?? ''}
-                                    onChange={(e) => patchVariation(v.id, { soundUrl: e.target.value })}
-                                  />
-                                  <input
-                                    type="number"
-                                    className={input}
-                                    placeholder={t.alertsSize || 'Size'}
-                                    value={v.fontSize ?? ''}
-                                    onChange={(e) => patchVariation(v.id, { fontSize: e.target.value === '' ? undefined : Number(e.target.value) })}
-                                  />
+                                  {/* The picture and the sound, typed or uploaded, as the alert's own are. */}
+                                  {(['image', 'sound'] as const).map((kind) => (
+                                    <div key={kind} className="flex gap-1.5">
+                                      <input
+                                        className={input}
+                                        placeholder={kind === 'image' ? (t.alertsImage || 'Image') : (t.alertsSound || 'Sound')}
+                                        value={(kind === 'image' ? v.imageUrl : v.soundUrl) ?? ''}
+                                        onChange={(e) => patchVariation(v.id, kind === 'image' ? { imageUrl: e.target.value || undefined } : { soundUrl: e.target.value || undefined })}
+                                      />
+                                      <button
+                                        onClick={() => { variationUploadFor.current = { id: v.id, kind }; variationInput.current?.setAttribute('accept', kind === 'image' ? 'image/*,video/*' : 'audio/*'); variationInput.current?.click(); }}
+                                        title={t.upload || 'Upload'}
+                                        className="px-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white"
+                                        data-alert-variation-upload={kind}
+                                      >
+                                        {uploading === `variation-${kind}` ? <span className="text-[9px]">…</span> : <Upload size={12} />}
+                                      </button>
+                                    </div>
+                                  ))}
+                                  {uploadError?.kind === 'variation' && uploadError.id === v.id && (
+                                    <p className="text-[9px] text-rose-400 leading-snug" data-alert-upload-error>{uploadError.text}</p>
+                                  )}
+                                  {/* Everything else a variation may set: blank, or "as the alert", is the alert's own. */}
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <select className={input} value={v.layout ?? ''} onChange={(e) => patchVariation(v.id, { layout: (e.target.value || undefined) as any })} data-alert-variation-layout>
+                                      <option value="">{t.alertsSameLayout || 'Picture: same'}</option>
+                                      {LAYOUTS.map((l) => <option key={l.value} value={l.value}>{t[l.key] || l.label}</option>)}
+                                    </select>
+                                    <select className={input} value={v.fontFamily ?? ''} onChange={(e) => patchVariation(v.id, { fontFamily: e.target.value || undefined })} data-alert-variation-font>
+                                      <option value="">{t.alertsSameFont || 'Font: same'}</option>
+                                      {FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
+                                    </select>
+                                    <input
+                                      type="number"
+                                      className={input}
+                                      placeholder={t.alertsSize || 'Size'}
+                                      value={v.fontSize ?? ''}
+                                      onChange={(e) => patchVariation(v.id, { fontSize: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                    />
+                                    <input
+                                      type="number"
+                                      min={0.5}
+                                      max={60}
+                                      step={0.5}
+                                      className={input}
+                                      placeholder={t.alertsSecondsOnScreen || 'Seconds'}
+                                      value={v.duration !== undefined ? v.duration / 1000 : ''}
+                                      onChange={(e) => patchVariation(v.id, { duration: e.target.value === '' ? undefined : Math.round(Number(e.target.value) * 1000) })}
+                                      data-alert-variation-duration
+                                    />
+                                    <select className={input} value={v.animationIn ?? ''} onChange={(e) => patchVariation(v.id, { animationIn: e.target.value || undefined })} data-alert-variation-in>
+                                      <option value="">{t.alertsSameIn || 'Enter: same'}</option>
+                                      {ALERT_ANIMATIONS_IN.map((a) => <option key={a.value} value={a.value}>{t[ANIMATION_KEYS[a.value]] || a.label}</option>)}
+                                    </select>
+                                    <select className={input} value={v.animationOut ?? ''} onChange={(e) => patchVariation(v.id, { animationOut: e.target.value || undefined })} data-alert-variation-out>
+                                      <option value="">{t.alertsSameOut || 'Exit: same'}</option>
+                                      {ALERT_ANIMATIONS_OUT.map((a) => <option key={a.value} value={a.value}>{t[ANIMATION_KEYS[a.value]] || a.label}</option>)}
+                                    </select>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      step={5}
+                                      className={input}
+                                      placeholder={t.alertsVolumePercent || 'Volume %'}
+                                      value={v.soundVolume !== undefined ? Math.round(v.soundVolume * 100) : ''}
+                                      onChange={(e) => patchVariation(v.id, { soundVolume: e.target.value === '' ? undefined : Math.min(1, Math.max(0, Number(e.target.value) / 100)) })}
+                                      data-alert-variation-volume
+                                    />
+                                    <select
+                                      className={input}
+                                      value={v.highlightText === undefined ? '' : v.highlightText ? 'yes' : 'no'}
+                                      onChange={(e) => patchVariation(v.id, { highlightText: e.target.value === '' ? undefined : e.target.value === 'yes' })}
+                                      data-alert-variation-highlight
+                                    >
+                                      <option value="">{t.alertsSameHighlight || 'Name: same'}</option>
+                                      <option value="yes">{t.alertsHighlight || 'Colour the name'}</option>
+                                      <option value="no">{t.alertsNoHighlight || 'Name in the text colour'}</option>
+                                    </select>
+                                    {/* The two colours: picked, or left to the alert. */}
+                                    {(['textColor', 'accentColor'] as const).map((field) => (
+                                      <div key={field} className="flex items-center gap-1.5 px-2 py-1 rounded-xl border border-zinc-800 bg-zinc-900/60" data-alert-variation-colour={field}>
+                                        <input
+                                          type="color"
+                                          value={v[field] || draft[field] || (field === 'textColor' ? '#ffffff' : '#f43f5e')}
+                                          onChange={(e) => patchVariation(v.id, { [field]: e.target.value } as Partial<AlertVariation>)}
+                                          className="w-6 h-6 rounded bg-transparent border-0 p-0 cursor-pointer"
+                                        />
+                                        <span className="flex-1 text-[9px] font-bold text-zinc-400 truncate">
+                                          {field === 'textColor' ? (t.alertsTextColor || 'Text') : (t.alertsAccent || 'Name')}
+                                          {!v[field] && <span className="text-zinc-600"> · {t.alertsSameAsAlert || 'as the alert'}</span>}
+                                        </span>
+                                        {v[field] && (
+                                          <button onClick={() => patchVariation(v.id, { [field]: undefined } as Partial<AlertVariation>)} title={t.alertsBackToAlert || 'Back to the alert\'s own'} className="text-zinc-600 hover:text-rose-500">
+                                            <Trash2 size={11} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <button
-                                  onClick={() => setPreviewVariation(previewVariation === v.id ? null : v.id)}
-                                  className="mt-2 text-[9px] font-black uppercase tracking-widest text-current-accent hover:brightness-125"
-                                >
-                                  {previewVariation === v.id ? (t.alertsPreviewBase || 'Preview the base alert') : (t.alertsPreviewThis || 'Preview this variation')}
-                                </button>
+                                <div className="flex flex-wrap items-center gap-3 mt-2">
+                                  <button
+                                    onClick={() => setPreviewVariation(previewVariation === v.id ? null : v.id)}
+                                    className="text-[9px] font-black uppercase tracking-widest text-current-accent hover:brightness-125"
+                                  >
+                                    {previewVariation === v.id ? (t.alertsPreviewBase || 'Preview the base alert') : (t.alertsPreviewThis || 'Preview this variation')}
+                                  </button>
+                                  {/* On stream, as this one, at the numbers its conditions ask for. */}
+                                  <button
+                                    onClick={() => testAlert(draft.id, v.id)}
+                                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-current-accent hover:brightness-125"
+                                    data-alert-variation-fire
+                                  >
+                                    <Bell size={10} /> {t.alertsFireVariation || 'Fire this one on stream'}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )}

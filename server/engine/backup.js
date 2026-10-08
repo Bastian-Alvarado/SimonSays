@@ -70,6 +70,8 @@ export const MANIFEST = [
   { name: 'poll_settings' },
   // What the Events dock's "Thank" says in chat. The events and the stream's totals stay behind.
   { name: 'events_dock_settings' },
+  // Whether alerts wait while nothing on stream shows them. Being paused is not kept, here or anywhere.
+  { name: 'alert_settings' },
   // How they ask, though, is: the command, its cooldown, the word back.
   { name: 'questions_settings' },
   // The overlay arrangements. Somebody who has spent an afternoon placing

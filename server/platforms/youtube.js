@@ -719,7 +719,18 @@ export function handleMessage(item) {
         platform: 'youtube',
         user,
         avatar,
-        data: { amount: details.amountDisplayString || '', message: comment, userId: common.userId || '' },
+        /*
+          `amount` is the money as YouTube shows it ("$5.00"), for a caption;
+          `value` is the same as a number in its own currency, which an
+          alert variation can compare ("value at least 20").
+        */
+        data: {
+          amount: details.amountDisplayString || '',
+          value: Number(details.amountMicros || 0) / 1e6,
+          currency: details.currency || '',
+          message: comment,
+          userId: common.userId || '',
+        },
       }));
       return;
     }

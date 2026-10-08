@@ -101,7 +101,8 @@ test('membership gives its role and its end takes it away; a Super Chat gives it
 test('a viewer links YouTube themselves: !linkdiscord in its chat, !linkyoutube in any Discord channel', () => {
   assert.deepEqual(pendingAfterAsk.map((p) => [p.platform, p.discordName]), [['youtube', 'PonchoYT']]);
   assert.equal(selfLinked?.id, '555555555555', 'the confirmation from another channel did not link them');
-  assert.ok(read('../platforms/youtube.js').includes("data: { amount: details.amountDisplayString || '', message: comment, userId: common.userId || '' },"), 'a Super Chat does not say who sent it');
+  const superChat = read('../platforms/youtube.js');
+  assert.ok(superChat.includes("amount: details.amountDisplayString || '',") && superChat.includes("userId: common.userId || '',"), 'a Super Chat does not say who sent it');
   const view = read('../../web/components/views/RoleManagementView.tsx');
   assert.ok(view.includes("['discord', 'twitch', 'tiktok', 'youtube'] : ['twitch', 'tiktok', 'youtube']) as PickPlatform[])") && view.includes("'youtubeMember'"), 'the screen does not offer YouTube');
   assert.ok(view.includes('data-link-discord-member={m.id}') && view.includes('listServerMembers()'), 'the link window does not list the server');

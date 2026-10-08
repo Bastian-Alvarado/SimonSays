@@ -131,7 +131,16 @@ const resolveVoice = async (wanted: string): Promise<SpeechSynthesisVoice | unde
  * The voice is resolved first, so the first line after the page loads is not
  * spoken in the browser's default.
  */
-const speakAloud = async (d: { text: string; voiceURI?: string; rate?: number; pitch?: number; volume?: number }) => {
+type Said = { text: string; voiceURI?: string; rate?: number; pitch?: number; volume?: number };
+
+/**
+ * What this page has queued to say and not finished, and for which alert, if
+ * any: so skipping an alert stops its reading and only its reading. The
+ * browser can only cancel everything, so the rest is put back in line.
+ */
+const speaking: { u: SpeechSynthesisUtterance; said: Said; alertId?: string }[] = [];
+
+const speakAloud = async (d: Said, alertId?: string) => {
   if (!window.speechSynthesis || !d?.text) return;
   const voice = d.voiceURI ? await resolveVoice(d.voiceURI) : undefined;
   const u = new SpeechSynthesisUtterance(d.text);
@@ -145,8 +154,22 @@ const speakAloud = async (d: { text: string; voiceURI?: string; rate?: number; p
     // than taking `voice` as final.
     u.lang = voice.lang;
   }
+  const entry = { u, said: d, alertId };
+  speaking.push(entry);
+  const done = () => { const i = speaking.indexOf(entry); if (i >= 0) speaking.splice(i, 1); };
+  u.onend = done;
+  u.onerror = done;
   // Queued behind whatever is being said, so a !tts and an alert never talk over each other.
   window.speechSynthesis.speak(u);
+};
+
+/** Stops reading this alert aloud; whatever else was queued to be said still is. */
+const stopReadingAlert = (alertId: string) => {
+  if (!window.speechSynthesis || !speaking.some((e) => e.alertId === alertId)) return;
+  const rest = speaking.filter((e) => e.alertId !== alertId);
+  speaking.length = 0;
+  window.speechSynthesis.cancel();
+  for (const e of rest) speakAloud(e.said, e.alertId);
 };
 
 /** Parse the query string once instead of on every state initialiser. */
@@ -626,9 +649,28 @@ export const useStreamSystem = () => {
   useEffect(() => {
     const speak = currentAlert?.speak;
     if (!speak?.text) return;
-    const timer = setTimeout(() => { speakAloud(speak); }, speak.delayMs ?? 0);
+    const timer = setTimeout(() => { speakAloud(speak, currentAlert!.id); }, speak.delayMs ?? 0);
     return () => clearTimeout(timer);
   }, [currentAlert]);
+
+  /*
+    Skip and clear, from the Alerts screen or the deck (engine/alert-gate.js):
+    the alert on screen ends now, its reading with it, and the next in line
+    starts; or everything waiting in this page's line goes.
+  */
+  const currentAlertRef = useRef<ActiveAlert | null>(null);
+  currentAlertRef.current = currentAlert;
+  useEffect(() => {
+    const off = on(S2C.ALERT_CONTROL, (p: any) => {
+      if (p?.op === 'skip') {
+        const now = currentAlertRef.current;
+        if (now) stopReadingAlert(now.id);
+        setCurrentAlert(null);
+      }
+      if (p?.op === 'clear') setAlertQueue([]);
+    });
+    return () => { off(); };
+  }, [on]);
 
   // ------------------------------------------------------- OAuth callbacks
 
@@ -928,7 +970,10 @@ export const useStreamSystem = () => {
       }
       return body;
     },
-    testAlert: (id: string) => send(C2S.TEST_ALERT, { id }),
+    // With a variation's id, that variation, at numbers its conditions hold for.
+    testAlert: (id: string, variationId?: string) => send(C2S.TEST_ALERT, { id, variationId }),
+    /** Skip, pause, resume, toggle or clear alerts, or `hold` (value true/false) the ones nothing shows. Answers, or refuses. */
+    alertControl: (op: string, value?: any) => request(C2S.ALERT_CONTROL, { op, value }),
     /*
       Awaited rather than fired off, so the dock hears when a message did not
       go — and why, as the error's code — instead of clearing the box on a
@@ -1615,6 +1660,8 @@ export const useStreamSystem = () => {
       tagOutputs: snapshot.tagOutputs,
       alertQueue,
       currentAlert,
+      // The server's side of it: paused, how many wait there, and whether it holds alerts nothing shows.
+      alertGate: (snapshot as any).alertGate as { paused: boolean; held: number; holdUnseen: boolean } | undefined,
       eventHistory: snapshot.eventHistory as AppEvent[],
       viewerEvents: ((snapshot as any).viewerEvents || []) as AppEvent[],
       eventTotals: (snapshot as any).eventTotals,

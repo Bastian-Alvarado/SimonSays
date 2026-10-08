@@ -679,10 +679,10 @@ test('the bundle alert is offered in the editor and accepted by the server', () 
     assert.equal(preferred(canvas, dock, layouts), true, 'the dock beat the alerts');
     assert.equal(preferred(dock, plain, layouts), true, 'a canvas without alerts beat the dock');
     const ws = read('../api/ws.js');
-    assert.ok(ws.includes('ws === sink ? a : shown'), 'every page is told to read the alert');
+    assert.ok(ws.includes('ws === sink ? { ...a, audible: true } : shown'), 'every page is told to read the alert');
     assert.ok(read('../../web/hooks/useBackend.ts').includes("layout: query.get('layout') || undefined"), 'a canvas does not say which layout it shows');
     const hook = read('../../web/hooks/useStreamSystem.ts');
-    assert.ok(hook.includes('const speak = currentAlert?.speak;') && hook.includes('speakAloud(speak)'), 'the page never reads the alert');
+    assert.ok(hook.includes('const speak = currentAlert?.speak;') && hook.includes('speakAloud(speak, currentAlert!.id)'), 'the page never reads the alert');
     assert.ok(read('../../web/components/views/AlertsView.tsx').includes('data-alert-read-toggle'), 'the alert editor has no way to turn it on');
   });
 
@@ -710,7 +710,7 @@ test('the bundle alert is offered in the editor and accepted by the server', () 
     assert.equal(preferred(dock, following, bound, { scene: 'Just Chatting' }), true);
     const ws = read('../api/ws.js');
     assert.ok(ws.includes('return liveLayout(layouts, scene, omnilayer);'), 'the server and the page pick the live layout by different rules');
-    assert.ok(ws.includes("const live = { scene: obs.currentScene(), omnilayer: engine.store.omnilayerState?.() || null };"), 'the speaker is chosen without the scene');
+    assert.ok(ws.includes("const liveNow = () => ({ scene: obs.currentScene(), omnilayer: engine.store.omnilayerState?.() || null });") && ws.includes("const live = liveNow();"), 'the speaker is chosen without the scene');
   });
 }
 

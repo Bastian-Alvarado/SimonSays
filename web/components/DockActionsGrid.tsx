@@ -89,6 +89,7 @@ const tintFor = (category?: string) => (
         : category === 'system' || category === 'countdown' ? 'border-sky-500/40 hover:border-sky-400 text-sky-400'
         : category === 'avatar' ? 'border-[#eb4fef]/40 hover:border-[#eb4fef] text-[#eb4fef]'
         : category === 'deaths' ? 'border-[#ff2b2b]/40 hover:border-[#ff2b2b] text-[#ff5a5a]'
+        : category === 'alerts' ? 'border-amber-500/40 hover:border-amber-400 text-amber-400'
         : category === 'twitch' ? 'border-[#9146ff]/40 hover:border-[#9146ff] text-[#a970ff]'
           : 'border-current-accent/40 hover:border-current-accent text-current-accent'
 );

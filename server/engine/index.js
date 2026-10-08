@@ -28,6 +28,7 @@ import * as alerts from './alerts.js';
 import * as tags from './tags.js';
 import * as countdown from './countdown.js';
 import * as omnilayer from './omnilayer.js';
+import { controlAlerts } from './alert-gate.js';
 import * as remotePlayers from './remote-players.js';
 import * as stopwatch from './stopwatch.js';
 import * as counters from './counters.js';
@@ -1682,7 +1683,8 @@ export const store = {
       case 'replay': {
         const event = find();
         if (!event) throw refusal('event_gone', 'that event is no longer in the list');
-        const shown = alerts.dispatch(db.alerts.get(), event, services.spotify?.getNowPlaying?.() ?? null, services.spotify?.getUpNext?.() ?? null);
+        // Somebody asked to see it again now: never held by a pause.
+        const shown = alerts.dispatch(db.alerts.get(), event, services.spotify?.getNowPlaying?.() ?? null, services.spotify?.getUpNext?.() ?? null, { manual: true });
         if (!shown) throw refusal('no_alert_for_event', 'no alert is set up for this kind of event');
         log.info(`alert replayed for ${event.type} by ${event.user}`);
         return { ok: true };
@@ -2047,6 +2049,10 @@ export async function runDockBuiltin(id) {
     if (!result.ok) throw refusal(result.code, result.error, result.vars);
     return result;
   }
+  if (builtin.category === 'alerts') {
+    // Skip says so when nothing is on screen; pause and resume are one button.
+    return controlAlerts(builtin.op);
+  }
   if (builtin.category === 'questions') {
     // Says so when nothing approved is left to put up, and the button shows it failing.
     questionsModule.next();
@@ -2126,8 +2132,9 @@ export async function testAction(actionId) {
 }
 
 /** Fire one alert config through the real dispatch path. */
-export function testAlert(alertId) {
+export function testAlert(alertId, variationId = null) {
   const config = db.alerts.get().find((a) => a.id === alertId);
   if (!config) throw new Error(`no alert with id ${alertId}`);
-  alerts.dispatch([config], alerts.buildTestEvent(config), services.spotify?.getNowPlaying?.() ?? null, services.spotify?.getUpNext?.() ?? null);
+  // Asked for now, so never held by a pause (alert-gate.js); with a variation, that one at its numbers.
+  alerts.dispatch([config], alerts.buildTestEvent(config, variationId), services.spotify?.getNowPlaying?.() ?? null, services.spotify?.getUpNext?.() ?? null, { manual: true, variationId });
 }

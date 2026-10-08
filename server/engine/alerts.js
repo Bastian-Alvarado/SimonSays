@@ -87,14 +87,23 @@ export const ALERT_TYPES = [
  * them. A condition on free text would be a filter nobody could reason about,
  * and the interesting question is always "how big was it".
  */
+/*
+  An alert for a kind ("cheer", "sub") answers on every platform, so it is
+  offered every field any of them carries. A condition on a field an event
+  does not carry never holds — "bits at least 1000" is a Twitch cheer only —
+  which is what makes that safe: a big-tip variation for two platforms is two
+  variations, each in its own platform's numbers.
+*/
 export const CONDITION_FIELDS = [
-  { field: 'bits', label: 'Bits', types: ['twitch_cheer'] },
-  { field: 'tier', label: 'Tier', types: ['twitch_sub'] },
-  { field: 'months', label: 'Months subbed', types: ['twitch_sub'] },
-  { field: 'viewers', label: 'Viewers', types: ['twitch_raid'] },
-  { field: 'cost', label: 'Point cost', types: ['twitch_redemption'] },
-  { field: 'count', label: 'Gift count', types: ['tiktok_gift', 'twitch_sub_gift_bulk'] },
-  { field: 'diamonds', label: 'Diamonds', types: ['tiktok_gift'] },
+  { field: 'bits', label: 'Bits', types: ['twitch_cheer', 'cheer'] },
+  // A Super Chat's money, as a number: YouTube's own amount is text like "$5.00".
+  { field: 'value', label: 'Money', types: ['youtube_cheer', 'cheer'] },
+  { field: 'tier', label: 'Tier', types: ['twitch_sub', 'sub'] },
+  { field: 'months', label: 'Months subbed', types: ['twitch_sub', 'youtube_sub', 'sub'] },
+  { field: 'viewers', label: 'Viewers', types: ['twitch_raid', 'raid'] },
+  { field: 'cost', label: 'Point cost', types: ['twitch_redemption', 'points_redeem'] },
+  { field: 'count', label: 'Gift count', types: ['tiktok_gift', 'twitch_sub_gift_bulk', 'youtube_sub_gift_bulk', 'sub_gift_bulk', 'gift'] },
+  { field: 'diamonds', label: 'Diamonds', types: ['tiktok_gift', 'gift'] },
   { field: 'amount', label: 'Amount', types: ['twitch_cheer', 'twitch_raid'] },
   { field: 'level', label: 'Level', types: ['level_up'] },
 ];
@@ -265,7 +274,10 @@ function normaliseVariation(incoming) {
   // keep only the ones the caller actually supplied. `variations: []` is not
   // decoration: without it a variation carrying its own variations array would
   // recurse back into here, and a hand-edited file could hang the server.
-  const validated = normaliseAlert({ ...incoming, id: out.id, type: 'twitch_follow', variations: [] });
+  //
+  // Read as current settings: a variation's font or colour is always one somebody chose, so white
+  // text or Montserrat stays what it says rather than becoming "automatic", as on an old alert.
+  const validated = normaliseAlert({ ...incoming, id: out.id, type: 'twitch_follow', variations: [], settingsVersion: SETTINGS_VERSION });
   for (const field of VARIATION_FIELDS) {
     if (incoming?.[field] !== undefined && incoming[field] !== '') out[field] = validated[field];
   }
@@ -299,8 +311,11 @@ function conditionHolds(condition, event) {
 export function pickVariation(config, event) {
   const variations = Array.isArray(config?.variations) ? config.variations : [];
   const hit = variations.find((v) => (v.conditions || []).every((c) => conditionHolds(c, event)));
-  if (!hit) return config;
+  return hit ? withVariation(config, hit) : config;
+}
 
+/** The alert with this variation's fields over it — the ones it sets, and no others. */
+function withVariation(config, hit) {
   const merged = { ...config };
   for (const field of VARIATION_FIELDS) {
     if (hit[field] !== undefined) merged[field] = hit[field];
@@ -331,9 +346,13 @@ function matches(alertConfig, event) {
 
 /**
  * Fire every alert matching `event`.
+ *
+ * `opts.manual` marks one somebody asked to see now — a test, a replay — which
+ * engine/alert-gate.js never holds. `opts.variationId` plays that variation
+ * whatever the numbers say, for "Fire this variation" on the Alerts screen.
  * @returns {number} how many alerts were dispatched
  */
-export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null) {
+export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null, opts = {}) {
   /*
     A bundle of gifted subs arrives as one announcement followed by one event
     per recipient. Firing an alert for every recipient buries the stream, so
@@ -366,7 +385,8 @@ export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null) 
     // Resolved here rather than in the overlay: the text is already
     // pre-rendered server-side, and every connected surface must agree on
     // which variation played.
-    const config = pickVariation(base, event);
+    const chosen = opts.variationId && (base.variations || []).find((v) => v.id === opts.variationId);
+    const config = chosen ? withVariation(base, chosen) : pickVariation(base, event);
     // Pre-rendered so every connected overlay shows identical text.
     const shown = interpolate(config.messageTemplate, ctx);
     const alert = {
@@ -377,6 +397,7 @@ export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null) 
       text: shown,
       avatar: event.avatar,
     };
+    if (opts.manual) alert.manual = true;
     /*
       Read aloud: what to say, for the one surface that speaks (ws.js hands
       it to that one only), and the alert kept up for as long as reading it
@@ -402,8 +423,29 @@ export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null) 
  * reads too. An alert for a kind ("follow") is tested as that kind on a real
  * platform, so {platform} and {words.*} say what they would on stream.
  */
-export function buildTestEvent(alertConfig) {
+export function buildTestEvent(alertConfig, variationId = null) {
   const event = sampleEvent(alertConfig.type);
   if (event.type === 'twitch_redemption') event.data.rewardId = alertConfig.redemptionRewardId;
+  /*
+    Testing a variation: the numbers its conditions ask for, so the caption
+    says 10000 bits for "bits at least 10000". Each field takes its lowest
+    allowed value, or its highest where only a ceiling is set.
+  */
+  const variation = variationId && (alertConfig.variations || []).find((v) => v.id === variationId);
+  const set = new Set();
+  for (const c of variation?.conditions || []) {
+    const on = (variation.conditions || []).filter((x) => x.field === c.field);
+    const floor = Math.max(...on.filter((x) => x.op !== 'lte').map((x) => x.value));
+    const ceiling = Math.min(...on.filter((x) => x.op === 'lte').map((x) => x.value));
+    event.data[c.field] = Number.isFinite(floor) ? floor : ceiling;
+    set.add(c.field);
+  }
+  // A real cheer's amount is its bits (a raid's its viewers, a gift's its diamonds): the pair stays one number.
+  const twin = AMOUNT_TWIN[event.type];
+  if (twin && set.has(twin) && !set.has('amount')) event.data.amount = event.data[twin];
+  if (twin && set.has('amount') && !set.has(twin)) event.data[twin] = event.data.amount;
   return { id: 'test', ...event, timestamp: Date.now() };
 }
+
+/** The field each event's `amount` repeats, as the platforms send them. */
+const AMOUNT_TWIN = { twitch_cheer: 'bits', twitch_raid: 'viewers', tiktok_gift: 'diamonds' };

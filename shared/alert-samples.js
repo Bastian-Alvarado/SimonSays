@@ -30,7 +30,7 @@ export const SAMPLE_DATA = {
   // Both names a real redemption carries: the Events dock reads `reward`, captions often `rewardName`.
   twitch_redemption: { reward: 'Recompensa de prueba', rewardName: 'Recompensa de prueba', cost: 500, input: SAID },
   // YouTube says the amount as it is shown, currency and all.
-  youtube_cheer: { amount: '$5.00', message: SAID },
+  youtube_cheer: { amount: '$5.00', value: 5, currency: 'USD', message: SAID },
   youtube_sub: { tier: 'Miembro', months: 3 },
   youtube_sub_gift_bulk: { count: 5, tier: 'Miembro' },
   tiktok_gift: { giftName: 'Rose', count: 10, amount: 10, diamonds: 10, currency: 'DIAMONDS' },

@@ -502,7 +502,8 @@ function renderLayer(layer: CanvasLayer, system: any, t: any, accent?: string, l
     case 'alerts':
       // Alerts fill their layer and disappear between firings, which is why
       // this layer is usually the whole canvas.
-      return system.data.currentAlert ? <AlertOverlay alert={system.data.currentAlert} playSound /> : null;
+      // Its sound only where the server said this page speaks, so two pages showing alerts are heard once.
+      return system.data.currentAlert ? <AlertOverlay alert={system.data.currentAlert} playSound={Boolean(system.data.currentAlert.audible)} /> : null;
 
     case 'omnibar': {
       /* The bar this layer names, or Main — which is also where a layer lands

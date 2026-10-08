@@ -108,6 +108,8 @@ export const C2S = {
   // Runtime control
   TEST_ACTION: 'test_action',
   TEST_ALERT: 'test_alert',
+  /** Skip, pause, resume, toggle or clear alerts, or `hold` them while nothing shows them. Payload: { op, value } */
+  ALERT_CONTROL: 'alert_control',
   RUN_ACTION: 'run_action',
   SEND_CHAT: 'send_chat',
   CLEAR_EVENTS: 'clear_events',
@@ -164,6 +166,8 @@ export const S2C = {
   CHAT_DELETE: 'chat_delete',
   /** Late-resolved profile pictures, applied to messages already on screen. */
   AVATARS: 'avatars',
+  /** The alert on screen ends (`skip`), or every alert waiting in a page's queue goes (`clear`). Payload: { op } */
+  ALERT_CONTROL: 'alert_control',
 
   // Local-device side effects the browser must perform
   // (audio + speech synthesis are browser-only capabilities)

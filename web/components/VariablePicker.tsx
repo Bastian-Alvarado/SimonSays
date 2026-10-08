@@ -172,6 +172,22 @@ export const VARIABLE_GROUPS: Group[] = [
       { token: 'event.type', en: 'Which event fired it.', es: 'Que evento lo activo.', sample: 'twitch_raid', conditional: true },
     ],
   },
+  {
+    // shared/platforms.js: one caption, the right word on each platform.
+    id: 'words',
+    en: 'Platform words', es: 'Palabras de la plataforma',
+    noteEn: 'What the platform it came from calls it, in Spanish for the stream: a Twitch "seguidor" is a YouTube "suscriptor".',
+    noteEs: 'Como lo llama la plataforma de donde vino: un seguidor de Twitch es un suscriptor en YouTube.',
+    vars: [
+      { token: 'words.follower', en: 'Someone who follows for free.', es: 'Quien sigue gratis.', sample: 'seguidor' },
+      { token: 'words.followers', en: 'The same, more than one.', es: 'Lo mismo, en plural.', sample: 'seguidores' },
+      { token: 'words.followed', en: 'What they just did.', es: 'Lo que acaba de hacer.', sample: 'siguió el canal' },
+      { token: 'words.supporter', en: 'Someone who pays: a sub, a member.', es: 'Quien paga: un sub, un miembro.', sample: 'suscriptor' },
+      { token: 'words.supporters', en: 'The same, more than one.', es: 'Lo mismo, en plural.', sample: 'suscriptores' },
+      { token: 'words.gift', en: 'A gifted one.', es: 'Uno regalado.', sample: 'sub de regalo' },
+      { token: 'words.tip', en: 'Its tip: bits, a Super Chat, coins.', es: 'Su propina: bits, un Super Chat, monedas.', sample: 'bits' },
+    ],
+  },
 ];
 
 /**
@@ -193,7 +209,7 @@ export const EVENT_VARS: Record<string, Variable[]> = {
     { token: 'event.currency', en: 'Always VIEWERS.', es: 'Siempre VIEWERS.', sample: 'VIEWERS' },
   ],
   twitch_sub: [
-    { token: 'event.tier', en: 'Sub tier.', es: 'Nivel de suscripcion.', sample: '1000' },
+    { token: 'event.tier', en: 'Sub tier: 1, 2 or 3.', es: 'Nivel de suscripcion: 1, 2 o 3.', sample: '1' },
     { token: 'event.months', en: 'Months, on a resub only.', es: 'Meses, solo en resub.', sample: '6', conditional: true },
     { token: 'event.giftedBy', en: 'Who gifted it, on a gift sub only.', es: 'Quien la regalo, solo en sub regalada.', conditional: true },
   ],
@@ -203,6 +219,20 @@ export const EVENT_VARS: Record<string, Variable[]> = {
     { token: 'event.rewardId', en: 'Reward id.', es: 'ID de la recompensa.' },
     { token: 'event.cost', en: 'Channel points it cost.', es: 'Puntos de canal que costo.', sample: '500' },
     { token: 'event.input', en: 'What the viewer typed into the reward.', es: 'Lo que el espectador escribio en la recompensa.' },
+  ],
+  youtube_cheer: [
+    { token: 'event.amount', en: 'The money as YouTube shows it.', es: 'El dinero como lo muestra YouTube.', sample: '$5.00' },
+    { token: 'event.value', en: 'The same money as a number, in its own currency.', es: 'El mismo dinero como número, en su moneda.', sample: '5' },
+    { token: 'event.currency', en: 'Its currency.', es: 'Su moneda.', sample: 'USD' },
+    { token: 'event.message', en: 'What they wrote with it.', es: 'Lo que escribieron con él.' },
+  ],
+  youtube_sub: [
+    { token: 'event.tier', en: 'The membership level\'s name.', es: 'El nombre del nivel de membresía.', sample: 'Miembro' },
+    { token: 'event.months', en: 'Months, on a milestone only.', es: 'Meses, solo en un aniversario.', sample: '6', conditional: true },
+  ],
+  youtube_sub_gift_bulk: [
+    { token: 'event.count', en: 'How many memberships were gifted.', es: 'Cuántas membresías se regalaron.', sample: '5' },
+    { token: 'event.tier', en: 'Their level\'s name.', es: 'El nombre de su nivel.', sample: 'Miembro' },
   ],
   tiktok_gift: [
     { token: 'event.giftName', en: 'Gift name.', es: 'Nombre del regalo.', sample: 'Rose' },

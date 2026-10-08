@@ -13,8 +13,12 @@
  * So the app keeps one idea of what a thing IS, and looks up what to CALL it
  * from whichever platform it came from.
  *
- *   FREE, one click   twitch: Follower     youtube: Subscriber   tiktok: Follower
- *   PAYS YOU MONEY    twitch: Subscriber   youtube: Member       tiktok: Subscriber
+ *   FREE, one click   twitch: seguidor     youtube: suscriptor   tiktok: seguidor
+ *   PAYS YOU MONEY    twitch: suscriptor   youtube: miembro      tiktok: suscriptor
+ *
+ * The words are in Spanish, like everything else said on stream: they are
+ * only ever read by captions, chat lines and posts ({words.follower}), never
+ * by a screen, which says these things in its own language.
  *
  * The rule that keeps the inside honest, and the one thing in here that must
  * never be got wrong:
@@ -34,13 +38,13 @@ export const PLATFORMS = {
     name: 'Twitch',
     colour: '#9146FF',
     words: {
-      follower: 'Follower',
-      followers: 'Followers',
-      followed: 'followed',
-      supporter: 'Subscriber',
-      supporters: 'Subscribers',
-      gift: 'Gift sub',
-      tip: 'Bits',
+      follower: 'seguidor',
+      followers: 'seguidores',
+      followed: 'siguió el canal',
+      supporter: 'suscriptor',
+      supporters: 'suscriptores',
+      gift: 'sub de regalo',
+      tip: 'bits',
       vip: 'VIP',
     },
   },
@@ -48,12 +52,12 @@ export const PLATFORMS = {
     name: 'YouTube',
     colour: '#FF0000',
     words: {
-      follower: 'Subscriber',
-      followers: 'Subscribers',
-      followed: 'subscribed',
-      supporter: 'Member',
-      supporters: 'Members',
-      gift: 'Gift membership',
+      follower: 'suscriptor',
+      followers: 'suscriptores',
+      followed: 'se suscribió',
+      supporter: 'miembro',
+      supporters: 'miembros',
+      gift: 'membresía de regalo',
       tip: 'Super Chat',
       // YouTube has no VIP. Nothing that reads this may assume there is one.
       vip: null,
@@ -63,13 +67,13 @@ export const PLATFORMS = {
     name: 'TikTok',
     colour: '#ff0050',
     words: {
-      follower: 'Follower',
-      followers: 'Followers',
-      followed: 'followed',
-      supporter: 'Subscriber',
-      supporters: 'Subscribers',
-      gift: 'Gift',
-      tip: 'Coins',
+      follower: 'seguidor',
+      followers: 'seguidores',
+      followed: 'siguió el canal',
+      supporter: 'suscriptor',
+      supporters: 'suscriptores',
+      gift: 'regalo',
+      tip: 'monedas',
       vip: null,
     },
   },
@@ -77,12 +81,12 @@ export const PLATFORMS = {
     name: 'Discord',
     colour: '#5865F2',
     words: {
-      follower: 'Member',
-      followers: 'Members',
-      followed: 'joined',
-      supporter: 'Booster',
-      supporters: 'Boosters',
-      gift: 'Gift',
+      follower: 'miembro',
+      followers: 'miembros',
+      followed: 'se unió',
+      supporter: 'booster',
+      supporters: 'boosters',
+      gift: 'regalo',
       tip: null,
       vip: null,
     },
