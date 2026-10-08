@@ -1097,10 +1097,11 @@ export default function App() {
           Long lines of form are hard to read, which is what max-w-7xl is for
           on every other screen. The overlay editor is a canvas, and capping it
           left 379px of a 1659px area — 23% — as empty margin either side while
-          the canvas it was squeezing sat at 42% scale.
+          the canvas it was squeezing sat at 42% scale. The pixel avatar
+          editor is a canvas too.
         */}
         {/* The 4rem is the bar above, which only a phone still has. */}
-        <div className={`${view === 'layouts' ? '' : 'max-w-7xl'} relative mx-auto p-4 sm:p-6 md:p-10 h-[calc(100dvh-4rem)] md:h-dvh`}>
+        <div className={`${view === 'layouts' || view === 'pixel-avatars' ? '' : 'max-w-7xl'} relative mx-auto p-4 sm:p-6 md:p-10 h-[calc(100dvh-4rem)] md:h-dvh`}>
           {/*
             The screen's guide, a press away: in the margin above it, where no
             screen puts anything, so it never covers a screen's own buttons.

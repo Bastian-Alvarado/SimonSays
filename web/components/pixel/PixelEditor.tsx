@@ -98,11 +98,12 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
   const [tool, setTool] = useState<PixelTool>('pencil');
   const [char, setChar] = useState(kit.parts[0]?.char || '');
   const [zoom, setZoom] = useState(6);
-  // Opened at whatever size fits the room there is for it: a pixel of the drawing as many screen pixels as fit.
+  // Opened at whatever size fits the room there is for it: a pixel of the drawing as many screen pixels as fit, across and down (the canvas shows three quarters of the screen's height).
   const canvasColumn = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const w = canvasColumn.current?.clientWidth || 0;
-    if (w) setZoom(Math.max(3, Math.min(9, Math.floor(w / 100))));
+    const h = typeof window !== 'undefined' ? window.innerHeight * 0.75 : 0;
+    if (w) setZoom(Math.max(3, Math.min(12, Math.floor(w / 100), h ? Math.floor(h / 100) : 12)));
   }, []);
   const [grid, setGrid] = useState(true);
   const [mirror, setMirror] = useState(false);
@@ -585,7 +586,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
       )}
       {error && <p className="flex items-center gap-2 text-[11px] text-amber-400" data-pixel-editor-error><AlertTriangle size={13} /> {error}</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)] 2xl:grid-cols-[11rem_minmax(0,1fr)_15rem] gap-4 items-start">
+      {/* With the whole width of the screen, the colours and what goes with them sit beside the canvas from a laptop up. */}
+      <div className="grid grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)_15rem] gap-4 items-start">
         {/* ------------------------------------------------- what is being drawn */}
         <div className="space-y-3 text-[11px]" data-pixel-targets>
           {/* One list for both views: Side | Front over the canvas says which one each is drawn in. */}

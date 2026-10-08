@@ -391,7 +391,8 @@ test('the overlay editor is not squeezed by the reading width', () => {
     canvas cannot outgrow a short screen as a result.
   */
   const app = fs.readFileSync(new URL('../../web/App.tsx', SCRIPT_URL), 'utf8');
-  assert.ok(/view === 'layouts' \? '' : 'max-w-7xl'/.test(app),
+  // The pixel avatar editor is a canvas as well, and goes as wide.
+  assert.ok(app.includes("view === 'layouts' || view === 'pixel-avatars' ? '' : 'max-w-7xl'"),
     'the overlay editor is capped to the reading width again');
   const view = fs.readFileSync(new URL('../../web/components/views/LayoutsView.tsx', SCRIPT_URL), 'utf8');
   // The exact margin moves whenever the chrome above the canvas does; what

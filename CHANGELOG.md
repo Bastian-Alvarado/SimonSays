@@ -2,6 +2,11 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.0.4] — 2026-10-08
+
+- Pixel avatars: the page uses the full width, like the overlay editor, and the canvas grows to fit.
+- The avatar list is now a dropdown at the top of the editor: the open avatar with its picture, the rest with theirs when opened. New, from a file and the examples are at its foot.
+
 ## [1.0.3] — 2026-10-08
 
 - Pixel avatar editor: one list, with a Side | Front switch over the canvas. "+ Front" starts what isn't drawn from the front yet.

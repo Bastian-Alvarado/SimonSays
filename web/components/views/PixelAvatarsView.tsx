@@ -15,7 +15,7 @@
  * example is a copy, and "Put back" makes it the copy it started as.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Sparkles, Plus, Copy, Trash2, RotateCcw, Play, Square, AlertTriangle, History, Download, FileUp, Film, Image as ImageIcon, Grid2x2 } from 'lucide-react';
+import { Sparkles, Plus, Copy, Trash2, RotateCcw, Play, Square, AlertTriangle, History, Download, FileUp, Film, Image as ImageIcon, Grid2x2, ChevronDown } from 'lucide-react';
 import { avatarFile, avatarFromFile, avatarPicture, facesSheet, actionGif, download, fileName } from '../pixel/pixelExport';
 import { LivingAvatar } from '../AvatarLayer';
 import { PixelKitAvatar } from '../PixelKitAvatar';
@@ -56,6 +56,65 @@ const Tile = ({ active, onClick, title, children, testId }: { active?: boolean; 
     <span className="block px-1 py-0.5 text-[8px] text-zinc-400 truncate">{title}</span>
   </button>
 );
+
+/** One avatar as a row: its picture, its name, and whether it is an example. */
+const AvatarRow = ({ a, t }: { a: PixelAvatarDef; t: any }) => (
+  <>
+    <div className="w-10 h-10 shrink-0 rounded-lg bg-zinc-950/70 overflow-hidden"><PixelKitAvatar kit={a} /></div>
+    <div className="min-w-0 text-left">
+      <span className="block text-[11px] font-bold text-zinc-200 truncate">{a.name}</span>
+      {a.example && <span className="block text-[8px] font-black uppercase tracking-widest text-zinc-500">{t.pixelExampleTag || 'example'}</span>}
+    </div>
+  </>
+);
+
+/*
+  Which avatar is open, as a dropdown at the top of the editor rather than a
+  list beside it, so the editor has the room: the one open with its picture
+  and an arrow, and opened, the rest in a scrolling list, each with its
+  picture — with making a new one, bringing one in from a file and bringing
+  back the examples at its foot. A click elsewhere or Escape closes it.
+*/
+const AvatarPicker = ({ avatars, kit, onPick, children, t }: {
+  avatars: PixelAvatarDef[]; kit: PixelAvatarDef | null; onPick: (id: string) => void; children: (close: () => void) => React.ReactNode; t: any;
+}) => {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', escape); };
+  }, [open]);
+  const others = avatars.filter((a) => a.id !== kit?.id);
+  return (
+    <div ref={box} className="relative w-full sm:w-72 shrink-0" data-pixel-picker>
+      <button
+        onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open} data-pixel-picker-open
+        className={`w-full flex items-center gap-2 p-1.5 pr-3 rounded-xl border bg-zinc-950/40 ${open ? 'border-current-accent' : 'border-zinc-800 hover:border-zinc-600'}`}
+      >
+        {kit ? <AvatarRow a={kit} t={t} /> : <span className="px-1.5 py-2.5 text-[11px] text-zinc-500">{t.pixelNone || 'No pixel avatars yet.'}</span>}
+        <ChevronDown size={14} className={`ml-auto shrink-0 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-30 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl p-2 space-y-2" data-pixel-list>
+          <div className="max-h-[50vh] overflow-y-auto space-y-1 pr-0.5" role="listbox">
+            {others.map((a) => (
+              <button key={a.id} role="option" aria-selected={false} onClick={() => { setOpen(false); onPick(a.id); }} data-pixel-avatar={a.id}
+                className="w-full flex items-center gap-2 p-1.5 rounded-xl border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900/60">
+                <AvatarRow a={a} t={t} />
+              </button>
+            ))}
+            {!others.length && <p className="px-1 py-2 text-[10px] text-zinc-600">{t.pixelNoOthers || 'No other pixel avatars yet.'}</p>}
+          </div>
+          <div className="border-t border-zinc-800 pt-2 space-y-1.5">{children(() => setOpen(false))}</div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t }: Props) => {
   const [selectedId, setSelected] = useState<string>(() => remembered());
@@ -134,47 +193,19 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
   // An edition with a house avatar has it as its example; otherwise the built-in avatar's copy stands for them all.
   const missingExamples = !avatars.some((a) => (HOUSE_CHARACTER ? a.id === HOUSE_CHARACTER : a.example === 'simonsays'));
 
-  return (
-    <div className="animate-fade-in space-y-6 pb-20" data-pixel-avatars>
-      <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <Sparkles size={16} className="text-current-accent" />
-          <span className="text-[11px] font-black uppercase tracking-widest text-zinc-300 flex-1">{t.pixelAvatarsNav || 'Pixel avatars'}</span>
-        </div>
-        <p className="text-[11px] text-zinc-500 leading-relaxed">
-          {HOUSE_CHARACTER
-            ? (t.pixelAvatarsHintHouse || 'Pixel avatars drawn here. The example is one to start from, and what a Pixel avatar layer draws until it is given another — so changing the example changes those layers too. Put one on stream by choosing it as “Drawn as” on a Pixel avatar layer in Overlays.')
-            : (t.pixelAvatarsHint || 'Pixel avatars drawn here, beside the built-in one. The examples are copies to start from — changing one never changes the built-in avatar. Put one on stream by choosing it as “Drawn as” on a Pixel avatar layer in Overlays.')}
-        </p>
-        {error && <p className="flex items-center gap-2 text-[11px] text-amber-400" data-pixel-error><AlertTriangle size={13} /> {error}</p>}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[15rem_1fr] gap-6 items-start">
-        {/* ----------------------------------------------------------- the list */}
-        <div className="glass-panel rounded-3xl border border-zinc-800 p-4 space-y-3" data-pixel-list>
-          <div className="space-y-1.5">
-            {avatars.map((a) => (
-              <button
-                key={a.id} onClick={() => setSelectedId(a.id)} data-pixel-avatar={a.id}
-                className={`w-full flex items-center gap-2 p-1.5 rounded-xl border text-left ${kit?.id === a.id ? 'border-current-accent bg-current-accent/5' : 'border-zinc-800 hover:border-zinc-700'}`}
-              >
-                <div className="w-10 h-10 shrink-0 rounded-lg bg-zinc-950/70 overflow-hidden"><PixelKitAvatar kit={a} /></div>
-                <div className="min-w-0">
-                  <span className="block text-[11px] font-bold text-zinc-200 truncate">{a.name}</span>
-                  {a.example && <span className="block text-[8px] font-black uppercase tracking-widest text-zinc-500">{t.pixelExampleTag || 'example'}</span>}
-                </div>
-              </button>
-            ))}
-            {!avatars.length && <p className="text-[10px] text-zinc-600">{t.pixelNone || 'No pixel avatars yet.'}</p>}
-          </div>
+  // The avatar open, as a dropdown at the top of the editor: the rest each with its picture, and a new one made at its foot.
+  const picker = (
+    <AvatarPicker avatars={avatars} kit={kit} onPick={setSelectedId} t={t}>
+      {(close: () => void) => (
+        <>
           <div className="flex gap-1.5">
             <input
               value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60}
               placeholder={t.pixelNewName || 'New avatar’s name'} className={box} data-pixel-new-name
-              onKeyDown={(e) => { if (e.key === 'Enter' && newName.trim()) { run({ op: 'create', name: newName }); setNewName(''); } }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && newName.trim()) { run({ op: 'create', name: newName }); setNewName(''); close(); } }}
             />
             <button
-              onClick={() => { run({ op: 'create', name: newName }); setNewName(''); }} disabled={busy}
+              onClick={() => { run({ op: 'create', name: newName }); setNewName(''); close(); }} disabled={busy}
               title={t.pixelNew || 'New, empty'} className={button} data-pixel-create
             >
               <Plus size={12} />
@@ -190,7 +221,7 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
                 if (!file) return;
                 try {
                   const avatar = avatarFromFile(await file.text(), `pa-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`);
-                  if (leaving()) run({ op: 'save', avatar });
+                  if (leaving()) { run({ op: 'save', avatar }); close(); }
                 } catch {
                   setError(t.pixelNotAFile || 'That file is not a pixel avatar.');
                 }
@@ -198,17 +229,39 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
             />
           </label>
           {missingExamples && (
-            <button onClick={() => run({ op: 'restore-examples' })} disabled={busy} className={`${button} w-full justify-center`} data-pixel-restore>
+            <button onClick={() => { run({ op: 'restore-examples' }); close(); }} disabled={busy} className={`${button} w-full justify-center`} data-pixel-restore>
               <RotateCcw size={12} /> {t.pixelRestoreExamples || 'Bring back the examples'}
             </button>
           )}
-        </div>
+        </>
+      )}
+    </AvatarPicker>
+  );
 
-        {/* ------------------------------------------------------ the one chosen */}
+  return (
+    <div className="animate-fade-in space-y-6 pb-20" data-pixel-avatars>
+      <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <Sparkles size={16} className="text-current-accent" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-zinc-300 flex-1">{t.pixelAvatarsNav || 'Pixel avatars'}</span>
+        </div>
+        <p className="text-[11px] text-zinc-500 leading-relaxed">
+          {HOUSE_CHARACTER
+            ? (t.pixelAvatarsHintHouse || 'Pixel avatars drawn here. The example is one to start from, and what a Pixel avatar layer draws until it is given another — so changing the example changes those layers too. Put one on stream by choosing it as “Drawn as” on a Pixel avatar layer in Overlays.')
+            : (t.pixelAvatarsHint || 'Pixel avatars drawn here, beside the built-in one. The examples are copies to start from — changing one never changes the built-in avatar. Put one on stream by choosing it as “Drawn as” on a Pixel avatar layer in Overlays.')}
+        </p>
+        {error && <p className="flex items-center gap-2 text-[11px] text-amber-400" data-pixel-error><AlertTriangle size={13} /> {error}</p>}
+      </div>
+
+      {/* ------------------------------------------------- the one open, and the dropdown to choose another */}
+      <div className="space-y-6" data-pixel-selected={kit?.id || ''}>
+        {!kit && <div className="glass-panel rounded-3xl border border-zinc-800 p-6 relative z-20">{picker}</div>}
         {kit && (
-          <div className="space-y-6" data-pixel-selected={kit.id}>
-            <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-5">
+          <>
+            {/* Above the panels after it: the dropdown opens over them. */}
+            <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-5 relative z-20">
               <div className="flex flex-wrap items-end gap-2">
+                {picker}
                 <label className="flex-1 min-w-[12rem] space-y-1 block">
                   <span className={tag}>{t.pixelName || 'Name'}</span>
                   <input
@@ -433,7 +486,7 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
               )}
             </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>

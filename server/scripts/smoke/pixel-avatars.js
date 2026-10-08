@@ -371,6 +371,28 @@ test('the editor has one list for both views: Side | Front over the canvas opens
   }
 });
 
+test('the Pixel avatars screen takes the whole width, and which avatar is open is a dropdown with every one\'s picture', () => {
+  // As wide as the overlay editor: no reading-width cap.
+  assert.ok(read('../../web/App.tsx').includes("view === 'layouts' || view === 'pixel-avatars' ? '' : 'max-w-7xl'"));
+  const view = read('../../web/components/views/PixelAvatarsView.tsx');
+  // No list beside the editor; the dropdown at the top of the editor box, over the panels after it.
+  assert.ok(!view.includes('lg:grid-cols-[15rem_1fr]'), 'the list column is still there');
+  assert.ok(view.includes('<AvatarPicker avatars={avatars} kit={kit} onPick={setSelectedId} t={t}>'));
+  assert.ok(view.indexOf('{picker}') > view.indexOf('relative z-20'), 'the dropdown is not in the box above the rest');
+  // The one open with its picture and an arrow; the rest, each with its picture; closed by a click elsewhere or Escape.
+  assert.ok(view.includes('{kit ? <AvatarRow a={kit} t={t} /> :') && view.includes('<ChevronDown size={14}'));
+  assert.ok(view.includes('const others = avatars.filter((a) => a.id !== kit?.id);') && view.includes('<AvatarRow a={a} t={t} />'));
+  assert.ok(view.includes("if (e.key === 'Escape') setOpen(false);") && view.includes("document.addEventListener('mousedown', away);"));
+  // Making one, bringing one in and the examples, at its foot, each closing it.
+  for (const s of ['data-pixel-new-name', 'data-pixel-create', 'data-pixel-from-file', 'data-pixel-restore']) assert.ok(view.includes(s), `${s} is gone`);
+  assert.ok(view.includes("run({ op: 'restore-examples' }); close();"));
+  // The editor beside the colours from a laptop up, and opened as big as fits across and down.
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  assert.ok(editor.includes('xl:grid-cols-[11rem_minmax(0,1fr)_15rem]'));
+  assert.ok(editor.includes('Math.min(12, Math.floor(w / 100), h ? Math.floor(h / 100) : 12)'));
+  assert.equal(read('../../web/constants.ts').split('    pixelNoOthers: ').length - 1, 2, 'pixelNoOthers is not in both languages');
+});
+
 test('any face it has from the side can be started from the front, blinking as the side\'s does; one it has not, cannot', () => {
   let pa = edit.setTurns(pixel.blankPixelAvatar('pa-ff', 'FF'), true);
   pa = edit.addFace(pa, { name: 'happy' }).avatar;
