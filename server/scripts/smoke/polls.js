@@ -221,11 +221,16 @@ const saidToMods = said.slice(-2);
 const commandsStore = collection('commands', []);
 const commandsBefore = commandsStore.get();
 commandsStore.set([...(commandsBefore || []), { id: 'own-encuesta', enabled: true, triggers: ['!encuesta'] }]);
+// One that runs: an action linked to it. A command left without one does not take the word (commands.ownCommandAnswers).
+const ownActions = collection('actions', []);
+const ownActionsBefore = ownActions.get();
+ownActions.set([...(ownActionsBefore || []), { id: 'act-own-encuesta', name: 'Own', enabled: true, trigger: { type: 'command_trigger', category: 'command', config: { commandId: 'own-encuesta' } }, actions: [] }]);
 poll('reset');
 chat('!encuesta Otra | A | B', mod);
 await settle();
 const overOwn = now().mode;
 commandsStore.set(commandsBefore);
+ownActions.set(ownActionsBefore);
 poll('settings', { command: { enabled: false } });
 chat('!encuesta Otra | A | B', mod);
 await settle();

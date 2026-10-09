@@ -341,7 +341,7 @@ function answerChat(chat, uid) {
   const which = Object.entries(cfg.words).find(([, x]) => x.toLowerCase() === w)?.[0];
   if (!which) return;
   // A command of the streamer's own on the same word answers instead.
-  if (commands.match(collection('commands', []).get() || [], said)) return;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), said, chat.platform)) return;
   const now = Date.now();
   const key = `${uid}:${which}`;
   if (which !== 'redeem' && now - (asked.get(key) || 0) < PERSON_EVERY_MS) return;

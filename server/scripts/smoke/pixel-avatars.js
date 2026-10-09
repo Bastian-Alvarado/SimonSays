@@ -156,7 +156,8 @@ test('the layer and the tab draw a pixel avatar with the faces and lists of its 
   assert.ok(layer.includes('kit ? pixelColours(kit, colouring'), 'its colours are not its own');
   assert.ok(layer.includes('<PixelKitAvatar'), 'it is never drawn');
   const stage = fs.readFileSync(new URL('../../web/components/CanvasStage.tsx', SCRIPT_URL), 'utf8');
-  assert.ok(stage.includes('kit={kitFor(cfg.character, (system.data as any).pixelAvatars)}'), 'the stage never hands a layer its pixel avatar');
+  // The layer's own settings, or the named avatar's it wears.
+  assert.ok(stage.includes('kit={kitFor(avatarCfg.character, (system.data as any).pixelAvatars)}'), 'the stage never hands a layer its pixel avatar');
 });
 
 // ------------------------------------------------------------- drawing it

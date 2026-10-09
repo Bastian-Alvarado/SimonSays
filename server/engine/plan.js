@@ -517,7 +517,7 @@ function onChat(chat) {
   const trigger = plan.answer.trigger;
   if (said !== trigger && !said.startsWith(`${trigger} `)) return;
   // A command of the streamer's own on the same word answers instead.
-  if (commands.match(collection('commands', []).get() || [], chat.msg)) return;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), chat.msg, chat.platform)) return;
   const now = Date.now();
   if (now - lastAnswer < ANSWER_EVERY_MS) return;
   lastAnswer = now;

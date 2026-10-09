@@ -72,6 +72,8 @@ export const MANIFEST = [
   { name: 'events_dock_settings' },
   // Whether alerts wait while nothing on stream shows them. Being paused is not kept, here or anywhere.
   { name: 'alert_settings' },
+  // The named pixel avatars, which the layouts' avatar layers wear.
+  { name: 'avatar_sources' },
   // How they ask, though, is: the command, its cooldown, the word back.
   { name: 'questions_settings' },
   // The overlay arrangements. Somebody who has spent an afternoon placing

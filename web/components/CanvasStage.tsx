@@ -415,16 +415,21 @@ function renderLayer(layer: CanvasLayer, system: any, t: any, accent?: string, l
       // The call is the Voice call screen's and the bot's; the layer only draws it.
       return <VoiceLayer config={cfg} voice={(system.data as any).voice} accent={accent} pixelAvatars={(system.data as any).pixelAvatars || []} />;
 
-    case 'avatar':
+    case 'avatar': {
       /*
         Handed the layout's colour rather than reading it off the page, so its
         colours are worked out once, in shared/avatar.js, and not by the browser.
+
+        Wearing a named avatar, it draws with that one's settings — the same on
+        every layout that names it. The name gone, its own settings draw.
       */
+      const named = cfg.source ? ((system.data as any).avatarSources || []).find((s: any) => s.id === cfg.source) : null;
+      const avatarCfg = named ? named.config : cfg;
       return (
         <AvatarLayer
-          config={cfg} voice={(system.data as any).voice} alert={system.data.currentAlert} accent={accent}
+          config={avatarCfg} voice={(system.data as any).voice} alert={system.data.currentAlert} accent={accent}
           // A pixel avatar from the Pixel avatars tab, if the layer draws one; gone or none, the house avatar (shared/house-avatar.js).
-          kit={kitFor(cfg.character, (system.data as any).pixelAvatars)}
+          kit={kitFor(avatarCfg.character, (system.data as any).pixelAvatars)}
           mic={(system.data as any).micTalk} asked={(system.data as any).avatarFace} dress={(system.data as any).avatarDress} acted={(system.data as any).avatarAction} hypeTrain={(system.data as any).hypeTrain}
           // Where it is and where everything else is, and what just happened, so it can glance at it.
           self={layer} layers={layers}
@@ -437,6 +442,7 @@ function renderLayer(layer: CanvasLayer, system: any, t: any, accent?: string, l
           }}
         />
       );
+    }
 
     case 'pngtuber':
       // Talking comes from the microphone in OBS, or from the Discord call.

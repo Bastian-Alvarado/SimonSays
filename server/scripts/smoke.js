@@ -30,6 +30,7 @@ await import('./smoke/backup-and-layouts.js');
 await import('./smoke/queue-and-plan.js');
 await import('./smoke/images-and-alerts.js');
 await import('./smoke/alert-controls.js');
+await import('./smoke/avatar-sources.js');
 await import('./smoke/profiles-and-chat.js');
 await import('./smoke/layers.js');
 await import('./smoke/drag-order.js');

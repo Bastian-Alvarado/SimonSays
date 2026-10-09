@@ -161,6 +161,8 @@ engine.initEngine({
   discord: {
     postWebhook: async (_url, content) => { posted.push(content); },
     sendMessage: async (...args) => { discordSent.push(args); return { id: '1' }; },
+    // Commands in the rest of the server, as Connections sets them: on unless a test says otherwise.
+    commandsEverywhere: () => doubles.discordCommandsEverywhere !== false,
     mentionsFrom,
   },
   spotify: {

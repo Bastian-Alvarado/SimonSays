@@ -54,7 +54,8 @@ export const PROFILE_GROUPS = [
     // with its layout. There was a chat group of its own, which meant switching
     // the stream's look and then remembering to switch the chat's as well. The
     // dock is in neither — it keeps its own set, so the desk stays put.
-    collections: ['layouts', 'omnibar', 'omnibars', 'viewers'],
+    // And the named pixel avatars the layouts' avatar layers wear: one avatar's look per profile.
+    collections: ['layouts', 'omnibar', 'omnibars', 'viewers', 'avatar_sources'],
   },
   // Discord is deliberately not here. Reaction roles, the welcome message and
   // the role mappings describe one server and do not change with what is being

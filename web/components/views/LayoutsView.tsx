@@ -25,7 +25,7 @@ import { RosterLayerPanel } from '../RosterLayerPanel';
 import { PlayersLayerPanel } from '../PlayersLayerPanel';
 import { PollLayerPanel } from '../PollLayerPanel';
 import { VoiceLayerPanel } from '../VoiceLayerPanel';
-import { AvatarLayerPanel } from '../AvatarLayerPanel';
+import { AvatarLayerSection } from '../AvatarLayerPanel';
 import { PngtuberLayerPanel } from '../PngtuberLayerPanel';
 import { HypeTrainLayerPanel, ShoutoutLayerPanel } from '../TwitchLayerPanels';
 import { LeaderboardLayerPanel } from '../LeaderboardLayer';
@@ -423,6 +423,32 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
     applyWorking(next);
     commit(next);
   };
+
+  /*
+    One accent for every layout of the profile being edited, while the switch
+    is on: a colour picked, or cleared, goes on all of them in one save, and
+    switching it on gives them all this layout's accent there and then.
+    Remembered in this browser, so it stays the way it was left.
+  */
+  const [accentAll, setAccentAll] = useState(() => {
+    try { return localStorage.getItem('layouts_accent_all') === '1'; } catch { return false; }
+  });
+  const setAccent = (accent: string) => {
+    const w = workingRef.current;
+    if (!w) return;
+    const next = { ...w, accent };
+    applyWorking(next);
+    if (accentAll) setLayouts(layouts.map((l) => (l.id === next.id ? next : { ...l, accent })));
+    else commit(next);
+  };
+  const toggleAccentAll = (on: boolean) => {
+    setAccentAll(on);
+    try { localStorage.setItem('layouts_accent_all', on ? '1' : '0'); } catch { /* private mode */ }
+    const w = workingRef.current;
+    if (on && w) setLayouts(layouts.map((l) => (l.id === w.id ? w : { ...l, accent: w.accent || '' })));
+  };
+  // How many layouts of the profile wear an accent other than this one's: what the switch would change.
+  const accentOthers = working ? layouts.filter((l) => l.id !== working.id && (l.accent || '') !== (working.accent || '')).length : 0;
 
   // ------------------------------------------------------------- layouts
 
@@ -1097,9 +1123,17 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
       )}
 
       {layer.type === 'avatar' && (
-        <AvatarLayerPanel
-          config={layer.config || {}}
-          patch={(next) => patchLayerAndSave(layer.uid, { config: { ...(layer.config || {}), ...next } })}
+        <AvatarLayerSection
+          layerConfig={layer.config || {}}
+          patchLayer={(next) => patchLayerAndSave(layer.uid, { config: { ...(layer.config || {}), ...next } })}
+          setLayer={(config) => patchLayerAndSave(layer.uid, { config })}
+          sources={(system?.data as any)?.avatarSources || []}
+          // Every other avatar layer of the profile's layouts wearing it: this layout as it is being edited, the rest as saved.
+          othersWearing={(id) => [working, ...layouts.filter((l) => l.id !== working.id)]
+            .flatMap((l) => l.layers.map((y) => ({ y, here: l.id === working.id })))
+            .filter(({ y, here }) => y.type === 'avatar' && (y.config as any)?.source === id && !(here && y.uid === layer.uid)).length}
+          request={(payload) => (system as any).actions.avatarSources(payload)}
+          why={(err) => refusalWords(t, err) || String(err?.message || err)}
           choices={talkChoicesFor(layer)}
           listening={Boolean(voiceNow.listen)}
           accent={working.accent}
@@ -1846,7 +1880,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   <input
                     type="color"
                     value={working.accent || '#f43f5e'}
-                    onChange={(e) => patchLayout({ accent: e.target.value })}
+                    onChange={(e) => setAccent(e.target.value)}
                     title={working.accent ? undefined : (t.layoutAccentNone || 'No accent')}
                     className={`w-8 h-8 rounded-lg bg-transparent border cursor-pointer ${
                       working.accent ? 'border-zinc-800' : 'border-dashed border-zinc-600 opacity-35'
@@ -1854,7 +1888,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   />
                   {working.accent && (
                     <button
-                      onClick={() => patchLayout({ accent: '' })}
+                      onClick={() => setAccent('')}
                       title={t.layoutAccentClear || 'No accent'}
                       className="p-1 text-zinc-600 hover:text-current-accent"
                     >
@@ -1863,6 +1897,21 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   )}
                 </div>
               </div>
+
+              {layouts.length > 1 && (
+                <label className="flex items-start gap-2 -mt-1 cursor-pointer" data-layout-accent-all>
+                  <input type="checkbox" checked={accentAll} onChange={(e) => toggleAccentAll(e.target.checked)} className="accent-current-accent mt-0.5" />
+                  <span className="text-[9px] text-zinc-500 leading-snug">
+                    <span className="font-bold text-zinc-300">{t.layoutAccentAll || 'Same accent on every layout of this profile'}</span>
+                    {' · '}
+                    {accentAll
+                      ? fill(t.layoutAccentAllOn || 'all {n} follow it', { n: layouts.length })
+                      : accentOthers
+                        ? fill(accentOthers === 1 ? (t.layoutAccentAllOne || '1 other layout has a different one') : (t.layoutAccentAllSome || '{n} other layouts have a different one'), { n: accentOthers })
+                        : (t.layoutAccentAllSame || 'they already match')}
+                  </span>
+                </label>
+              )}
 
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.layoutBackground || 'Background'}</span>

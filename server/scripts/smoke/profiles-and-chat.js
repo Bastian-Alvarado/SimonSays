@@ -1539,7 +1539,7 @@ test('the unsaved marker watches every collection a profile covers', () => {
   // Snapshot keys are not always the collection name.
   const keyFor = {
     commands: 'commands', actions: 'streamActions', dock_buttons: 'dockButtons',
-    alerts: 'alertConfigs', layouts: 'layouts', omnibar: 'omnibar', omnibars: 'omnibars', viewers: 'viewers',
+    alerts: 'alertConfigs', layouts: 'layouts', omnibar: 'omnibar', omnibars: 'omnibars', viewers: 'viewers', avatar_sources: 'avatarSources',
     chat_settings: 'chatSettings',
   };
   for (const group of PROFILE_GROUPS) {

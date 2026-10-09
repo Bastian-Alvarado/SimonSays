@@ -412,7 +412,41 @@ function normaliseAvatarLayer(c) {
     // Viewers may dress it up from chat or with channel points.
     dressable: c?.dressable !== false,
     label: String(c?.label ?? '').trim().slice(0, 60),
+    /*
+      A named avatar it wears (cleanAvatarSources): then it draws with that
+      one's settings, the same on every layout that names it, and these stay
+      underneath for if the name goes. Written only when there is one.
+    */
+    ...(AVATAR_SOURCE_ID.test(String(c?.source ?? '')) ? { source: c.source } : {}),
   };
+}
+
+/** How many named avatars a profile keeps. */
+export const MAX_AVATAR_SOURCES = 12;
+const AVATAR_SOURCE_ID = /^as-[a-z0-9]{4,30}$/;
+export const newAvatarSourceId = () => `as-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+/**
+ * The named pixel avatars: one avatar layer's settings under a name, which
+ * any avatar layer of any layout can wear. Change it from one, and every
+ * layer naming it changes too — one avatar across the whole stream, as one
+ * OBS source in many scenes. Names are unique, ignoring case; each one's
+ * settings are an avatar layer's, checked the same way, and never themselves
+ * name another.
+ */
+export function cleanAvatarSources(list) {
+  const out = [];
+  const names = new Set();
+  for (const s of Array.isArray(list) ? list : []) {
+    const id = String(s?.id ?? '');
+    const name = String(s?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!AVATAR_SOURCE_ID.test(id) || !name || names.has(name.toLowerCase()) || out.some((o) => o.id === id)) continue;
+    names.add(name.toLowerCase());
+    const { source, ...config } = normaliseAvatarLayer(s?.config || {});
+    out.push({ id, name, config });
+    if (out.length >= MAX_AVATAR_SOURCES) break;
+  }
+  return out;
 }
 
 /** The words on a Hype Train layer; the train itself is Twitch's. */

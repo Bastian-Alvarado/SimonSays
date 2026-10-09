@@ -620,7 +620,7 @@ test('a layout can have no accent, and one saved before that could keeps its pin
   const stage = fs.readFileSync(new URL('../../web/components/CanvasStage.tsx', SCRIPT_URL), 'utf8');
   assert.ok(stage.includes("['--overlay-accent' as any]: layout.accent || undefined"));
   const view = fs.readFileSync(new URL('../../web/components/views/LayoutsView.tsx', SCRIPT_URL), 'utf8');
-  assert.ok(view.includes("patchLayout({ accent: '' })"), 'there is no way to clear a layout accent');
+  assert.ok(view.includes("onClick={() => setAccent('')}"), 'there is no way to clear a layout accent');
   assert.ok(/accent: '',\s*layers: \[\]/.test(view), 'a new layout does not start with no accent');
 });
 
@@ -866,4 +866,19 @@ test('a saved profile\'s old copies of a look come up to date like the live ones
   const src = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
   assert.ok(src.includes("profiles.rewriteSaved('overlays', 'layouts',\n    (layouts) => (Array.isArray(layouts) ? layouts.map((l) => (Array.isArray(l?.layers) ? { ...l, layers: l.layers.map(looksNow) } : l)) : layouts))"), 'the saved overlay profiles are not brought up to date at startup');
   assert.ok(src.includes("profiles.rewriteSaved('alerts', 'alerts', (list) => (Array.isArray(list) ? list.map(looksNow) : list))"), 'the saved alert profiles are not brought up to date at startup');
+});
+
+test('one accent for every layout of the profile, when the switch says so', () => {
+  const view = fs.readFileSync(new URL('../../web/components/views/LayoutsView.tsx', SCRIPT_URL), 'utf8');
+  const words = fs.readFileSync(new URL('../../web/constants.ts', SCRIPT_URL), 'utf8');
+  // The picker and the clear button both go through it, so the switch decides for both.
+  assert.ok(view.includes('onChange={(e) => setAccent(e.target.value)}') && view.includes("onClick={() => setAccent('')}"), 'the accent is set around the switch');
+  assert.ok(!view.includes("patchLayout({ accent:"), 'an accent change still goes to this layout alone');
+  // On: one save with every layout wearing it. Switched on: this layout's accent goes on all of them there and then.
+  assert.ok(view.includes('if (accentAll) setLayouts(layouts.map((l) => (l.id === next.id ? next : { ...l, accent })));'), 'the accent does not go on every layout');
+  assert.ok(view.includes("if (on && w) setLayouts(layouts.map((l) => (l.id === w.id ? w : { ...l, accent: w.accent || '' })));"), 'switching it on leaves the others as they were');
+  assert.ok(view.includes("localStorage.getItem('layouts_accent_all') === '1'") && view.includes('data-layout-accent-all'), 'the switch is not there, or not remembered');
+  for (const key of ['layoutAccentAll', 'layoutAccentAllOn', 'layoutAccentAllOne', 'layoutAccentAllSome', 'layoutAccentAllSame']) {
+    assert.equal(words.split(`    ${key}: '`).length - 1, 2, `${key} is not in both languages`);
+  }
 });

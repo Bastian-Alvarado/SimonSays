@@ -2,6 +2,12 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.1.2] — 2026-10-09
+
+- "!pregunta" works in any Discord channel and is answered there. Built-in chat words step aside only for a command of your own that has an action.
+- Overlays: a switch gives every layout of the profile the same accent.
+- Named pixel avatars: name an avatar layer and pick that name on other layouts; they share one set of settings.
+
 ## [1.1.1] — 2026-10-08
 
 - Dock Actions on a phone: the page scrolls, so the deck preview shows in full, and the columns, rows and Open deck controls wrap instead of running off the screen.

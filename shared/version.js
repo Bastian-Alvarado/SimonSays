@@ -18,4 +18,4 @@
  * project's name is the third rewrite, not a version: the package files
  * said 3.0.0 until then.
  */
-export const VERSION = '1.1.1';
+export const VERSION = '1.1.2';

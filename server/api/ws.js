@@ -248,7 +248,7 @@ function send(ws, type, payload, meta = {}) {
  * when a thirty-first is added.
  */
 const PROFILED_KEYS = new Set([
-  'commands', 'streamActions', 'dockButtons', 'alertConfigs', 'layouts', 'omnibar', 'omnibars', 'viewers',
+  'commands', 'streamActions', 'dockButtons', 'alertConfigs', 'layouts', 'omnibar', 'omnibars', 'viewers', 'avatarSources',
 ]);
 
 export function broadcast(type, payload) {
@@ -814,6 +814,13 @@ async function handleMessage(ws, raw) {
         // With a variation's id, that variation, at numbers its conditions hold for.
         engine.testAlert(payload.id, payload.variationId);
         return reply({ ok: true });
+
+      case C2S.AVATAR_SOURCES: {
+        // Every layer wearing one draws from the list, so the list goes to every page.
+        const { id, list } = engine.store.avatarSources(payload);
+        broadcast(S2C.CONFIG_PATCH, { avatarSources: list });
+        return reply({ ok: true, ...(id ? { id } : {}) });
+      }
 
       case C2S.ALERT_CONTROL:
         return reply(controlAlerts(payload?.op, payload?.value));

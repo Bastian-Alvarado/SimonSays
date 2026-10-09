@@ -940,6 +940,8 @@ export const useStreamSystem = () => {
     omnilayer: (payload: any) => request(C2S.OMNILAYER, payload),
     /** The Pixel avatars tab: `save`, `create`, `duplicate`, `rename`, `delete`, `reset` or `restore-examples`. Answers, or refuses. */
     pixelAvatars: (payload: any) => request(C2S.PIXEL_AVATARS, payload),
+    /** Named pixel avatars, worn by avatar layers on any layout: `create`, `save`, `rename` or `delete`. Answers, or refuses. */
+    avatarSources: (payload: any) => request(C2S.AVATAR_SOURCES, payload),
     // The Library's own themes: create, save, rename, delete.
     userThemes: (payload: any) => request(C2S.USER_THEMES, payload),
     // Assets go over HTTP rather than the socket: the body is the file, and
@@ -1651,6 +1653,8 @@ export const useStreamSystem = () => {
       omnibars: ((snapshot as any).omnibars || []) as any[],
       countdown: (snapshot as any).countdown as CountdownState | undefined,
       omnilayer: (snapshot as any).omnilayer,
+      // Named pixel avatars: an avatar layer naming one draws with its settings (CanvasStage).
+      avatarSources: ((snapshot as any).avatarSources || []) as { id: string; name: string; config: any }[],
       stopwatch: (snapshot as any).stopwatch as any,
       // Counts kept by hand: { deaths }.
       counters: ((snapshot as any).counters || { deaths: 0 }) as { deaths: number },

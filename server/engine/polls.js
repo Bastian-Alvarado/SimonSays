@@ -272,7 +272,7 @@ function onCommand(chat) {
   const word = said.split(/\s+/)[0];
   if (word.toLowerCase() !== command.trigger) return false;
   if (!(chat.isMod || chat.isBroadcaster)) return true;
-  if (commands.match(collection('commands', []).get() || [], said)) return true;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), said, chat.platform)) return true;
 
   const rest = said.slice(word.length).trim();
   const usage = `Escríbela así: ${command.trigger} Pregunta | respuesta | respuesta`;

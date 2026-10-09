@@ -138,11 +138,16 @@ plan.resetAnswerForTests();
 const commandsStore = collection('commands', []);
 const commandsBefore = commandsStore.get();
 commandsStore.set([...(commandsBefore || []), { id: 'own-plan', enabled: true, triggers: ['!plan'] }]);
+// One that runs: an action linked to it. A command left without one does not take the word (commands.ownCommandAnswers).
+const ownActions = collection('actions', []);
+const ownActionsBefore = ownActions.get();
+ownActions.set([...(ownActionsBefore || []), { id: 'act-own-plan', name: 'Own', enabled: true, trigger: { type: 'command_trigger', category: 'command', config: { commandId: 'own-plan' } }, actions: [] }]);
 const saidMid = said.length;
 bus.emit(EVENTS.CHAT, normaliseChat({ platform: 'twitch', user: 'fan', msg: '!plan' }));
 await settle();
 const answeredOverOwn = said.slice(saidMid);
 commandsStore.set(commandsBefore);
+ownActions.set(ownActionsBefore);
 
 test('"!plan" in chat is answered with what is on now and next, once, and never over a command of your own', () => {
   assert.deepEqual(answered, ['Ahora: Among Us · Después: Preguntas'], 'the chat asking twice at once was answered twice, or not at all');

@@ -62,7 +62,7 @@ test('with a house avatar, it draws wherever none is named or the named one is g
 
 test('everything that draws an unnamed avatar asks for it the same way', () => {
   const uses = {
-    'web/components/CanvasStage.tsx': 'kitFor(cfg.character,',
+    'web/components/CanvasStage.tsx': 'kitFor(avatarCfg.character,',
     'web/components/AvatarLayerPanel.tsx': 'kitFor(config.character, pixelAvatars)',
     'web/components/VoiceLayer.tsx': 'kitFor(look?.kit, pixelAvatars)',
     'web/components/VoicePicturesEditor.tsx': 'kitFor(look.kit, pixelAvatars)',

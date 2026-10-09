@@ -108,11 +108,14 @@ leveling.setConfig({ chat: { ...leveling.getConfig().chat, youtube: true } });
 
 // A command of the streamer's own on the same word answers instead.
 engine.store.saveCommand({ id: 'cmd-own-top', name: 'Own top', triggers: ['!top'], enabled: true, permissions: { anyone: true }, globalCooldown: 0, userCooldown: 0, actionId: '' });
+// One that runs: an action linked to it. A command left without one does not take the word (commands.ownCommandAnswers).
+engine.store.saveAction({ id: 'act-own-top', name: 'Own top', enabled: true, trigger: { type: 'command_trigger', category: 'command', config: { commandId: 'cmd-own-top' } }, actions: [] });
 const beforeOwn = answers.length;
 chat({ user: 'Otro2', userId: 'o2', msg: '!top' });
 await step();
 const ownWins = answers.length - beforeOwn;
 engine.store.deleteCommand('cmd-own-top');
+engine.store.deleteAction('act-own-top');
 
 levelChat.stopLevelChat();
 bus.off(EVENTS.EVENT, onEvent);

@@ -207,7 +207,7 @@ async function onChat(chat) {
   const said = String(chat.msg ?? '').trim();
   const [first, ...rest] = said.split(/\s+/);
   if ((first || '').toLowerCase() !== cfg.word.toLowerCase()) return;
-  if (commands.match(collection('commands', []).get() || [], said)) return;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), said, chat.platform)) return;
   const now = Date.now();
   const me = `${chat.platform}:${chat.userId}`;
   if (now - (asked.get(me) || 0) < PERSON_EVERY_MS) return;

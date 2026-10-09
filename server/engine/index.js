@@ -40,7 +40,7 @@ import * as userThemes from './user-themes.js';
 import * as twitchExtras from './twitch-extras.js';
 import * as streamPlan from './plan.js';
 import { getAnnounce } from './announce.js';
-import { DEFAULT_LAYOUTS, normaliseLayouts, settingsBehind, readSettings, lookColour, SETTINGS_VERSION, setChatFallback } from './layouts.js';
+import { DEFAULT_LAYOUTS, normaliseLayouts, settingsBehind, readSettings, lookColour, SETTINGS_VERSION, setChatFallback, cleanAvatarSources, newAvatarSourceId, MAX_AVATAR_SOURCES } from './layouts.js';
 import { supersededLook, looksNow } from '../../shared/looks-history.js';
 import * as profiles from './profiles.js';
 import * as sceneTypes from './scene-types.js';
@@ -465,6 +465,8 @@ export function initEngine(platformServices) {
     omnibar: collection('omnibar', DEFAULT_OMNIBAR),
     /* Every bar but Main, each with its own slots, named so a layer can pick one. */
     omnibars: collection('omnibars', []),
+    // Named pixel avatars, which avatar layers on any layout can wear (layouts.js cleanAvatarSources).
+    avatarSources: collection('avatar_sources', []),
     // Which actions appear on the Dock Actions surface, and in what order.
     // Server-side so the same buttons show up on every device, like the rest
     // of the configuration.
@@ -660,6 +662,7 @@ export function initEngine(platformServices) {
     omnibar: (v) => store.setOmnibar(v),
     omnibars: (v) => store.setOmnibars(v),
     viewers: (v) => store.setViewers(v),
+    avatar_sources: (v) => db.avatarSources.set(cleanAvatarSources(v)),
   });
   // The saved overlay profiles' chat layers, filled out the same way as the live ones above —
   // done to the active one's saved copy too, so it does not read as unsaved for something nobody did.
@@ -760,7 +763,7 @@ export function initEngine(platformServices) {
     going with a deleted message, and the queue when the stream ends. See
     questions.js.
   */
-  questionsModule.initQuestions({ twitch: services.twitch });
+  questionsModule.initQuestions({ twitch: services.twitch, discord: services.discord });
 
   bus.on(EVENTS.CHANNEL, onChannel);
 
@@ -1322,6 +1325,7 @@ export function snapshot() {
     viewers: db.viewers.get(),
     omnibar: db.omnibar.get(),
     omnibars: db.omnibars.get(),
+    avatarSources: db.avatarSources.get(),
     layouts: db.layouts.get(),
     rewards: db.rewards.get(),
     plan: streamPlan.getPlan(),
@@ -1550,6 +1554,47 @@ export const store = {
     const clean = cleanOmnibar(next);
     db.omnibar.set(clean);
     return clean;
+  },
+
+  /**
+   * The named pixel avatars: `create` one from a layer's settings under a
+   * name, `save` its settings (every layer wearing it changes), `rename`
+   * it, or `delete` it — the layers that wore it draw with their own again.
+   * Answers with the list, and the new one's id when one was made.
+   */
+  avatarSources(payload = {}) {
+    const list = db.avatarSources.get() || [];
+    const name = String(payload.name ?? '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    const taken = (n, id) => list.some((s) => s.id !== id && s.name.toLowerCase() === n.toLowerCase());
+    const found = () => {
+      const s = list.find((x) => x.id === payload.id);
+      if (!s) throw refusal('avatar_source_gone', 'that named avatar is no longer there');
+      return s;
+    };
+    switch (payload.op) {
+      case 'create': {
+        if (!name) throw refusal('avatar_source_name_empty', 'a named avatar needs a name');
+        if (taken(name)) throw refusal('avatar_source_name_taken', `there is already an avatar called "${name}"`, { name });
+        if (list.length >= MAX_AVATAR_SOURCES) throw refusal('avatar_sources_full', `there are already ${MAX_AVATAR_SOURCES} named avatars`, { max: MAX_AVATAR_SOURCES });
+        const id = newAvatarSourceId();
+        return { id, list: db.avatarSources.set(cleanAvatarSources([...list, { id, name, config: payload.config }])) };
+      }
+      case 'save': {
+        const s = found();
+        return { list: db.avatarSources.set(cleanAvatarSources(list.map((x) => (x.id === s.id ? { ...x, config: payload.config } : x)))) };
+      }
+      case 'rename': {
+        const s = found();
+        if (!name) throw refusal('avatar_source_name_empty', 'a named avatar needs a name');
+        if (taken(name, s.id)) throw refusal('avatar_source_name_taken', `there is already an avatar called "${name}"`, { name });
+        return { list: db.avatarSources.set(cleanAvatarSources(list.map((x) => (x.id === s.id ? { ...x, name } : x)))) };
+      }
+      case 'delete': {
+        found();
+        return { list: db.avatarSources.set(list.filter((x) => x.id !== payload.id)) };
+      }
+      default: throw refusal('unknown_request', `unknown request "${payload.op}"`);
+    }
   },
 
   /**

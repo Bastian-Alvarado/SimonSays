@@ -252,7 +252,7 @@ function onChat(chat) {
   const said = String(chat.msg).trim();
   if (said.split(/\s+/)[0].toLowerCase() !== s.keyword) return;
   // A command of the streamer's own on the same word answers instead.
-  if (commands.match(collection('commands', []).get() || [], said)) return;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), said, chat.platform)) return;
   const roles = chat.raw?.roles || [];
   enter({ platform: chat.platform, userId: chat.userId, name: chat.user, avatar: chat.avatar, isSub: Boolean(chat.isSub) || (chat.platform === 'discord' && subRoles().some((r) => roles.includes(r))), roles });
 }

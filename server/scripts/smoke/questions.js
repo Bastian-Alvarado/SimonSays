@@ -155,10 +155,15 @@ questions.resetCooldownsForTests();
 const commandsStore = collection('commands', []);
 const commandsBefore = commandsStore.get();
 commandsStore.set([...(commandsBefore || []), { id: 'own-pregunta', enabled: true, triggers: ['!pregunta'] }]);
+// One that runs: an action linked to it. A command left without one does not take the word (commands.ownCommandAnswers).
+const ownActions = collection('actions', []);
+const ownActionsBefore = ownActions.get();
+ownActions.set([...(ownActionsBefore || []), { id: 'act-own-pregunta', name: 'Own', enabled: true, trigger: { type: 'command_trigger', category: 'command', config: { commandId: 'own-pregunta' } }, actions: [] }]);
 chat('!pregunta ¿me respondes tú?', { user: 'Ana', userId: 'u-ana', id: 'msg-6' });
 await settle();
 const overOwn = items().length;
 commandsStore.set(commandsBefore);
+ownActions.set(ownActionsBefore);
 
 // Turned off, and on another word.
 questions.resetCooldownsForTests();
@@ -291,3 +296,68 @@ test('how viewers ask travels with a backup; what they asked does not', () => {
   assert.ok(backup.includes("{ name: 'questions_settings' }"));
   assert.ok(/EXCLUDED = \[[^\]]*'questions'/.test(backup));
 });
+
+// ------------------------------------------------------------ from Discord, and an own command that does nothing
+
+{
+  const { ownCommandAnswers } = await import('../../engine/commands.js');
+  const { discordSent, normaliseChat } = await import('./harness.js');
+  const queue = () => questions.getQuestions().items;
+  const fromDiscord = (msg, over = {}) => bus.emit('discord:message_elsewhere', normaliseChat({
+    platform: 'discord', user: 'I_Am_Streamer', userId: 'd-rowan', msg, raw: { channelId: '1300000000000000001', messageId: '1300000000000000002' }, ...over,
+  }));
+
+  questions.clear();
+  questions.resetCooldownsForTests();
+  questions.setSettings({ ask: { ...questions.DEFAULT_ASK } });
+
+  // The live setup on 2026-10-08: a "Preguntas" command on !q, !preguntar and !pregunta, with no action linked.
+  const commandsStore = collection('commands', []);
+  const commandsBefore = commandsStore.get();
+  commandsStore.set([...(commandsBefore || []), { id: 'empty-preguntas', name: 'Preguntas', enabled: true, triggers: ['!q', '!preguntar', '!pregunta'], discord: true }]);
+  const sentBefore = discordSent.length;
+  fromDiscord('!pregunta que es esto? prueba');
+  await settle();
+  const askedInDiscord = queue().map((q) => [q.user, q.platform, q.text]);
+  const answeredThere = discordSent.slice(sentBefore);
+  commandsStore.set(commandsBefore);
+
+  // Turned off on Connections: commands in the rest of the server do nothing, and neither does this.
+  questions.clear();
+  questions.resetCooldownsForTests();
+  const { doubles } = await import('./harness.js');
+  doubles.discordCommandsEverywhere = false;
+  fromDiscord('!pregunta ¿y con los comandos apagados?');
+  await settle();
+  delete doubles.discordCommandsEverywhere;
+  const whileCommandsOff = queue().length;
+
+  test('an own command with no action does not silence it, and "!pregunta" works in any Discord channel, answered there', () => {
+    assert.deepEqual(askedInDiscord, [['I_Am_Streamer', 'discord', 'que es esto? prueba']], 'the question asked in Discord went nowhere');
+    assert.equal(answeredThere.length, 1, 'nobody was told the question went in');
+    const [channelId, text, , , , extra] = answeredThere[0];
+    assert.equal(channelId, '1300000000000000001', 'the answer went to another channel');
+    assert.equal(text, '¡Pregunta recibida, @I_Am_Streamer!');
+    assert.deepEqual(extra.message_reference?.message_id, '1300000000000000002', 'the answer is not a reply to the question');
+    assert.deepEqual(extra.allowed_mentions, { parse: [] });
+    assert.equal(whileCommandsOff, 0, 'it answered with Discord commands turned off');
+  });
+
+  test('a built-in word steps aside only for an own command that would run', () => {
+    const own = [{ id: 'c1', enabled: true, triggers: ['!top'] }, { id: 'c2', enabled: true, triggers: ['!plan'], discord: false }];
+    const linked = (commandId, enabled = true) => ({ id: `a-${commandId}`, enabled, trigger: { type: 'command_trigger', config: { commandId } } });
+    assert.equal(ownCommandAnswers(own, [], '!top', 'twitch'), false, 'a command with no action took the word');
+    assert.equal(ownCommandAnswers(own, [linked('c1', false)], '!top', 'twitch'), false, 'a command whose action is off took the word');
+    assert.equal(ownCommandAnswers(own, [linked('c1')], '!top', 'twitch'), true);
+    assert.equal(ownCommandAnswers(own, [linked('c2')], '!plan', 'twitch'), true);
+    assert.equal(ownCommandAnswers(own, [linked('c2')], '!plan', 'discord'), false, 'a command kept off Discord took the word there');
+    assert.equal(ownCommandAnswers(own, [linked('c1')], '!rank', 'twitch'), false);
+    // Every built-in word asks the same question the command handler does.
+    for (const file of ['giveaway.js', 'plan.js', 'points.js', 'polls.js', 'profile-card.js', 'questions.js']) {
+      const src = read(`../engine/${file}`);
+      assert.ok(src.includes('commands.ownCommandAnswers(') && !src.includes("commands.match(collection('commands'"), `${file} steps aside for a command that does nothing`);
+    }
+    const levels = read('../leveling/chat.js');
+    assert.ok(levels.includes('commands.ownCommandAnswers(') && !levels.includes("commands.match(collection('commands'"), 'the levels step aside for a command that does nothing');
+  });
+}

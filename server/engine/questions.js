@@ -255,7 +255,7 @@ function onChat(chat) {
   const word = said.split(/\s+/)[0].toLowerCase();
   if (word !== ask.trigger) return;
   // A command of the streamer's own on the same word answers instead.
-  if (commands.match(collection('commands', []).get() || [], said)) return;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), said, chat.platform)) return;
   const text = said.slice(said.split(/\s+/)[0].length).trim();
   if (!text) return;
   const who = `${chat.platform}:${chat.userId || chat.user}`.toLowerCase();
@@ -264,10 +264,24 @@ function onChat(chat) {
   lastAsked.set(who, now);
   const { added } = addQuestion({ user: chat.user, userId: chat.userId, msgId: chat.id, platform: chat.platform, text });
   if (added) log.info(`question from ${chat.user} (${ask.trigger})`);
-  if (added && ask.reply && ask.replyText) {
-    Promise.resolve(deps.twitch?.say?.(fill(ask.replyText, { user: chat.user }), { useBot: true }))
-      .catch((err) => log.warn(`could not answer ${ask.trigger}: ${err.message}`));
-  }
+  if (added && ask.reply && ask.replyText) answer(chat, ask);
+}
+
+/**
+ * "¡Pregunta recibida!": in Discord, a reply to the message it was asked in,
+ * in that channel; from anywhere else, in Twitch chat, as it always was.
+ */
+function answer(chat, ask) {
+  const discordChat = chat.platform === 'discord' && chat.raw?.channelId;
+  const name = discordChat && deps.discord?.sanitise ? deps.discord.sanitise(chat.user) : chat.user;
+  const text = fill(ask.replyText, { user: name });
+  const sent = discordChat
+    ? deps.discord?.sendMessage?.(chat.raw.channelId, text, null, null, undefined, {
+      allowed_mentions: { parse: [] },
+      ...(chat.raw.messageId ? { message_reference: { message_id: chat.raw.messageId, fail_if_not_exists: false } } : {}),
+    })
+    : deps.twitch?.say?.(text, { useBot: true });
+  Promise.resolve(sent).catch((err) => log.warn(`could not answer ${ask.trigger}: ${err.message}`));
 }
 
 /** The stream is over: keep the queue, or clear what the setting says to. */
@@ -304,12 +318,27 @@ export function control(payload = {}) {
 
 // ------------------------------------------------------------------ wiring
 
-/** `d.twitch.say` answers "!pregunta". Passed in, so the tests can listen. */
+/**
+ * `d.twitch.say` and `d.discord.sendMessage` answer "!pregunta". Passed in, so
+ * the tests can listen.
+ */
 export function initQuestions(d = {}) {
   store = collection('questions', DEFAULT_QUESTIONS);
   settingsStore = collection('questions_settings', DEFAULT_QUESTION_SETTINGS);
   deps = d;
   bus.on(EVENTS.CHAT, onChat);
+  /*
+    And any other channel of the Discord server, as commands are (unless
+    that is turned off on Connections). Only the stream's chat channel used
+    to count, so "!pregunta" in #general did nothing at all. A questions
+    channel takes what is posted there without the word (discord-questions.js),
+    and passes over anything starting with "!" — so one asked there is not
+    added twice.
+  */
+  bus.on('discord:message_elsewhere', (chat) => {
+    if (deps.discord?.commandsEverywhere?.() === false) return;
+    onChat(chat);
+  });
   bus.on(EVENTS.CHAT_DELETE, onDelete);
   bus.on(EVENTS.EVENT, onEvent);
 }

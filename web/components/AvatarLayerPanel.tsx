@@ -17,6 +17,7 @@ import { PLAYER_COLOURS } from '../../shared/players.js';
 import { pixelFaceChoices, pixelFaceName, pixelOutfitName, pixelExtraName, pixelFaceCrop, pixelActionLabel } from './pixelNames';
 import type { PixelAvatarDef } from '../types';
 import { TalkWithSelect, TalkChoices } from './TalkWithSelect';
+import { fill } from '../words';
 
 interface Props {
   config: Record<string, any>;
@@ -366,6 +367,146 @@ export const AvatarLayerPanel = ({ config, patch, choices, listening, accent, pi
           className={field}
         />
       </label>
+    </div>
+  );
+};
+
+/** A named pixel avatar: one avatar layer's settings under a name (server/engine/layouts.js cleanAvatarSources). */
+export interface AvatarSource { id: string; name: string; config: Record<string, any> }
+
+interface SectionProps extends Omit<Props, 'config' | 'patch'> {
+  /** This layer's own settings, with `source` when it wears a named avatar. */
+  layerConfig: Record<string, any>;
+  /** Change this layer's own settings. */
+  patchLayer: (next: Record<string, any>) => void;
+  /** Replace this layer's own settings outright: unlinking writes the named avatar's in. */
+  setLayer: (config: Record<string, any>) => void;
+  sources: AvatarSource[];
+  /** How many avatar layers on this profile's layouts wear it, this one left out. */
+  othersWearing: (id: string) => number;
+  /** The named avatars' requests: create, save, rename, delete. Answers, or refuses. */
+  request: (payload: Record<string, any>) => Promise<any>;
+  /** A refusal in the screen's language. */
+  why: (err: any) => string;
+}
+
+/**
+ * An avatar layer's settings, or the named avatar's it wears.
+ *
+ * Named, an avatar becomes a source of its own, the way one OBS source sits
+ * in many scenes: every avatar layer on any layout that wears the name draws
+ * with the same settings, and changing them from any one changes them all.
+ * The layer keeps its own settings underneath, so taking the name off — or
+ * the name going — leaves it drawing as it was, with the shared ones copied in.
+ */
+export const AvatarLayerSection = ({ layerConfig, patchLayer, setLayer, sources, othersWearing, request, why, ...panel }: SectionProps) => {
+  const shared = sources.find((s) => s.id === layerConfig.source) || null;
+  const [naming, setNaming] = useState('');
+  const [renaming, setRenaming] = useState('');
+  const [problem, setProblem] = useState('');
+  // What was just changed, shown at once rather than after the round trip; the server's copy takes over when it lands.
+  const [draft, setDraft] = useState<Record<string, any> | null>(null);
+  useEffect(() => { setDraft(null); }, [shared?.id, JSON.stringify(shared?.config || null)]);
+  useEffect(() => { setRenaming(shared?.name || ''); setProblem(''); }, [shared?.id, shared?.name]);
+
+  const ask = async (payload: Record<string, any>) => {
+    setProblem('');
+    try {
+      return await request(payload);
+    } catch (err: any) {
+      setProblem(why(err));
+      return null;
+    }
+  };
+  const { source, ...own } = layerConfig;
+  const create = async () => {
+    const answer = await ask({ op: 'create', name: naming, config: own });
+    if (answer?.id) { patchLayer({ source: answer.id }); setNaming(''); }
+  };
+  // Back to a layer of its own, as the named avatar looks now; the last one to leave a name takes the name away with it.
+  const unlink = () => {
+    if (!shared) return;
+    setLayer({ ...shared.config });
+    if (othersWearing(shared.id) === 0) ask({ op: 'delete', id: shared.id });
+  };
+  const rename = () => {
+    if (shared && renaming.trim() && renaming.trim() !== shared.name) ask({ op: 'rename', id: shared.id, name: renaming });
+  };
+  // Every avatar layer wearing it, this one included when it does.
+  const wearing = (id: string) => othersWearing(id) + (shared?.id === id ? 1 : 0);
+  const config = shared ? (draft || shared.config) : layerConfig;
+  const patch = (next: Record<string, any>) => {
+    if (!shared) return patchLayer(next);
+    const merged = { ...(draft || shared.config), ...next };
+    setDraft(merged);
+    ask({ op: 'save', id: shared.id, config: merged });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5" data-avatar-source>
+        <span className={label}>{panel.t.avatarSource || 'Named avatar'}</span>
+        <select
+          value={shared?.id || ''}
+          onChange={(e) => (e.target.value ? patchLayer({ source: e.target.value }) : unlink())}
+          className={field}
+          data-avatar-source-pick
+        >
+          <option value="">{panel.t.avatarSourceNone || 'Only this layer'}</option>
+          {sources.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name} · {wearing(s.id) === 1 ? (panel.t.avatarSourceLayerOne || '1 layer') : fill(panel.t.avatarSourceLayers || '{n} layers', { n: wearing(s.id) })}
+            </option>
+          ))}
+        </select>
+        {shared ? (
+          <>
+            <p className="text-[9px] text-zinc-500 leading-snug" data-avatar-source-note>
+              {fill(othersWearing(shared.id) === 0
+                ? (panel.t.avatarSourceAlone || 'These settings are «{name}»\'s. Pick it on another avatar layer and it will look the same there.')
+                : othersWearing(shared.id) === 1
+                  ? (panel.t.avatarSourceSharedOne || 'These settings are «{name}»\'s: changing them changes it on 1 other layer too.')
+                  : (panel.t.avatarSourceShared || 'These settings are «{name}»\'s: changing them changes it on {n} other layers too.'), { name: shared.name, n: othersWearing(shared.id) })}
+            </p>
+            <div className="flex gap-1.5">
+              <input
+                value={renaming}
+                onChange={(e) => setRenaming(e.target.value)}
+                onBlur={rename}
+                onKeyDown={(e) => { if (e.key === 'Enter') rename(); }}
+                maxLength={40}
+                className={`${field} flex-1 min-w-0`}
+                data-avatar-source-name
+              />
+              <button onClick={unlink} className="px-2 rounded-md border border-zinc-800 text-[8px] font-black uppercase tracking-widest text-zinc-400 hover:text-white whitespace-nowrap" data-avatar-source-unlink>
+                {panel.t.avatarSourceUnlink || 'Make it its own'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex gap-1.5">
+            <input
+              value={naming}
+              onChange={(e) => setNaming(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && naming.trim()) create(); }}
+              placeholder={panel.t.avatarSourceNamePlaceholder || 'Name it to use it on other layouts'}
+              maxLength={40}
+              className={`${field} flex-1 min-w-0`}
+              data-avatar-source-new
+            />
+            <button
+              onClick={create}
+              disabled={!naming.trim()}
+              className="px-2 rounded-md border border-zinc-800 text-[8px] font-black uppercase tracking-widest text-zinc-400 hover:text-white disabled:opacity-40 whitespace-nowrap"
+              data-avatar-source-create
+            >
+              {panel.t.avatarSourceCreate || 'Name it'}
+            </button>
+          </div>
+        )}
+        {problem && <p className="text-[9px] text-rose-400" data-avatar-source-problem>{problem}</p>}
+      </div>
+      <AvatarLayerPanel {...panel} config={config} patch={patch} />
     </div>
   );
 };

@@ -101,7 +101,7 @@ function onChat(chat) {
   const answer = services[chat.platform];
   if (!answer || (chat.platform === 'youtube' && !words.youtube)) return;
   // A command of the streamer's own on the same word answers instead.
-  if (commands.match(collection('commands', []).get() || [], said)) return;
+  if (commands.ownCommandAnswers(collection('commands', []).get(), collection('actions', []).get(), said, chat.platform)) return;
 
   const now = services.now();
   const who = `${chat.platform}:${chat.userId || chat.user}:${which}`;

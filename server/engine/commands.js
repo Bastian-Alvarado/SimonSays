@@ -25,6 +25,26 @@ export function isPermitted(command, user) {
 }
 
 /**
+ * Would one of the streamer's own commands answer this message?
+ *
+ * The built-in words ("!pregunta", "!puntos", "!nivel" and the rest) step
+ * aside for a command of the streamer's own with the same word. Only for one
+ * that would do something, though, the way the command handler decides
+ * (engine/index.js onChat): it is on, it is allowed where this was said, and
+ * an action is linked to it. A command made and left without an action, or
+ * kept off Discord, used to take the word and answer nothing — the built-in
+ * fell silent behind a command that did not run.
+ */
+export function ownCommandAnswers(commandList, actionList, message, platform) {
+  const hit = match(commandList || [], message);
+  if (!hit) return false;
+  if (platform === 'discord' && hit.command.discord === false) return false;
+  return (actionList || []).some((a) => a.enabled
+    && a.trigger?.type === 'command_trigger'
+    && a.trigger.config?.commandId === hit.command.id);
+}
+
+/**
  * Find the command whose trigger starts this message.
  *
  * Triggers match on the first whitespace-delimited word, case-insensitively.
