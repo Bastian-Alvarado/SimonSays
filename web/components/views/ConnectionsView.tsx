@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 import React, { useState, useEffect } from 'react';
+import { refusalWords } from '../../words';
 import { Button } from '../Button';
 import { ThemeConfig, RelayConfig, SpotifyState } from '../../types';
 import { AlertTriangle, Bot, Copy, ExternalLink, Info, LogOut, Mic, Monitor, Wifi, WifiOff, X, ToggleRight, ToggleLeft, Hash, Server, Camera } from 'lucide-react';
@@ -239,7 +240,7 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({
     } catch (err: any) {
       // The phone's own words, not a generic failure: a wrong IP and a
       // sleeping phone need different fixes.
-      setDroidcamResult({ ok: false, text: err?.message || String(err) });
+      setDroidcamResult({ ok: false, text: refusalWords(t, err) || String(err?.message || err) });
     }
   };
 

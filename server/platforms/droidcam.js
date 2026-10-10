@@ -28,6 +28,7 @@
 
 import { collection } from '../core/store.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 
 const log = createLogger('droidcam');
 
@@ -90,23 +91,30 @@ export function setSettings(patch) {
  */
 async function request(path, method = 'GET') {
   const root = base();
-  if (!root) throw new Error('DroidCam: no address set — add the phone on the Connections screen');
+  if (!root) throw refusal('droidcam_no_address', 'DroidCam: no address set — add the phone on the Connections screen');
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const res = await fetch(`${root}${path}`, { method, signal: controller.signal });
-    if (!res.ok) throw new Error(`DroidCam ${res.status} on ${method} ${path}`);
+    if (!res.ok) throw refusal('droidcam_http', `DroidCam ${res.status} on ${method} ${path}`, { status: res.status });
     reachable = true;
     lastError = '';
     const text = await res.text();
     try { return text ? JSON.parse(text) : null; } catch { return text; }
   } catch (err) {
     reachable = false;
-    lastError = err.name === 'AbortError'
-      ? `no answer from ${root} — is DroidCam open and the phone awake?`
-      : err.message;
-    throw new Error(lastError);
+    /*
+      Said with a code, so the screen says it in its own language: no answer
+      (asleep, DroidCam closed), an answer that was an error, or not reached
+      at all — with the network's own reason, which is not translated.
+    */
+    const coded = err.code === 'droidcam_http' ? err
+      : err.name === 'AbortError'
+        ? refusal('droidcam_no_answer', `no answer from ${root} — is DroidCam open and the phone awake?`, { address: root })
+        : refusal('droidcam_unreachable', `could not reach ${root}: ${err.message}`, { address: root, why: err.message });
+    lastError = coded.message;
+    throw coded;
   } finally {
     clearTimeout(timer);
   }
@@ -186,7 +194,7 @@ async function nudge(name, delta) {
 async function applyValue(name, value, deviceInfo, specArg) {
   const spec = specArg || VALUES[name];
   let n = Number(value);
-  if (!Number.isFinite(n)) throw new Error(`DroidCam: "${value}" is not a number for ${name}`);
+  if (!Number.isFinite(n)) throw refusal('droidcam_not_number', `DroidCam: "${value}" is not a number for ${name}`, { value: String(value), name });
 
   if (spec.range) {
     // The phone clamps too — sending 99 lands at its maximum and still answers

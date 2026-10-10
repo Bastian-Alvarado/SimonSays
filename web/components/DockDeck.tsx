@@ -222,7 +222,7 @@ export const DockDeck = ({ grid, remember, railExtras, ...gridProps }: Props) =>
         onPointerCancel={() => { from.current = null; }}
         onClickCapture={onClickCapture}
       >
-        <DockActionsGrid {...gridProps} page={page} pages={pages} />
+        <DockActionsGrid {...gridProps} page={page} pages={pages} anchor={pages > 1 ? (onTop ? 'top' : 'bottom') : undefined} />
       </div>
       {!onTop && pager}
     </div>

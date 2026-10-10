@@ -9,7 +9,7 @@ import { THEMES } from '../../constants';
 import { Palette, Sun, Moon, Check, Languages, Globe, Save, Upload, Download, Database, Info, RefreshCw } from 'lucide-react';
 import { Button } from '../Button';
 import { VERSION } from '../../../shared/version.js';
-import { fill } from '../../words';
+import { fill, refusalWords } from '../../words';
 
 interface SettingsViewProps {
   activeTheme: ThemeConfig;
@@ -87,7 +87,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setNote(`${t.exportDone || 'Saved'}: ${count} ${t.exportCollections || 'collections'}`
         + (stripped ? ` — ${t.exportSecretsNote || 'sign-ins are not included; connect again on the new machine'}` : ''));
     } catch (err: any) {
-      setNote(`${t.exportFailed || 'Export failed'}: ${err?.message || err}`);
+      setNote(`${t.exportFailed || 'Export failed'}: ${refusalWords(t, err) || err?.message || err}`);
     } finally {
       setBusy(null);
     }
@@ -125,7 +125,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         setNote(`${t.importDone || 'Restored'} ${n} ${t.exportCollections || 'collections'} — ${t.importReloading || 'reloading'}…`);
         setTimeout(() => window.location.reload(), 1200);
       } catch (err: any) {
-        setNote(`${t.importFailed || 'Import failed'}: ${err?.message || err}`);
+        setNote(`${t.importFailed || 'Import failed'}: ${refusalWords(t, err) || err?.message || err}`);
       } finally {
         setBusy(null);
       }

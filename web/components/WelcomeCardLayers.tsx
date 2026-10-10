@@ -11,6 +11,7 @@
  * whatever size the preview is drawn at; the corner buttons do the sums.
  */
 import React, { useEffect, useState } from 'react';
+import { refusalWords } from '../words';
 import { Plus, Trash2, Upload, Images, ArrowUp, ArrowDown, Image as ImageIcon, Server, Smile, Square } from 'lucide-react';
 import { MAX_CARD_LAYERS } from '../../shared/card-css.js';
 import type { WelcomeCard, WelcomeCardLayer } from './WelcomeCardEditor';
@@ -74,7 +75,7 @@ export const WelcomeCardLayers = ({ card, set, listAssets, uploadAsset, customEm
       if (saved?.url) patch(i, { src: saved.url });
       setError('');
     } catch (err: any) {
-      setError(err?.message || String(err));
+      setError(refusalWords(t, err) || String(err?.message || err));
     }
   };
 

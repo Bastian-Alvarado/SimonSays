@@ -11,6 +11,7 @@
  * here is exactly what Discord gets.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import { refusalWords } from '../words';
 import { Image as ImageIcon, Loader2, AlertTriangle, Palette } from 'lucide-react';
 import { StyleFieldsPanel } from './StyleFieldsPanel';
 import { WelcomeCardChoices } from './WelcomeCardChoices';
@@ -157,7 +158,7 @@ export const WelcomeCardEditor = ({ kind, card: incoming, onChange, preview, onP
         setNotes(res?.notes || []);
         if (res?.image) { setImage(res.image); onPreview?.(res.image); }
       } catch (err: any) {
-        if (ticket === asked.current) setError(err?.message || String(err));
+        if (ticket === asked.current) setError(refusalWords(t, err) || String(err?.message || err));
       } finally {
         if (ticket === asked.current) setBusy(false);
       }

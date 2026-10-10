@@ -268,6 +268,13 @@ export const AvatarLayerPanel = ({ config, patch, choices, listening, accent, pi
         <AvatarColourSelect colouring={colouring} set={patch} t={t} />
       </div>
       <AvatarColourExtras colouring={colouring} ownColour={config.ownColour} set={patch} accent={accent} t={t} />
+      {/* A line round the whole drawing, for an avatar on a dark background. */}
+      <div className="flex items-center gap-2" data-avatar-outline-control>
+        <Check on={Boolean(config.outline)} set={(v) => patch({ outline: v ? (config.outline || '#ffffff') : '' })} text={t.avatarOutline || 'Outline'} />
+        {config.outline && (
+          <input type="color" value={config.outline} onChange={(e) => patch({ outline: e.target.value })} title={t.avatarOutlineColour || 'Outline colour'} className="w-6 h-6 bg-transparent border border-zinc-800 rounded cursor-pointer" />
+        )}
+      </div>
 
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {plainExtras.map((e) => <Check key={e.id} on={extras.includes(e.id)} set={(v) => setExtra(e.id, v)} text={e.name} />)}

@@ -29,6 +29,7 @@
 import { collection } from '../core/store.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 import * as discord from '../platforms/discord.js';
 import * as leveling from '../leveling/index.js';
 import * as twitch from '../platforms/twitch.js';
@@ -518,8 +519,8 @@ export async function findYoutube(query) {
  * Role Management screen, and bring their roles in line at once.
  */
 export async function link({ platform, platformId, platformName, discordId, discordName, discordAvatar } = {}) {
-  if (!PLATFORMS.includes(platform)) throw new Error('only Twitch, TikTok and YouTube accounts can be linked');
-  if (!/^\d{5,25}$/.test(String(discordId ?? '').trim())) throw new Error('that is not a Discord member id');
+  if (!PLATFORMS.includes(platform)) throw refusal('link_platform_unsupported', 'only Twitch, TikTok and YouTube accounts can be linked');
+  if (!/^\d{5,25}$/.test(String(discordId ?? '').trim())) throw refusal('link_not_discord_id', 'that is not a Discord member id');
   const stream = accountFrom({ platform, platformId, platformName });
   const member = accountFrom({ platform: 'discord', platformId: discordId, platformName: discordName, avatar: discordAvatar });
   return joinAccounts(stream, member);
@@ -534,10 +535,10 @@ const ID_RULES = {
 
 /** An account as given: its platform, its id the way chat files it, and a name. Throws when it cannot be one. */
 function accountFrom({ platform, platformId, platformName, avatar } = {}) {
-  if (!ALL_PLATFORMS.includes(platform)) throw new Error('only Discord, Twitch, TikTok and YouTube accounts can be linked');
+  if (!ALL_PLATFORMS.includes(platform)) throw refusal('link_account_unsupported', 'only Discord, Twitch, TikTok and YouTube accounts can be linked');
   // Chat files a TikTok account under its @handle.
   const id = String(platformId ?? '').trim().replace(platform === 'tiktok' ? /^@/ : /^$/, '');
-  if (!ID_RULES[platform].test(id)) throw new Error(`that is not a ${PLATFORM_NAMES[platform]} account`);
+  if (!ID_RULES[platform].test(id)) throw refusal('link_bad_account', `that is not a ${PLATFORM_NAMES[platform]} account`, { platform: PLATFORM_NAMES[platform] });
   return { platform, id, name: String(platformName || '').trim() || id, avatar: avatar || '' };
 }
 
@@ -566,7 +567,7 @@ async function joinAccounts(a, b) {
  */
 export async function addAccount({ to, ...account } = {}) {
   const uid = leveling.getAccounts()[String(to || '')];
-  if (!uid) throw new Error('that person is not known');
+  if (!uid) throw refusal('link_person_unknown', 'that person is not known');
   const [platform, ...rest] = String(to).split(':');
   const first = { platform, id: rest.join(':'), name: statusOf(to).name || leveling.getUsers()[uid]?.username || rest.join(':') };
   return joinAccounts(first, accountFrom(account));

@@ -13,6 +13,7 @@
 import { collection } from '../core/store.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 import * as discord from '../platforms/discord.js';
 import { initWelcome, getGreetings, setGreetings } from './welcome.js';
 
@@ -275,10 +276,10 @@ export function buttonRows(buttons) {
  */
 export async function publishButtonMenu(id) {
   const menu = buttonMenus.get().find((m) => m.id === id);
-  if (!menu) throw new Error('no such button menu');
-  if (!menu.channelId) throw new Error('choose a channel for the menu first');
+  if (!menu) throw refusal('button_menu_missing', 'no such button menu');
+  if (!menu.channelId) throw refusal('button_menu_no_channel', 'choose a channel for the menu first');
   const components = buttonRows(menu.buttons);
-  if (!components.length) throw new Error('give at least one button a role first');
+  if (!components.length) throw refusal('button_menu_no_roles', 'give at least one button a role first');
   // Discord will not post buttons on an otherwise empty message.
   const content = menu.content || (menu.embed ? '' : menu.name || '');
 
@@ -294,7 +295,7 @@ export async function publishButtonMenu(id) {
   if (!messageId) {
     const posted = await discord.sendMessage(menu.channelId, content, menu.embed, components);
     messageId = posted?.id;
-    if (!messageId) throw new Error('Discord did not say which message it posted');
+    if (!messageId) throw refusal('discord_no_message_id', 'Discord did not say which message it posted');
     const next = buttonMenus.update((prev) => prev.map((m) => (m.id === id ? { ...m, messageId } : m)));
     bus.emit(EVENTS.CONFIG, { key: 'discordButtonConfigs', value: next });
   }

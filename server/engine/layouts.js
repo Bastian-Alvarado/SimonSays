@@ -418,6 +418,11 @@ function normaliseAvatarLayer(c) {
       underneath for if the name goes. Written only when there is one.
     */
     ...(AVATAR_SOURCE_ID.test(String(c?.source ?? '')) ? { source: c.source } : {}),
+    /*
+      A line round the whole drawing, in this colour: for an avatar whose
+      dark edges would vanish on a dark background. Written only when on.
+    */
+    ...(/^#[0-9a-fA-F]{6}$/.test(String(c?.outline ?? '')) ? { outline: c.outline.toLowerCase() } : {}),
   };
 }
 

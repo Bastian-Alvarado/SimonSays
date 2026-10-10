@@ -2,6 +2,14 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.1.4] — 2026-10-10
+
+- Error messages are in your language on every screen (Go live, Discord buttons, Role management, Tags, DroidCam, backups and more); DroidCam says whether the phone did not answer or could not be reached.
+- The last English labels in the layer panels (nameplate sizes and sides, picture fit) are translated.
+- Deck upright: the buttons sit right against the page buttons, with no gap.
+- Chat docks: you can send to YouTube with Twitch off, a YouTube-only stream no longer says "Connecting…", and an emoji goes where the cursor is.
+- Avatar layers can have an outline, for an avatar on a dark background.
+
 ## [1.1.3] — 2026-10-10
 
 - Deck on a phone held sideways: the page folds its rows side by side so the buttons are bigger, the tabs and page buttons move to the sides, and "Phone sideways" in Dock Actions can show two pages at once instead.

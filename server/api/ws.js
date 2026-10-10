@@ -14,6 +14,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { isSameMachine } from '../core/net.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 import { C2S, S2C } from '../../shared/protocol.js';
 import { VERSION } from '../../shared/version.js';
 import { liveLayout } from '../../shared/live-layout.js';
@@ -858,7 +859,7 @@ async function handleMessage(ws, raw) {
         // token is a different proposition entirely.
         const SECRET_FIELDS = ['botToken', 'clientSecret', 'signApiKey', 'password', 'geminiApiKey'];
         if (!ws.isLocal && SECRET_FIELDS.some((f) => rest[f])) {
-          throw new Error('secrets can only be set from the machine running the server');
+          throw refusal('secrets_local_only', 'secrets can only be set from the machine running the server');
         }
         if (platform === 'twitch') twitch.setCredentials(rest);
         else if (platform === 'tiktok') tiktok.setCredentials(rest);
@@ -881,7 +882,7 @@ async function handleMessage(ws, raw) {
         // on the network gets to do. The Dock Actions surface is deliberately
         // open to the LAN so a phone can press buttons; this is the other kind
         // of request, and it stays on the machine running the server.
-        if (!ws.isLocal) throw new Error('configuration can only be imported from this machine');
+        if (!ws.isLocal) throw refusal('import_local_only', 'configuration can only be imported from this machine');
         const summary = engine.importConfig(payload?.bundle ?? payload);
         // Every surface is a replica, so they all need the new truth at once.
         broadcast(S2C.SNAPSHOT, buildSnapshot());

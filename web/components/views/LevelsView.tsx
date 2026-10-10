@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 import React, { useState, useMemo, useEffect } from 'react';
+import { refusalWords } from '../../words';
 import { LevelProfile, LevelSystemConfig, RoleReward, ThemeConfig } from '../../types';
 import { Button } from '../Button';
 import { Trophy, Settings, Gift, Medal, User, Save, RefreshCcw, Trash2, Plus, Hash, Shield, Info, AlertTriangle, MessageSquare, ArrowRight, History } from 'lucide-react';
@@ -28,7 +29,7 @@ const HistoryPanel = ({ settings, history, t, panelClass }: { settings: any; his
   useEffect(() => { refresh(); }, [months, settings?.lastPrune?.at]);
   const choose = async (next: number) => {
     setSaid('');
-    try { await history('settings', { settings: { forgetAfterMonths: next } }); } catch (err: any) { setSaid(err?.message || String(err)); }
+    try { await history('settings', { settings: { forgetAfterMonths: next } }); } catch (err: any) { setSaid(refusalWords(t, err) || String(err?.message || err)); }
   };
   const forgetNow = async () => {
     if (!armed) { setArmed(true); setTimeout(() => setArmed(false), 4000); return; }
@@ -37,7 +38,7 @@ const HistoryPanel = ({ settings, history, t, panelClass }: { settings: any; his
       const r = await history('prune');
       setSaid((t.historyForgot || 'Forgot {count} people.').replace('{count}', String(r?.people ?? 0)));
       refresh();
-    } catch (err: any) { setSaid(err?.message || String(err)); }
+    } catch (err: any) { setSaid(refusalWords(t, err) || String(err?.message || err)); }
   };
   const would = months ? (stats?.wouldForget?.[months] ?? 0) : 0;
   return (

@@ -21,6 +21,8 @@ import type { PixelAvatarDef } from '../types';
 import { avatarColours, avatarFacesNow, AVATAR_HATS, avatarReactionFor, avatarLookToward, avatarOverwhelmed, avatarRestingFace, avatarSleepState, AVATAR_SLEEP_FACES, AVATAR_STARTLE_MS, AVATAR_HYPE_MS, AVATAR_OVERWHELM, AVATAR_REACTION_DEFAULTS, AVATAR_EXPRESSIONS_LIST, AVATAR_WATCHES, AVATAR_BREATH_MS, AVATAR_BUBBLE_BREATH, AVATAR_BREATH, AVATAR_DOZING_BREATH, AVATAR_HEAD_FOLLOW_MS, avatarHeadTurn, AVATAR_HEADROOM, AVATAR_DIZZY_ROCK_MS, AVATAR_DIZZY_LOLL, AVATAR_SHAKE_OFF, avatarLollAt, avatarRegularTurns, AVATAR_TURN_STEP_MS, avatarActionFrames } from '../../shared/avatar.js';
 
 export interface AvatarLayerConfig {
+  /** A line round the whole drawing, in this colour; none when left out. */
+  outline?: string;
   expression?: string;
   extras?: string[];
   costume?: string;
@@ -625,6 +627,16 @@ export const AvatarLayer = ({ config, voice, alert, accent, mic, asked, dress, a
   const headroom = kit ? pixelHeadroom(kit) as number : AVATAR_HEADROOM;
   // Eyes it can find glance about; one that turns looks about by turning. Neither, and there is nothing to glance with.
   const canGlance = !kit || Boolean(kit.eyes) || Boolean(pixelTurns(kit));
+  /*
+    The outline: one of the drawing's own pixels thick, so it is as crisp as
+    the rest of it at any size — a hundredth of the drawing's width, worked
+    out the same way the box below is — drawn as four shadows that together
+    trace every edge.
+  */
+  const dot = `min(1cqw, calc(${label ? 82 : 100}cqh / ${100 + headroom}))`;
+  const outline = config.outline
+    ? [[dot, '0'], [`calc(-1 * ${dot})`, '0'], ['0', dot], ['0', `calc(-1 * ${dot})`]].map(([x, y]) => `drop-shadow(${x} ${y} 0 ${config.outline})`).join(' ')
+    : undefined;
 
   return (
     <div
@@ -644,7 +656,8 @@ export const AvatarLayer = ({ config, voice, alert, accent, mic, asked, dress, a
       */}
       <div
         className="shrink-0"
-        style={{ width: `var(--avatar-size, ${label ? `min(100cqw, calc(82cqh * 100 / ${100 + headroom}))` : `min(100cqw, calc(100cqh * 100 / ${100 + headroom}))`})`, aspectRatio: `100 / ${100 + headroom}` }}
+        style={{ width: `var(--avatar-size, ${label ? `min(100cqw, calc(82cqh * 100 / ${100 + headroom}))` : `min(100cqw, calc(100cqh * 100 / ${100 + headroom}))`})`, aspectRatio: `100 / ${100 + headroom}`, ...(outline ? { filter: outline } : {}) }}
+        data-avatar-outline={config.outline || undefined}
       >
         <LivingAvatar
           expression={resting} reaction={face} extras={worn.extras} colours={colours} costume={worn.costume} glance={config.glance !== false && canGlance} twinkle={config.twinkle !== false && (!kit || Boolean(kit.eyes))}

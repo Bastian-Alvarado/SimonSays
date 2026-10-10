@@ -151,6 +151,25 @@ export const base64urlencode = (a: ArrayBuffer) => {
  * fallback would then be refused too. Returns whether the text actually landed,
  * so a caller can say so instead of flashing a tick over nothing.
  */
+/**
+ * Text put where the cursor is in a box, replacing whatever is selected —
+ * an emoji picked in the middle of a message goes there, not on the end.
+ * The box keeps where its cursor was after it loses focus to the picker, so
+ * this can be asked once the pick is made. Gives the new text, and puts the
+ * cursor back just after what went in.
+ */
+export const insertAtCursor = (box: HTMLInputElement | HTMLTextAreaElement | null, value: string, text: string): string => {
+  const at = box?.selectionStart ?? value.length;
+  const to = box?.selectionEnd ?? at;
+  const next = value.slice(0, at) + text + value.slice(to);
+  if (box) {
+    requestAnimationFrame(() => {
+      try { box.focus(); box.setSelectionRange(at + text.length, at + text.length); } catch { /* gone */ }
+    });
+  }
+  return next;
+};
+
 export const copyText = (text: string): boolean => {
   const ta = document.createElement('textarea');
   ta.value = text;

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 import React, { useState } from 'react';
+import { refusalWords } from '../../words';
 import { AppView, StreamTags, ThemeConfig } from '../../types';
 import { Button } from '../Button';
 import { AlertTriangle, Coins, Heart, Monitor, RefreshCcw, Star, Trophy, Users, Check, UploadCloud } from 'lucide-react';
@@ -65,7 +66,7 @@ export const TagsView: React.FC<TagsViewProps> = ({
         });
       }
     } catch (err: any) {
-      setSyncResult({ text: err?.message || 'failed', ok: false });
+      setSyncResult({ text: refusalWords(t, err) || err?.message || 'failed', ok: false });
     } finally {
       setSyncing(false);
       setTimeout(() => setSyncResult(null), 6000);

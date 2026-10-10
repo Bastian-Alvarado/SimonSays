@@ -165,7 +165,7 @@ export const ImageLayerPanel = ({ config, patch, listAssets, uploadAsset, t }: P
                 : 'bg-zinc-900 border-zinc-800 text-zinc-500'
             }`}
           >
-            {fit}
+            {fit === 'contain' ? (t.imageFitContain || 'Contain') : fit === 'cover' ? (t.imageFitCover || 'Cover') : (t.imageFitFill || 'Fill')}
           </button>
         ))}
       </div>

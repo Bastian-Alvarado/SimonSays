@@ -85,7 +85,7 @@ test('the server keeps the pages, their names, and each button\'s page', () => {
 
 test('the deck turns pages by its bar or a swipe, and each screen remembers its own', () => {
   const deck = read('../../web/components/DockDeck.tsx');
-  assert.ok(deck.includes('<DockActionsGrid {...gridProps} page={page} pages={pages} />'), 'the deck does not draw one page');
+  assert.ok(deck.includes("<DockActionsGrid {...gridProps} page={page} pages={pages} anchor={pages > 1 ? (onTop ? 'top' : 'bottom') : undefined} />"), 'the deck does not draw one page');
   assert.ok(deck.includes('data-dock-pager') && deck.includes('const pager = pages > 1 && ('), 'there is no page bar, or one with a single page');
   // A page at a time, or two at a time when two show side by side.
   assert.ok(deck.includes("touchAction: 'pan-y'") && deck.includes('go((paired ? page - (page % 2) : page) + (dx < 0 ? step : -step));'), 'a swipe does not turn the page');

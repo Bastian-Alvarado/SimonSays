@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 import React, { useEffect, useRef, useState } from 'react';
+import { refusalWords } from '../../words';
 import { ThemeConfig, SyncLogEntry, LinkedUserData } from '../../types';
 import { Shield, Link as LinkIcon, Trash2, Clock, CheckCircle, RefreshCcw, Star, Diamond, Sword, Trophy, Search, Loader2, Heart, Award, Gem, List, User, Bot, Plus, X, ArrowRight, AlertTriangle, Filter, Gift, UploadCloud, Database } from 'lucide-react';
 import { Button } from '../Button';
@@ -246,7 +247,7 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
                 setYoutubeResults(res || { seen: [], found: null });
                 if (!res?.seen?.length && !res?.found) setManualLinkTwitchError(t.linkYoutubeNotFound || 'Nobody by that name in YouTube chat yet. Try their @handle or channel id.');
             } catch (err: any) {
-                setManualLinkTwitchError(err?.message || String(err));
+                setManualLinkTwitchError(refusalWords(t, err) || String(err?.message || err));
             } finally {
                 setIsSearchingYoutube(false);
             }
@@ -348,7 +349,7 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
                 resetManualLink();
                 setLinkTarget(null);
             } catch (err: any) {
-                setLinkError(err?.message || String(err));
+                setLinkError(refusalWords(t, err) || String(err?.message || err));
             }
             return;
         }
@@ -365,7 +366,7 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
             setIsManualLinkModalOpen(false);
             resetManualLink();
         } catch (err: any) {
-            setLinkError(err?.message || String(err));
+            setLinkError(refusalWords(t, err) || String(err?.message || err));
         }
     };
 
@@ -1017,7 +1018,7 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
                                                                           if (modArmed !== key) { setModArmed(key); setTimeout(() => setModArmed((k) => (k === key ? '' : k)), 4000); return; }
                                                                           setModArmed('');
                                                                           try { await moderation('act', { uid: person.uid, platform: a.platform, action, key: a.key }); setModSaid((m) => ({ ...m, [person.uid]: `✅ ${action === 'ban' ? (t.modBanned || 'Banned') : (t.modTimedOut || 'Timed out')} · ${PLATFORM_LABEL[a.platform as PickPlatform]}` })); }
-                                                                          catch (err: any) { setModSaid((m) => ({ ...m, [person.uid]: `⚠️ ${err?.message || err}` })); }
+                                                                          catch (err: any) { setModSaid((m) => ({ ...m, [person.uid]: `⚠️ ${refusalWords(t, err) || err?.message || err}` })); }
                                                                       }} className={`px-2 py-0.5 rounded-md border font-bold transition-colors ${modArmed === key ? 'bg-rose-500/30 border-rose-400 text-rose-200' : action === 'ban' ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10' : 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10'}`} data-person-mod={key}>
                                                                           {modArmed === key ? (t.modSure || 'Again to confirm') : action === 'ban' ? (t.modBan || 'Ban') : (t.modTimeout || 'Timeout')}
                                                                       </button>

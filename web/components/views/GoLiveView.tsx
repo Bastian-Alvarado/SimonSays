@@ -215,7 +215,7 @@ export const GoLiveView = ({ settings, channels, roles, save, test, testRecap, s
       const saved = await uploadAsset(file);
       if (saved?.url) saveEvents({ cover: 'picture', coverPicture: saved.url });
     } catch (err: any) {
-      setSyncResult(err?.message || String(err));
+      setSyncResult(refusalWords(t, err) || String(err?.message || err));
     }
   };
   const [syncResult, setSyncResult] = useState('');

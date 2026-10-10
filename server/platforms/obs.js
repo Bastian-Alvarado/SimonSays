@@ -18,6 +18,7 @@ import OBSWebSocket, { EventSubscription } from 'obs-websocket-js';
 import { collection } from '../core/store.js';
 import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 import { config } from '../config.js';
 
 const log = createLogger('obs');
@@ -257,7 +258,7 @@ async function refreshState() {
 }
 
 function ensure() {
-  if (!obs || status !== 'connected') throw new Error('OBS is not connected');
+  if (!obs || status !== 'connected') throw refusal('obs_offline', 'OBS is not connected');
   return obs;
 }
 

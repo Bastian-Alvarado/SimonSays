@@ -3,7 +3,8 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { insertAtCursor } from '../../utils';
 import { ChatMessage, ThemeConfig } from '../../types';
 import { Button } from '../Button';
 import { Layout, Loader2, Send, WifiOff, Smile } from 'lucide-react';
@@ -28,6 +29,10 @@ interface ChatDockViewProps {
   tiktokStatus: string;
 
   discordStatus: string;
+  /** YouTube's, so a stream on YouTube alone is not "nothing connected". */
+  youtubeStatus?: string;
+  /** Whether a message can go anywhere now (App works it out with the dock's). */
+  canSend?: boolean;
   chatMessages: ChatMessage[];
   senderRole: 'main' | 'bot';
   /** Where the box sends — Twitch, YouTube or both — once YouTube is signed in. */
@@ -55,7 +60,7 @@ export const ChatDockView: React.FC<ChatDockViewProps> = ({
   senderRole, setSenderRole, sendToPicker,
   twitchBotStatus, twitchUser,
   messageInput, setMessageInput,
-  handleSendMessage,
+  handleSendMessage, youtubeStatus, canSend,
   renderChatMessageHelper,
   setView,
   activeTheme,
@@ -85,8 +90,10 @@ export const ChatDockView: React.FC<ChatDockViewProps> = ({
       setPickerState({ open: true, top, left });
   };
 
+  // Where the cursor is, not on the end.
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const handleEmojiSelect = (emoji: string) => {
-      setMessageInput(messageInput + emoji);
+      setMessageInput(insertAtCursor(inputRef.current, messageInput, emoji));
   };
 
   return (
@@ -108,7 +115,7 @@ export const ChatDockView: React.FC<ChatDockViewProps> = ({
           <ChatDockSettings values={chat} patch={patchChat} dockUrl={dockUrl} t={t} />
         </div>
       </aside>
-      <div className={`flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border ${activeTheme.borderClass} relative ${activeTheme.id === 'light' ? 'bg-white' : 'bg-zinc-950/20'} min-h-[400px] transition-all`} > <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col-reverse relative" style={{ gap: `${chat.messageGap || 0}px` }}> {<ChatStyle settings={chat} />} {twitchStatus === 'disconnected' && tiktokStatus === 'disconnected' && discordStatus === 'disconnected' ? (<div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in"> <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 border border-zinc-800 text-zinc-500"> <WifiOff size={32} /> </div> <h3 className="text-xl font-extrabold mb-2 uppercase tracking-tight">{t.platformsDisconnected}</h3> <p className="text-xs text-zinc-500 max-w-xs mb-8">{t.connectToStart}</p> <Button icon={<Layout size={16} />} onClick={() => setView('gallery')}> {t.connectPlatforms} </Button> </div>) : chatMessages.length === 0 ? (<div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in"> <Loader2 className="w-8 h-8 text-current-accent animate-spin mb-4" /> <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.noMessages}</p> </div>) : (chatMessages.map((chat, idx) => renderChatMessageHelper(chat, idx)))} </div> {(<div className={`min-h-24 border-t ${activeTheme.borderClass} p-4 flex flex-col bg-zinc-900/10`}> <div className="flex items-center justify-between px-2 mb-1.5"> <div className="flex items-center gap-2"> <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 opacity-60">{t.sendingAs}:</span> {twitchBotStatus === 'connected' ? (<div className="flex bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800 shadow-sm"> <button onClick={() => setSenderRole('main')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${senderRole === 'main' ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.mainAccount} </button> <button onClick={() => setSenderRole('bot')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${senderRole === 'bot' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.botAccount} </button> </div>) : (<span className={`text-[8px] font-black uppercase tracking-widest text-current-accent opacity-60`}> {t.mainAccount} {twitchUser?.display_name ? `(${twitchUser.display_name})` : ''} </span>)} {sendToPicker} </div> </div> {sendError && <p role="alert" className="px-2 mb-1.5 text-[10px] font-bold leading-snug text-red-400">{sendError}</p>} <div className="flex gap-2 flex-1 items-stretch"> <div className="flex-1 bg-zinc-900/50 rounded-xl border border-zinc-800 flex items-center px-4 pr-1 relative"> <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }} placeholder={twitchStatus === 'connected' || discordStatus === 'connected' ? t.typeGlobal : t.connectToStart} disabled={twitchStatus === 'disconnected' && discordStatus === 'disconnected'} className="bg-transparent border-none outline-none w-full text-xs font-bold text-zinc-400 disabled:opacity-50 pr-8" /> <button onClick={handlePickerOpen} className="p-2 text-zinc-500 hover:text-white transition-colors" title="Add Emoji"> <Smile size={14} /> </button> </div> <Button onClick={handleSendMessage} icon={<Send size={16} />} className="font-extrabold px-4 sm:px-6 h-full" disabled={(twitchStatus === 'disconnected' && discordStatus === 'disconnected') || !messageInput.trim()}> <span className="hidden xs:inline">{t.send}</span> </Button> </div> </div>)} </div>
+      <div className={`flex-1 flex flex-col glass-panel rounded-3xl overflow-hidden border ${activeTheme.borderClass} relative ${activeTheme.id === 'light' ? 'bg-white' : 'bg-zinc-950/20'} min-h-[400px] transition-all`} > <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col-reverse relative" style={{ gap: `${chat.messageGap || 0}px` }}> {<ChatStyle settings={chat} />} {twitchStatus === 'disconnected' && tiktokStatus === 'disconnected' && discordStatus === 'disconnected' && youtubeStatus !== 'connected' ? (<div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in"> <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 border border-zinc-800 text-zinc-500"> <WifiOff size={32} /> </div> <h3 className="text-xl font-extrabold mb-2 uppercase tracking-tight">{t.platformsDisconnected}</h3> <p className="text-xs text-zinc-500 max-w-xs mb-8">{t.connectToStart}</p> <Button icon={<Layout size={16} />} onClick={() => setView('gallery')}> {t.connectPlatforms} </Button> </div>) : chatMessages.length === 0 ? (<div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in"> <Loader2 className="w-8 h-8 text-current-accent animate-spin mb-4" /> <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.noMessages}</p> </div>) : (chatMessages.map((chat, idx) => renderChatMessageHelper(chat, idx)))} </div> {(<div className={`min-h-24 border-t ${activeTheme.borderClass} p-4 flex flex-col bg-zinc-900/10`}> <div className="flex items-center justify-between px-2 mb-1.5"> <div className="flex items-center gap-2"> <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 opacity-60">{t.sendingAs}:</span> {twitchBotStatus === 'connected' ? (<div className="flex bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800 shadow-sm"> <button onClick={() => setSenderRole('main')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${senderRole === 'main' ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.mainAccount} </button> <button onClick={() => setSenderRole('bot')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${senderRole === 'bot' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.botAccount} </button> </div>) : (<span className={`text-[8px] font-black uppercase tracking-widest text-current-accent opacity-60`}> {t.mainAccount} {twitchUser?.display_name ? `(${twitchUser.display_name})` : ''} </span>)} {sendToPicker} </div> </div> {sendError && <p role="alert" className="px-2 mb-1.5 text-[10px] font-bold leading-snug text-red-400">{sendError}</p>} <div className="flex gap-2 flex-1 items-stretch"> <div className="flex-1 bg-zinc-900/50 rounded-xl border border-zinc-800 flex items-center px-4 pr-1 relative"> <input ref={inputRef} type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }} placeholder={canSend ? t.typeGlobal : t.connectToStart} disabled={!canSend} className="bg-transparent border-none outline-none w-full text-xs font-bold text-zinc-400 disabled:opacity-50 pr-8" /> <button onClick={handlePickerOpen} className="p-2 text-zinc-500 hover:text-white transition-colors" title={t.addEmoji || 'Add emoji'}> <Smile size={14} /> </button> </div> <Button onClick={handleSendMessage} icon={<Send size={16} />} className="font-extrabold px-4 sm:px-6 h-full" disabled={!canSend || !messageInput.trim()}> <span className="hidden xs:inline">{t.send}</span> </Button> </div> </div>)} </div>
     </div>
   );
 };

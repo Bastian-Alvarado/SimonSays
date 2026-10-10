@@ -1341,7 +1341,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
             {(['nameSize', 'subtitleSize'] as const).map((field) => (
               <label key={field} className="block">
                 <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">
-                  {field === 'nameSize' ? 'Name px' : 'Line px'}
+                  {field === 'nameSize' ? (t.plateNameSize || 'Name px') : (t.plateLineSize || 'Line px')}
                 </span>
                 <input
                   type="number"
@@ -1361,7 +1361,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                 onClick={(e) => { e.stopPropagation(); patchLayerAndSave(layer.uid, { config: { ...(layer.config || {}), align: side } }); }}
                 className={`flex-1 px-2 py-1.5 rounded-md text-[8px] font-black uppercase tracking-widest border transition-all ${((layer.config as any)?.align || 'left') === side ? 'bg-current-accent/10 border-current-accent text-current-accent' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}
               >
-                {side}
+                {side === 'left' ? (t.plateAlignLeft || 'Left') : (t.plateAlignRight || 'Right')}
               </button>
             ))}
           </div>

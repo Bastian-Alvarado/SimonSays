@@ -51,6 +51,13 @@ interface DockActionsGridProps {
   fit?: { width: number; height: number } | null;
   foldable?: boolean;
   /**
+   * Which edge of its box a grid with rows keeps to, when the box is taller
+   * than the grid: the page buttons' side, so the two sit together rather
+   * than with a band of nothing between them on a tall phone. Left out, it
+   * is centred.
+   */
+  anchor?: 'top' | 'bottom';
+  /**
    * Draw it without letting it be pressed, and show the cells nobody has
    * filled.
    *
@@ -105,7 +112,7 @@ const tintFor = (category?: string) => (
 
 export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
   buttons: everyButton, streamActions, runDockAction, stats, columns = 3, rows = 0,
-  page = 0, pages = 1, compact = false, preview = false, arrange, t, fit = null, foldable = true,
+  page = 0, pages = 1, compact = false, preview = false, arrange, t, fit = null, foldable = true, anchor,
 }) => {
   // This page's buttons. The rest of the dock is somebody else's grid.
   const buttons = buttonsOnPage(everyButton, page, pages) as DockButton[];
@@ -406,7 +413,7 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
   // The box the size is measured against, centring the grid in whatever is left.
   if (fitting) return <div className="w-full h-full min-h-0 flex items-center justify-center">{grid}</div>;
   return rows > 0 ? (
-    <div className="w-full h-full min-h-0 flex items-center justify-center" style={{ containerType: 'size' }}>
+    <div className={`w-full h-full min-h-0 flex ${anchor === 'top' ? 'items-start' : anchor === 'bottom' ? 'items-end' : 'items-center'} justify-center`} style={{ containerType: 'size' }} data-dock-anchor={anchor || 'middle'}>
       {grid}
     </div>
   ) : grid;

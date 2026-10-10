@@ -32,7 +32,9 @@ const questions = await import('../../engine/questions.js');
 // ------------------------------------------------------------ every code has words
 
 test('every refusal the server can send has words in both languages', () => {
-  const sources = ['plan.js', 'people.js', 'questions.js', 'index.js', 'twitch-extras.js', 'pixel-avatars.js', 'welcome.js', 'announce.js', 'schedule-events.js', 'giveaway.js', 'discord-pages.js', 'viewer-history.js', 'points.js', 'highlights.js', 'live-dms.js', 'remote-players.js', 'game-requests.js', 'moderation.js', 'banner-text.js'].map((f) => read(`../engine/${f}`)).join('\n');
+  const sources = ['plan.js', 'people.js', 'questions.js', 'index.js', 'twitch-extras.js', 'pixel-avatars.js', 'welcome.js', 'announce.js', 'schedule-events.js', 'giveaway.js', 'discord-pages.js', 'viewer-history.js', 'points.js', 'highlights.js', 'live-dms.js', 'remote-players.js', 'game-requests.js', 'moderation.js', 'banner-text.js', 'discord-roles.js', 'role-sync.js', 'backup.js'].map((f) => read(`../engine/${f}`)).join('\n')
+    // And outside the engine: DroidCam, OBS, and the socket's own (secrets and imports from this computer only).
+    + ['../platforms/droidcam.js', '../platforms/obs.js', '../api/ws.js'].map((f) => read(f)).join('\n');
   const codes = new Set([
     ...[...sources.matchAll(/refusal\('([a-z_]+)'/g)].map((m) => m[1]),
     ...[...sources.matchAll(/code: '([a-z_]+)'/g)].map((m) => m[1]),
@@ -156,4 +158,19 @@ test('the profile bar speaks both languages: its group names, and what it asks b
   for (const key of keys) assert.ok(bothLanguages(key), `${key} is not in both languages`);
   // No question to the streamer written in English only.
   assert.ok(!/window\.(confirm|prompt)\(`/.test(bar) && !bar.includes('{state.label}'));
+});
+
+test('the screens that showed a refusal in English look its words up, and keep the raw text only for errors with no code', () => {
+  const files = ['views/GoLiveView.tsx', 'views/DiscordButtonsView.tsx', 'views/RoleManagementView.tsx', 'views/TagsView.tsx', 'views/ConnectionsView.tsx', 'views/SettingsView.tsx', 'views/LevelsView.tsx', 'views/LibraryView.tsx', 'views/PixelAvatarsView.tsx', 'OmnilayerPanel.tsx', 'WelcomeCardEditor.tsx', 'WelcomeCardLayers.tsx'];
+  for (const f of files) {
+    const src = read(`../../web/components/${f}`);
+    assert.ok(/import \{[^}]*\brefusalWords\b[^}]*\} from '\.\.\/(\.\.\/)?words';/.test(src), `${f} does not import refusalWords`);
+    // Every place that shows an error's message asks for its words first.
+    const raw = [...src.matchAll(/[^\n]*err\?\.message[^\n]*/g)].map((m) => m[0]).filter((line) => !line.includes('refusalWords(t, err)'));
+    assert.deepEqual(raw, [], `${f} still shows a raw message`);
+  }
+  // DroidCam says why with a code: asleep, an error answer, or not reached at all.
+  const droidcam = read('../platforms/droidcam.js');
+  for (const code of ['droidcam_no_answer', 'droidcam_unreachable', 'droidcam_http', 'droidcam_no_address']) assert.ok(droidcam.includes(`refusal('${code}'`), `DroidCam never says ${code}`);
+  assert.ok(read('../platforms/obs.js').includes("throw refusal('obs_offline', 'OBS is not connected');"));
 });

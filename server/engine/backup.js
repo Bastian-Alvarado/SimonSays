@@ -18,6 +18,7 @@
 
 import { getCollection } from '../core/store.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 import { VERSION } from '../../shared/version.js';
 
 const log = createLogger('backup');
@@ -228,16 +229,16 @@ export function buildBundle() {
  * backup should not wipe something it predates.
  */
 export function applyBundle(bundle, { healCommands, setDockButtons } = {}) {
-  if (!bundle || typeof bundle !== 'object') throw new Error('not a backup file');
+  if (!bundle || typeof bundle !== 'object') throw refusal('backup_not_file', 'not a backup file');
 
   const meta = bundle.meta;
-  if (!meta || meta.app !== BACKUP_APP) throw new Error('not a SimonSays backup file');
+  if (!meta || meta.app !== BACKUP_APP) throw refusal('backup_not_simonsays', 'not a SimonSays backup file');
   if (!bundle.collections || typeof bundle.collections !== 'object') {
     // V1 files carried localStorage keys under `data` and no server state at
     // all, so there is genuinely nothing here to restore.
-    throw new Error(meta.version === 1 || bundle.data
-      ? 'this is an old settings-only backup and carries no commands or actions'
-      : 'backup file has no collections');
+    throw meta.version === 1 || bundle.data
+      ? refusal('backup_settings_only', 'this is an old settings-only backup and carries no commands or actions')
+      : refusal('backup_empty', 'backup file has no collections');
   }
 
   const restored = [];

@@ -171,7 +171,7 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
   useEffect(() => { if (versionsOpen) loadVersions(); }, [versionsOpen, kit]);
   const take = async (what: string, make: () => Promise<Blob>, file: string) => {
     setError(''); setExporting(what);
-    try { download(await make(), file); } catch (err: any) { setError(String(err?.message || err)); } finally { setExporting(''); }
+    try { download(await make(), file); } catch (err: any) { setError(refusalWords(t, err) || String(err?.message || err)); } finally { setExporting(''); }
   };
   // A different avatar starts the preview over: what the last one wore it may not have.
   useEffect(() => { setFace('neutral'); setOutfit(''); setExtras([]); setActing(null); }, [kit?.id]);

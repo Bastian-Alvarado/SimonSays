@@ -579,7 +579,7 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
       setShared({ ok: true, words: fill(t.libraryExported || 'Saved as a file, with {count} of your fonts in it.', { count: String(fonts.length) }) });
     } catch (err: any) {
-      setShared({ ok: false, words: String(err?.message || err) });
+      setShared({ ok: false, words: refusalWords(t, err) || String(err?.message || err) });
     }
   };
   const importTheme = async (picked: File) => {
@@ -610,7 +610,7 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
       setFilter('all');
       setOpenTheme(out.id);
     } catch (err: any) {
-      setShared({ ok: false, words: fill(t.libraryImportFailed || 'That file could not be added: {why}', { why: String(err?.message || err) }) });
+      setShared({ ok: false, words: fill(t.libraryImportFailed || 'That file could not be added: {why}', { why: refusalWords(t, err) || String(err?.message || err) }) });
     }
   };
   useEffect(() => { setRenaming(null); setDeleting(false); setThemeError(''); setEditing(null); setAdding(null); setStyling(null); }, [openTheme]);

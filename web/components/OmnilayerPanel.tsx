@@ -9,7 +9,7 @@
  */
 import React, { useState } from 'react';
 import { Check, Layers, Play, Search, Zap } from 'lucide-react';
-import { fill } from '../words';
+import { fill, refusalWords } from '../words';
 import { SceneTypesManager } from './SceneTypes';
 // Stands in for whichever remote player is on screen: no source of its own to look for or hide.
 import { ON_SCREEN_SOURCE } from '../../shared/remote-players.js';
@@ -79,7 +79,7 @@ export const OmnilayerPanel = ({ omni, layout, layouts, obsScenes, obsConnected,
     try { await run({ op: 'go', layoutId: layout.id, transition }); } catch { /* the state says what happened */ }
     setBusy(false);
   };
-  const inspect = async () => setCheck(await run({ op: 'inspect' }).catch((err: any) => ({ scene: omni?.scene || '', items: [], error: err?.message })));
+  const inspect = async () => setCheck(await run({ op: 'inspect' }).catch((err: any) => ({ scene: omni?.scene || '', items: [], error: refusalWords(t, err) || err?.message })));
 
   // Every source some layout gives a box, which the scene has to hold.
   const managed = new Set<string>();

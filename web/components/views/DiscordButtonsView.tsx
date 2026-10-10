@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 import React, { useState, useEffect } from 'react';
+import { refusalWords } from '../../words';
 import { useDragOrder, DragGrip } from '../../hooks/useDragOrder';
 import { moveToGap } from '../../../shared/list-order.js';
 import { DiscordButtonMapping, DiscordButtonMessage, DiscordEmbed, ThemeConfig } from '../../types';
@@ -29,7 +30,7 @@ export const DiscordButtonsView: React.FC<DiscordButtonsViewProps> = ({ activeTh
       try {
           await publishButtonMenu(id);
       } catch (err: any) {
-          setPostError((prev) => ({ ...prev, [id]: err?.message || String(err) }));
+          setPostError((prev) => ({ ...prev, [id]: refusalWords(t, err) || String(err?.message || err) }));
       } finally {
           setPosting(null);
       }

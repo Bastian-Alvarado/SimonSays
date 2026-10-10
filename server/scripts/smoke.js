@@ -98,6 +98,7 @@ await import('./smoke/countdown-steps.js');
 await import('./smoke/omnilayer.js');
 await import('./smoke/scene-types.js');
 await import('./smoke/remote-players.js');
+await import('./smoke/polish.js');
 await import('./smoke/user-themes.js');
 await import('./smoke/guides.js');
 await import('./smoke/version.js');
