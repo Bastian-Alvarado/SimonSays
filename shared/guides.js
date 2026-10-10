@@ -31,6 +31,28 @@
 const connected = (s, k) => s?.status?.[k] === 'connected';
 const list = (v) => (Array.isArray(v) ? v : []);
 
+/*
+  Set up, whether or not it is connected right now: what the steps and the
+  platform rows count as done. YouTube and TikTok are only connected while a
+  stream is live, and OBS only while it is open, so a streamer who set all
+  three up saw them as not done between streams. The menu's row of platforms
+  still lights only what is connected. Reads `connections`, as the web app
+  holds them (useStreamSystem).
+    YouTube  signed in
+    TikTok   a username to watch
+    OBS      a password kept, or reached before
+*/
+export const setUp = (s, k) => {
+  if (connected(s, k)) return true;
+  const c = s?.connections || {};
+  if (k === 'youtube') return Boolean(c.youtubeAuthorised);
+  if (k === 'tiktok') return Boolean(String(c.tiktokUrl || '').trim()) || ['polling', 'waiting'].includes(s?.status?.tiktok);
+  if (k === 'obs') return Boolean(c.obsHasPassword) || Number(c.obsLastConnectedAt) > 0;
+  return false;
+};
+/** A platform row's state: connected now, set up and waiting for it, or neither. */
+const readyOr = (s, k) => (connected(s, k) ? 'on' : setUp(s, k) ? 'ready' : 'off');
+
 /**
  * The setup steps, in the order they are best done. `done` reads what the
  * app knows: `{ status, data }`, as the web app holds them. `sticky` keeps a
@@ -46,13 +68,13 @@ const list = (v) => (Array.isArray(v) ? v : []);
 export const SETUP_CHECKS = [
   {
     id: 'platform', go: 'gallery', guide: 'connect', setup: 'twitch', sticky: true,
-    done: (s) => ['twitch', 'youtube', 'tiktok'].some((k) => connected(s, k)),
+    done: (s) => ['twitch', 'youtube', 'tiktok'].some((k) => setUp(s, k)),
     en: { title: 'Connect where you stream', why: 'Twitch, YouTube or TikTok: chat, follows, subs and raids reach the app from there.' },
     es: { title: 'Conecta donde transmites', why: 'Twitch, YouTube o TikTok: el chat, los follows, las subs y los raids llegan a la app desde ahí.' },
   },
   {
     id: 'obs', go: 'gallery', guide: 'connect', setup: 'obs', sticky: true,
-    done: (s) => connected(s, 'obs'),
+    done: (s) => setUp(s, 'obs'),
     en: { title: 'Connect OBS', why: 'So the app can switch scenes, move your game and camera into place and know what is on stream.' },
     es: { title: 'Conecta OBS', why: 'Para que la app cambie escenas, coloque tu juego y tu cámara y sepa qué hay en directo.' },
   },
@@ -119,7 +141,7 @@ export const SETUP_CHECKS = [
  * what to do when it does not. On the Start here tab, where the first
  * setup steps send people.
  *
- * `state(s)` is 'on', 'waiting' (set up, waiting for the stream) or 'off'.
+ * `state(s)` is 'on' (connected now), 'ready' (set up: see setUp) or 'off'.
  * `fields` are the boxes on the Connections screen, by the app's own word
  * for each, with where the value is found; `secret` ones are passwords.
  * In a step, {redirect:page} is the address to register for a sign-in that
@@ -204,7 +226,7 @@ export const PLATFORM_SETUPS = [
   },
   {
     id: 'youtube', color: '#FF0000', portal: 'https://console.cloud.google.com/', minutes: 15, localOnly: true,
-    state: (s) => (connected(s, 'youtube') ? 'on' : 'off'),
+    state: (s) => readyOr(s, 'youtube'),
     fields: [
       { t: 'youtubeClientId', en: 'Google Cloud → Clients → your web client → Client ID.', es: 'Google Cloud → Clientes → tu cliente web → ID de cliente.' },
       { t: 'youtubeClientSecret', secret: true, en: 'Shown when you make the client. Copy it then: Google may not show it again (you can add a new one).', es: 'Se muestra al crear el cliente. Cópialo en ese momento: puede que Google no lo vuelva a mostrar (puedes crear otro).' },
@@ -243,7 +265,7 @@ export const PLATFORM_SETUPS = [
   },
   {
     id: 'tiktok', color: '#ff0050', portal: null, minutes: 2,
-    state: (s) => (connected(s, 'tiktok') ? 'on' : ['polling', 'waiting'].includes(s?.status?.tiktok) ? 'waiting' : 'off'),
+    state: (s) => readyOr(s, 'tiktok'),
     fields: [
       { t: 'tiktokUsername', en: 'Your TikTok username, without the @.', es: 'Tu usuario de TikTok, sin la @.' },
       { t: 'tiktokSignKey', secret: true, en: 'Optional: a free API key from eulerstream.com.', es: 'Opcional: una API key gratis de eulerstream.com.' },
@@ -275,7 +297,7 @@ export const PLATFORM_SETUPS = [
   },
   {
     id: 'obs', color: '#a1a1aa', portal: null, minutes: 3,
-    state: (s) => (connected(s, 'obs') ? 'on' : 'off'),
+    state: (s) => readyOr(s, 'obs'),
     fields: [
       { t: 'serverHost', en: 'localhost when OBS is on the same computer as the app; otherwise the address OBS shows under “Show Connect Info”.', es: 'localhost si OBS está en el mismo ordenador que la app; si no, la dirección que OBS muestra en “Mostrar información de conexión”.' },
       { t: 'serverPort', en: '4455, unless you changed it in OBS.', es: '4455, salvo que lo cambiaras en OBS.' },

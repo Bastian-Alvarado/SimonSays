@@ -265,8 +265,13 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   // Ticking layers to put in a group: a new one, or one already there.
   const [picking, setPicking] = useState<{ into: string | null } | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
-  // Folded groups. How the list is being looked at, not a fact about the layout, so never saved.
-  const [folded, setFolded] = useState<string[]>([]);
+  /*
+    Open groups. They start folded, so a layout of many groups opens as a
+    short list of them; how the list is being looked at, not a fact about the
+    layout, so never saved.
+  */
+  const [opened, setOpened] = useState<string[]>([]);
+  const openGroup = (gid: string) => setOpened((o) => (o.includes(gid) ? o : [...o, gid]));
   const canvasFonts = [...CHAT_FONTS, ...useCustomFonts()];
   const [copied, setCopied] = useState(false);
 
@@ -294,6 +299,11 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   // hears the result when the pointer comes up.
   const [working, setWorking] = useState<CanvasLayout | null>(null);
   const workingRef = useRef<CanvasLayout | null>(null);
+  // A layer chosen on the canvas inside a folded group: the group opens, so its row and settings show.
+  useEffect(() => {
+    const gid = selectedLayer ? workingRef.current?.layers.find((l) => l.uid === selectedLayer)?.group : null;
+    if (gid) openGroup(gid);
+  }, [selectedLayer]);
   const dragging = useRef(false);
   const scaleRef = useRef(1);
 
@@ -384,6 +394,8 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
     setPicked([]);
     setSelectedLayer(null);
     setSelectedGroup(group.id);
+    // Just made, or just added to: open, so what went in can be seen.
+    openGroup(group.id);
   };
 
   const ungroup = (gid: string) => {
@@ -2001,10 +2013,10 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   members={unit.layers as CanvasLayer[]}
                   order={layerOrder}
                   rowId={unit.id}
-                  open={Boolean(picking) || !folded.includes(unit.group)}
+                  open={Boolean(picking) || opened.includes(unit.group)}
                   selected={selectedGroup === unit.group && !selectedLayer}
                   onSelect={() => { setSelectedLayer(null); setSelectedGroup(unit.group); }}
-                  onToggleOpen={() => setFolded((f) => (f.includes(unit.group) ? f.filter((g) => g !== unit.group) : [...f, unit.group]))}
+                  onToggleOpen={() => setOpened((o) => (o.includes(unit.group) ? o.filter((g) => g !== unit.group) : [...o, unit.group]))}
                   onMove={(delta) => moveLayer(unit.id, delta)}
                   onUngroup={() => ungroup(unit.group)}
                   onLock={(locked) => patchGroup(unit.group, { locked })}

@@ -51,7 +51,14 @@ test('badges for what wants doing; the platforms as one row; the phone\'s bar ne
   assert.ok(app.includes("wasOn.current.has(String(k))") && !app.slice(app.indexOf('const WATCHED'), app.indexOf('const wasOn')).includes('tiktok'), 'TikTok going with the stream would count as dropped');
   for (const id of ['twitch', 'twitchBot', 'tiktok', 'discord', 'obs', 'spotify', 'youtube']) assert.ok(app.includes(`{ id: '${id}', name:`), `${id} is not in the row of platforms`);
   assert.ok(app.includes('<PhoneBar items={phoneItems}') && app.includes('data-phone-bar-room'), 'the phone has no bar, or it covers the end of a screen');
-  assert.ok(menu.includes("localStorage.setItem(CLOSED_KEY"), 'folded sections are not remembered');
+});
+
+test('the menu starts folded but for the section holding the screen showing, which opens when a screen in it is gone to', () => {
+  assert.ok(menu.includes('const [opened, setOpened] = useState<Set<string>>(() => new Set(holding ? [holding] : []));'), 'the menu does not start folded');
+  assert.ok(menu.includes('const open = opened.has(s.id);'));
+  assert.ok(menu.includes('if (holding && !opened.has(holding)) setOpened((was) => new Set([...was, holding]));'), 'going to a screen in a folded section leaves it folded');
+  // Not carried from one visit to the next: every visit starts folded.
+  assert.ok(!menu.includes('localStorage'), 'which sections are open is still remembered between visits');
 });
 
 test('every word the menu adds is in both languages', () => {

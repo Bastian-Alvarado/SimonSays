@@ -181,7 +181,7 @@ export const GuidesView: React.FC<GuidesViewProps> = ({ t, system, go, screens, 
   const places = signInPlaces();
   const stateWords: Record<string, string> = {
     on: t.guidesPlatformOn || 'Connected',
-    waiting: t.guidesPlatformWaiting || 'Set up — waiting for your LIVE',
+    ready: t.guidesPlatformReady || 'Set up',
     off: t.guidesPlatformOff || 'Not connected',
   };
   const platformsCard = (
@@ -212,7 +212,7 @@ export const GuidesView: React.FC<GuidesViewProps> = ({ t, system, go, screens, 
           const w = p[lang];
           const open = openPlatform === p.id;
           let state = 'off';
-          try { state = p.state({ status: system?.status, data: system?.data }); } catch { state = 'off'; }
+          try { state = p.state({ status: system?.status, data: system?.data, connections: system?.connections }); } catch { state = 'off'; }
           const site = p.portal ? new URL(p.portal).hostname.replace(/^www\./, '') : '';
           return (
             <div key={p.id} ref={open ? platformAt : undefined} className={`rounded-2xl border scroll-mt-20 md:scroll-mt-6 ${open ? 'border-zinc-600 bg-zinc-950/70' : 'border-zinc-800 bg-zinc-950/40'}`} data-guide-platform={p.id} data-state={state} data-open={open ? 'yes' : 'no'}>
@@ -226,7 +226,7 @@ export const GuidesView: React.FC<GuidesViewProps> = ({ t, system, go, screens, 
                   {!open && <span className="block text-[11px] text-zinc-500 truncate">{w.for}</span>}
                 </span>
                 <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-zinc-600 shrink-0"><Clock size={11} />{fill(t.guidesPlatformMinutes || 'about {count} min', { count: String(p.minutes) })}</span>
-                <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${state === 'on' ? 'bg-emerald-500/10 text-emerald-400' : state === 'waiting' ? 'bg-amber-500/10 text-amber-400' : 'bg-zinc-900 text-zinc-500'}`} data-platform-state={state}>{stateWords[state]}</span>
+                <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${state === 'on' || state === 'ready' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-900 text-zinc-500'}`} data-platform-state={state}>{stateWords[state]}</span>
                 {open ? <ChevronDown size={16} className="text-zinc-500 shrink-0" /> : <ChevronRight size={16} className="text-zinc-500 shrink-0" />}
               </button>
               {open && (

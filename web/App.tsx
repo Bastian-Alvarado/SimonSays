@@ -64,6 +64,8 @@ import { ChatDockView } from './components/views/ChatDockView';
 import { SendToPicker } from './components/SendToPicker';
 import { refusalWords, fill } from './words';
 import { DockTabs, DockTab } from './components/DockTabs';
+import { ScreenControls, HoldAwake } from './components/ScreenControls';
+import { useSideways } from './hooks/useSideways';
 import { PlanView } from './components/views/PlanView';
 import { GameView } from './components/views/GameView';
 import { PeopleView } from './components/views/PeopleView';
@@ -494,6 +496,8 @@ export default function App() {
   const [dockTab, setDockTabRaw] = useState<string>(() => {
     try { return localStorage.getItem('dock_tab') || 'chat'; } catch { return 'chat'; }
   });
+  // A phone held sideways: the dock's tabs stand in a column at the left (see DockTabs).
+  const dockSideways = useSideways();
   const setDockTab = (id: string) => {
     setDockTabRaw(id);
     try { localStorage.setItem('dock_tab', id); } catch { /* nothing to do about it */ }
@@ -523,7 +527,7 @@ export default function App() {
   };
   // Not before the server has said what it has: until then everything would read as not done.
   const guidesReady = Boolean((system.data as any).surfaces);
-  const setupProgress = setupState({ status: system.status, data: system.data }, { seen: guidesSeen, ticked: guidesTicked });
+  const setupProgress = setupState({ status: system.status, data: system.data, connections: system.connections }, { seen: guidesSeen, ticked: guidesTicked });
   const newlySeen = setupProgress.items.filter((i) => i.done && i.check.sticky && !guidesSeen.includes(i.check.id)).map((i) => i.check.id).join(',');
   useEffect(() => {
     if (!newlySeen) return;
@@ -693,9 +697,10 @@ export default function App() {
       the screen where you set it could only ever fix one of them.
     */
     return (
-      <div className="h-dvh overflow-auto bg-[#0a0a0a] p-3 font-sans">
+      <div className={`h-dvh bg-[#0a0a0a] font-sans ${dockSideways ? 'overflow-hidden p-2' : 'overflow-auto p-3'}`}>
         <style>{'body, html { background-color: #0a0a0a !important; background-image: none !important; }'}</style>
         {accentStyles}
+        <HoldAwake />
         <DockDeck
           grid={system.data.dockGrid}
           remember="dock_page_deck"
@@ -706,6 +711,7 @@ export default function App() {
           columns={system.data.dockGrid.columns}
           rows={system.data.dockGrid.rows}
           t={t}
+          railExtras={<ScreenControls t={t} />}
         />
       </div>
     );
@@ -845,8 +851,10 @@ export default function App() {
   */
   if (mode === 'overlay') return <style>{'body, html { background: transparent !important; }'}</style>;
 
-  if (mode === 'dock') { return ( <div className={`min-h-dvh font-sans ${system.settings.transparentBackground ? 'bg-transparent' : ''} overflow-hidden`} style={{ backgroundColor: system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor }}> <style>{` body, html { background-color: ${system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor} !important; ${system.settings.transparentBackground ? 'background-image: none !important;' : ''} height: 100%; overflow: hidden; } `}</style> {accentStyles}<div className="flex flex-col h-dvh p-2 relative"> {pickerState && (<><div className="fixed inset-0 z-[9990] bg-transparent" onClick={() => setPickerState(null)} /><EmojiPicker style={{ top: pickerState.top, left: pickerState.left }} onSelect={(emoji: string) => setMessageInput(messageInput + emoji)} onClose={() => setPickerState(null)} /></>)}
-      {mode === 'dock' && <DockTabs tabs={DOCK_TABS} active={panel} onPick={setDockTab} />}
+  if (mode === 'dock') { return ( <div className={`min-h-dvh font-sans ${system.settings.transparentBackground ? 'bg-transparent' : ''} overflow-hidden`} style={{ backgroundColor: system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor }}> <style>{` body, html { background-color: ${system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor} !important; ${system.settings.transparentBackground ? 'background-image: none !important;' : ''} height: 100%; overflow: hidden; } `}</style> {accentStyles}<div className={`flex ${dockSideways ? 'flex-row gap-2' : 'flex-col'} h-dvh p-2 relative`}> <HoldAwake /> {pickerState && (<><div className="fixed inset-0 z-[9990] bg-transparent" onClick={() => setPickerState(null)} /><EmojiPicker style={{ top: pickerState.top, left: pickerState.left }} onSelect={(emoji: string) => setMessageInput(messageInput + emoji)} onClose={() => setPickerState(null)} /></>)}
+      {mode === 'dock' && <DockTabs tabs={DOCK_TABS} active={panel} onPick={setDockTab} vertical={dockSideways} footer={dockSideways ? <ScreenControls t={t} /> : null} />}
+      {/* The panels, in a column of their own: beside the tabs when the phone is sideways, under them otherwise. */}
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
       {/* No alerts here: the dock is chat. Alerts belong to the alerts page and the alerts layer on a layout. */} <div className="flex-1 min-h-0 flex relative" style={mode === 'dock' && panel !== 'chat' ? { display: 'none' } : undefined}><div className="flex-1 overflow-y-auto flex flex-col-reverse relative scroll-smooth" ref={chatScrollRef} onScroll={onChatScroll} style={{ gap: `${system.settings.messageGap}px` }}> {<ChatStyle settings={system.settings} />} {/* The placeholders are for somebody looking at the dock. On stream they were a caption nobody asked for, in English, and "Connecting…" took the place of the whole chat whenever the page loaded or the server restarted. */}{(mode === 'dock' && system.status.twitch === 'disconnected' && system.status.tiktok === 'disconnected' && system.status.discord === 'disconnected') ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <div className="w-12 h-12 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4 border border-zinc-700/50"> <WifiOff size={24} className="text-zinc-500" /> </div> <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.connecting}</p> </div> ) : (mode === 'dock' && system.data.chatMessages.length === 0) ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <Loader2 className="w-8 h-8 text-current-accent animate-spin mb-4" /> <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.noMessages}</p> </div> ) : ( system.data.chatMessages.map((chat, idx) => renderChatMessageHelper(chat, idx)) )} </div> {mode === 'dock' && !chatPinned && (
         <button onClick={jumpToNewest} className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-current-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5 hover:brightness-110 transition-all">
           <ChevronDown size={12} />
@@ -905,7 +913,7 @@ export default function App() {
       )}
       {mode === 'dock' && panel === 'chat' && ( <div className="mt-2 pt-3 border-t border-white/10 flex flex-col"> <div className="flex items-center gap-2 px-1 mb-1.5"> <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 opacity-60">{t.sendingAs}:</span>{system.status.twitchBot === 'connected' ? ( <div className="flex bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800 shadow-sm"> <button onClick={() => system.settings.setSenderRole('main')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'main' ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.mainAccount} </button> <button onClick={() => system.settings.setSenderRole('bot')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'bot' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.botAccount} </button> </div> ) : ( <span className="text-[8px] font-black uppercase tracking-widest text-current-accent opacity-60"> {t.mainAccount} {system.connections.twitchUser?.display_name ? `(${system.connections.twitchUser.display_name})` : ''} </span> )} <SendToPicker value={(system.settings as any).sendTo} set={(system.settings as any).setSendTo} authorised={Boolean((system.connections as any).youtubeAuthorised)} live={Boolean((system.connections as any).youtubeLive)} unitsUsed={(system.data as any).stats?.youtubeUnitsUsed} t={t} /> <div className="ml-auto flex items-center gap-1">
           <button onClick={system.data.clearChat} title={t.clearChat} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"><Trash2 size={13} /></button>
-        </div> </div> {sendError && <p role="alert" data-dock="send-error" className="px-1 mb-1.5 text-[10px] font-bold leading-snug text-red-400">{sendError}</p>} <div className="flex gap-2 items-stretch"> <div className="flex-1 bg-zinc-900/50 rounded-xl border border-zinc-800 flex items-center px-4 pr-1 relative"> <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }} placeholder={system.status.twitch === 'connected' ? t.typeGlobal : t.connecting} disabled={system.status.twitch === 'disconnected'} className="bg-transparent border-none outline-none w-full text-xs font-bold text-zinc-400 disabled:opacity-50 pr-8 py-3" /> <button onClick={handlePickerOpen} className="p-2 text-zinc-500 hover:text-white transition-colors" title="Add Emoji"> <Smile size={14} /> </button> </div> <Button onClick={handleSendMessage} icon={<Send size={16} />} className="font-extrabold px-4" disabled={system.status.twitch === 'disconnected' || !messageInput.trim()}> <span className="hidden xs:inline">{t.send}</span> </Button> </div> </div> )} </div> </div> ); }
+        </div> </div> {sendError && <p role="alert" data-dock="send-error" className="px-1 mb-1.5 text-[10px] font-bold leading-snug text-red-400">{sendError}</p>} <div className="flex gap-2 items-stretch"> <div className="flex-1 bg-zinc-900/50 rounded-xl border border-zinc-800 flex items-center px-4 pr-1 relative"> <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }} placeholder={system.status.twitch === 'connected' ? t.typeGlobal : t.connecting} disabled={system.status.twitch === 'disconnected'} className="bg-transparent border-none outline-none w-full text-xs font-bold text-zinc-400 disabled:opacity-50 pr-8 py-3" /> <button onClick={handlePickerOpen} className="p-2 text-zinc-500 hover:text-white transition-colors" title="Add Emoji"> <Smile size={14} /> </button> </div> <Button onClick={handleSendMessage} icon={<Send size={16} />} className="font-extrabold px-4" disabled={system.status.twitch === 'disconnected' || !messageInput.trim()}> <span className="hidden xs:inline">{t.send}</span> </Button> </div> </div> )} </div> </div> </div> ); }
 
   /**
    * The sidebar's markup — a plain function that is called, rather than a

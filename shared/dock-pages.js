@@ -26,6 +26,63 @@ export function pageCount(grid) {
  */
 export const pagerPlace = (grid) => (grid?.pagerAt === 'top' ? 'top' : 'bottom');
 
+/**
+ * What the deck does on a phone held sideways: folds the page so its rows sit
+ * side by side and the buttons can grow into the width ('fold'), or shows two
+ * pages next to each other at their usual shape ('pages'). Anything else
+ * stored reads as folding.
+ */
+export const SIDEWAYS_MODES = ['fold', 'pages'];
+export const sidewaysMode = (grid) => (grid?.sideways === 'pages' ? 'pages' : 'fold');
+
+/**
+ * A page folded k times: rows k at a time laid side by side, so a 4×6 page
+ * folded twice is 8×3 — its first two rows make the new first row, the next
+ * two the second. Every row stays whole and in its order, which is what keeps
+ * a hand that knows the deck finding things.
+ *
+ * Takes the page's cells in reading order (any value, null for an empty cell)
+ * and gives them back in the folded order, with nulls where the last folded
+ * row is short.
+ */
+export function foldCells(cells, columns, k) {
+  const cols = Math.max(1, Math.round(columns));
+  const fold = Math.max(1, Math.round(k));
+  if (fold === 1) return cells.slice();
+  const rows = Math.ceil(cells.length / cols);
+  const newRows = Math.ceil(rows / fold);
+  const out = Array(newRows * cols * fold).fill(null);
+  cells.forEach((cell, i) => {
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    out[Math.floor(r / fold) * cols * fold + (r % fold) * cols + c] = cell;
+  });
+  return out;
+}
+
+/**
+ * The side of a square button when `columns` × `rows` fill a box of this size
+ * with this gap between them.
+ */
+export const squareSide = (columns, rows, width, height, gap) => Math.max(0, Math.min(
+  (width - (columns - 1) * gap) / columns,
+  (height - (rows - 1) * gap) / rows,
+));
+
+/**
+ * How many times to fold a page so its buttons come out biggest in a box of
+ * this size: 1 (not at all) to 3. A fold that gains nothing is not taken.
+ */
+export function bestFold(columns, rows, width, height, gap) {
+  let best = 1;
+  let bestSide = squareSide(columns, rows, width, height, gap);
+  for (let k = 2; k <= 3 && k <= rows; k += 1) {
+    const side = squareSide(columns * k, Math.ceil(rows / k), width, height, gap);
+    if (side > bestSide + 0.5) { best = k; bestSide = side; }
+  }
+  return best;
+}
+
 /** One name per page, '' where none was given. */
 export function cleanPageNames(names, pages) {
   const list = Array.isArray(names) ? names : [];

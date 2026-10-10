@@ -14,7 +14,7 @@ import { collection } from '../core/store.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { DEFAULT_CHAT, cleanChatSettings, normaliseChatLayer, isWholeChat } from './chat-settings.js';
 import { dockBuiltin, DOCK_FACE_SECONDS } from '../../shared/dock-builtins.js';
-import { MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace } from '../../shared/dock-pages.js';
+import { MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace, sidewaysMode } from '../../shared/dock-pages.js';
 import { AVATAR_ACTIONS_LIST } from '../../shared/avatar.js';
 import { HOUSE_CHARACTER } from '../../shared/house-avatar.js';
 import { youtubeCategoryName } from '../../shared/youtube-categories.js';
@@ -1534,6 +1534,8 @@ export const store = {
       pageNames: cleanPageNames(next?.pageNames !== undefined ? next.pageNames : prev.pageNames, pages),
       // The numbered page buttons, over the grid or under it.
       pagerAt: pagerPlace(next?.pagerAt !== undefined ? next : prev),
+      // On a phone held sideways: the page folded to fill the width, or two pages side by side.
+      sideways: sidewaysMode(next?.sideways !== undefined ? next : prev),
     });
   },
   getDockGrid: () => db.dockGrid.get(),

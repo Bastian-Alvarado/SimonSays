@@ -17,6 +17,10 @@
  * One tab draws nothing at all. A switch with nothing to switch to is a
  * control that has never done anything, and the room is better spent on the
  * panel.
+ *
+ * On a phone held sideways the height is what is short, so the tabs stand in
+ * a column at the left instead — icons, named on a long press — with
+ * whatever else belongs at the side of the screen under them.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { LucideIcon } from 'lucide-react';
@@ -33,12 +37,16 @@ interface Props {
   tabs: DockTab[];
   active: string;
   onPick: (id: string) => void;
+  /** A column at the left rather than a bar on top: a phone held sideways. */
+  vertical?: boolean;
+  /** Under the tabs in the column: the full-screen and keep-awake buttons. */
+  footer?: React.ReactNode;
 }
 
 /** About how wide a tab is with its word: the letters, and the icon and padding around them. */
 const widthWithWord = (tab: DockTab) => tab.label.length * 7 + 36 + (tab.count ? 16 : 0);
 
-export const DockTabs = ({ tabs, active, onPick }: Props) => {
+export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null }: Props) => {
   /*
     Whether every tab has room for its word. Five tabs in a dock of the usual
     width cut every word to two letters and an ellipsis, which is worse than
@@ -58,6 +66,35 @@ export const DockTabs = ({ tabs, active, onPick }: Props) => {
     watch.observe(el);
     return () => watch.disconnect();
   }, [needed]);
+
+  if (vertical) {
+    if (tabs.length < 2 && !footer) return null;
+    return (
+      <div className="w-11 shrink-0 flex flex-col items-center gap-1 bg-zinc-900/80 p-1 rounded-lg border border-zinc-800" data-dock="tabs" data-dock-tabs-side>
+        {tabs.length > 1 && tabs.map((tab) => {
+          const on = tab.id === active;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id} onClick={() => onPick(tab.id)} data-dock="tab" data-dock-tab={tab.id}
+              className={`relative w-9 h-9 shrink-0 rounded-md flex items-center justify-center transition-all ${
+                on ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+              }`}
+              aria-pressed={on}
+              title={tab.label}
+              aria-label={tab.label}
+            >
+              <Icon size={16} />
+              {tab.count ? (
+                <span className={`absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full text-[8px] font-mono leading-[14px] text-center ${on ? 'bg-white text-black' : 'bg-current-accent text-white'}`} data-dock-tab-count>{tab.count}</span>
+              ) : null}
+            </button>
+          );
+        })}
+        {footer && <div className="mt-auto">{footer}</div>}
+      </div>
+    );
+  }
 
   if (tabs.length < 2) return null;
 

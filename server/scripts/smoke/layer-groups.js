@@ -151,3 +151,12 @@ test('the list makes groups, folds them, and keeps everything a layer row had', 
   assert.ok(folder.includes('onLock(!allLocked)') && folder.includes('onShow(!anyShown)'), 'a group cannot be locked or hidden whole');
   assert.ok(folder.includes('data-layer-ungroup'), 'a group cannot be undone from its row');
 });
+
+test('groups start folded, and open for a layer chosen in them and for one just made', () => {
+  const src = read('../../web/components/views/LayoutsView.tsx');
+  assert.ok(src.includes('const [opened, setOpened] = useState<string[]>([]);'), 'groups do not start folded');
+  assert.ok(src.includes('open={Boolean(picking) || opened.includes(unit.group)}'));
+  // A layer chosen on the canvas inside a folded group: its row and settings would be hidden.
+  assert.ok(src.includes('const gid = selectedLayer ? workingRef.current?.layers.find((l) => l.uid === selectedLayer)?.group : null;') && src.includes('if (gid) openGroup(gid);'), 'a layer chosen in a folded group stays hidden');
+  assert.ok(src.slice(src.indexOf('const makeGroup = () => {'), src.indexOf('const ungroup = ')).includes('openGroup(group.id);'), 'a group just made opens folded');
+});

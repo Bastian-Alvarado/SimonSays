@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import { DockButton, StreamAction } from '../types';
 import { dockBuiltin } from '../../shared/dock-builtins.js';
-import { buttonsOnPage } from '../../shared/dock-pages.js';
+import { buttonsOnPage, bestFold, foldCells, squareSide } from '../../shared/dock-pages.js';
 import { youtubeCategoryName } from '../../shared/youtube-categories.js';
 import { builtinName, refusalWords } from '../words';
 import { Check, AlertTriangle, Loader2, Zap } from 'lucide-react';
@@ -41,6 +41,15 @@ interface DockActionsGridProps {
   pages?: number;
   /** Shrinks the internals for the configuration screen's preview. */
   compact?: boolean;
+  /**
+   * The box to fill, measured, for a phone held sideways: the buttons become
+   * the largest squares that fit it whatever the rows are set to, and — when
+   * `foldable` — the page folds its rows side by side if that makes them
+   * bigger (shared/dock-pages.js, bestFold). Left out, the grid is drawn as
+   * it always was.
+   */
+  fit?: { width: number; height: number } | null;
+  foldable?: boolean;
   /**
    * Draw it without letting it be pressed, and show the cells nobody has
    * filled.
@@ -96,7 +105,7 @@ const tintFor = (category?: string) => (
 
 export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
   buttons: everyButton, streamActions, runDockAction, stats, columns = 3, rows = 0,
-  page = 0, pages = 1, compact = false, preview = false, arrange, t,
+  page = 0, pages = 1, compact = false, preview = false, arrange, t, fit = null, foldable = true,
 }) => {
   // This page's buttons. The rest of the dock is somebody else's grid.
   const buttons = buttonsOnPage(everyButton, page, pages) as DockButton[];
@@ -245,17 +254,47 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
     ? `min((100cqw - ${(columns - 1) * gapPx}px) / ${columns}, (100cqh - ${(rowCount - 1) * gapPx}px) / ${rowCount})`
     : '';
 
+  /*
+    Sideways on a phone: the page folded when that makes its buttons bigger,
+    every row still whole (see foldCells), and the squares sized in pixels
+    to the box measured for it. Never while it is being arranged — the
+    arrangement is the upright one.
+  */
+  const fitting = Boolean(fit && fit.width > 0 && fit.height > 0 && !preview && !arrange);
+  const fold = fitting && foldable ? bestFold(columns, rowCount, fit!.width, fit!.height, gapPx) : 1;
+  const shownColumns = columns * fold;
+  const order: ({ button: (typeof buttons[number]) | null; cell: number } | null)[] = fold > 1
+    ? foldCells(layout.map((button, cell) => ({ button, cell })), columns, fold)
+    : layout.map((button, cell) => ({ button, cell }));
+  const shownRows = Math.ceil(order.length / shownColumns);
+  const fitSide = fitting ? Math.max(24, Math.floor(squareSide(shownColumns, shownRows, fit!.width, fit!.height, gapPx))) : 0;
+  /*
+    Sized to the screen, the icon and the words follow the button: big
+    buttons get words that read across the room, small ones words that fit,
+    and a small one less padding so the words have the room.
+  */
+  const glyph = fitting ? Math.max(12, Math.min(22, Math.round(fitSide / 4.5))) : iconSize;
+  const labelPx = fitting ? Math.max(7, Math.min(12, Math.round(fitSide / 8.5))) : 0;
+  const tight = fitting && fitSide < 72;
+
   const grid = (
     <div
-      className={`grid ${rows > 0 ? '' : 'w-full'} ${compact ? 'gap-2' : 'gap-3'}`}
-      style={rows > 0 ? {
+      className={`grid ${rows > 0 || fitting ? '' : 'w-full'} ${compact ? 'gap-2' : 'gap-3'}`}
+      data-dock-fold={fitting ? fold : undefined}
+      style={fitting ? {
+        gridTemplateColumns: `repeat(${shownColumns}, ${fitSide}px)`,
+        gridTemplateRows: `repeat(${shownRows}, ${fitSide}px)`,
+      } : rows > 0 ? {
         gridTemplateColumns: `repeat(${columns}, ${side})`,
         gridTemplateRows: `repeat(${rowCount}, ${side})`,
       } : {
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
       }}
     >
-      {layout.map((button, cell) => {
+      {order.map((entry, at) => {
+        // The end of a folded page's last row: room, not a cell of the page.
+        if (!entry) return <div key={`fold-${at}`} className={cellClass} data-dock-empty="yes" />;
+        const { button, cell } = entry;
         /*
           A cell nobody claimed still takes its place in the grid: on the dock
           it holds the space so the arrangement keeps its shape, and on the
@@ -321,7 +360,7 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
               arrange ? (arrange.dragId === button.id ? 'touch-none opacity-40 cursor-grabbing'
                 : arrange.overCell === cell ? 'touch-none cursor-grab ring-2 ring-current-accent' : 'touch-none cursor-grab') : ''
             } ${
-              compact ? 'rounded-xl gap-1 p-1' : 'rounded-2xl gap-2 p-2'
+              compact || tight ? `rounded-xl ${tight ? 'gap-0.5' : 'gap-1'} p-1` : 'rounded-2xl gap-2 p-2'
             } ${
               state === 'ok' ? 'border-green-500 text-green-400'
                 : state === 'failed' ? 'border-red-500 text-red-400'
@@ -335,17 +374,17 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
                 <div className="absolute inset-0 bg-black/55 pointer-events-none" />
               </>
             )}
-            <div className={`relative flex items-center justify-center ${compact ? 'h-4' : 'h-5'}`}>
-              {state === 'running' ? <Loader2 size={iconSize} className="animate-spin" />
-                : state === 'ok' ? <Check size={iconSize} />
-                  : state === 'failed' ? <AlertTriangle size={iconSize} />
+            <div className={`relative flex items-center justify-center ${fitting ? '' : compact ? 'h-4' : 'h-5'}`} style={fitting ? { height: glyph } : undefined}>
+              {state === 'running' ? <Loader2 size={glyph} className="animate-spin" />
+                : state === 'ok' ? <Check size={glyph} />
+                  : state === 'failed' ? <AlertTriangle size={glyph} />
                     : button.icon
-                      ? <span style={{ fontSize: iconSize }} className="leading-none">{button.icon}</span>
+                      ? <span style={{ fontSize: glyph }} className="leading-none">{button.icon}</span>
                       : builtin?.icon
-                        ? <span style={{ fontSize: iconSize }} className="leading-none">{builtin.icon}</span>
-                        : <Zap size={iconSize} />}
+                        ? <span style={{ fontSize: glyph }} className="leading-none">{builtin.icon}</span>
+                        : <Zap size={glyph} />}
             </div>
-            <span className={`relative font-black uppercase tracking-wide text-center leading-tight text-zinc-100 line-clamp-3 break-words ${compact ? 'text-[8px]' : 'text-[10px]'} ${image ? 'drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]' : ''}`} data-dock-state={nowState || undefined}>
+            <span className={`relative font-black uppercase tracking-wide text-center leading-tight text-zinc-100 line-clamp-3 break-words ${fitting ? '' : compact ? 'text-[8px]' : 'text-[10px]'} ${image ? 'drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]' : ''}`} style={fitting ? { fontSize: labelPx } : undefined} data-dock-state={nowState || undefined}>
               {stateName || button.label || builtinName(t, builtin) || action?.name || t.dockActionsMissing}
             </span>
           </button>
@@ -365,6 +404,7 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
   }
 
   // The box the size is measured against, centring the grid in whatever is left.
+  if (fitting) return <div className="w-full h-full min-h-0 flex items-center justify-center">{grid}</div>;
   return rows > 0 ? (
     <div className="w-full h-full min-h-0 flex items-center justify-center" style={{ containerType: 'size' }}>
       {grid}

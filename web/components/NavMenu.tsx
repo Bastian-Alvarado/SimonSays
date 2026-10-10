@@ -70,32 +70,24 @@ export const NavButton = ({ item, active, onClick }: { item: NavItem; active: bo
   </button>
 );
 
-const CLOSED_KEY = 'simonsays.nav-closed';
-const readClosed = (): Set<string> => {
-  try { return new Set(JSON.parse(localStorage.getItem(CLOSED_KEY) || '[]')); } catch { return new Set(); }
-};
-
-/** The sections, each folding away; the one holding the screen being shown opens whenever that screen is gone to. */
+/**
+ * The sections, each folding away. They start folded — the menu opens as a
+ * short list of its sections — all but the one holding the screen being
+ * shown, which also opens whenever a screen in it is gone to. Which are open
+ * lasts while the page is open, not from one visit to the next.
+ */
 export const NavSections = ({ sections, view, go }: { sections: NavSection[]; view: AppView; go: (view: AppView) => void }) => {
-  const [closed, setClosed] = useState<Set<string>>(readClosed);
-  const keep = (next: Set<string>) => {
-    setClosed(next);
-    try { localStorage.setItem(CLOSED_KEY, JSON.stringify([...next])); } catch { /* remembered for this visit only */ }
-  };
-  // Gone to a screen in a folded section (from the search, the phone's bar): that section opens.
   const holding = sections.find((s) => s.items.some((i) => isOn(i, view)))?.id;
+  const [opened, setOpened] = useState<Set<string>>(() => new Set(holding ? [holding] : []));
+  // Gone to a screen in a folded section (from the search, the phone's bar): that section opens.
   useEffect(() => {
-    if (holding && closed.has(holding)) {
-      const next = new Set(closed);
-      next.delete(holding);
-      keep(next);
-    }
+    if (holding && !opened.has(holding)) setOpened((was) => new Set([...was, holding]));
   }, [view]);
 
   return (
     <>
       {sections.map((s, n) => {
-        const open = !closed.has(s.id);
+        const open = opened.has(s.id);
         // Folded, it still says when something in it wants doing.
         const waiting = !open && s.items.some((i) => i.number || i.dot === 'alert');
         const running = !open && s.items.some((i) => i.dot === 'on');
@@ -103,7 +95,7 @@ export const NavSections = ({ sections, view, go }: { sections: NavSection[]; vi
           <div key={s.id} className={n ? 'pt-3' : ''} data-nav-section={s.id}>
             <button
               type="button"
-              onClick={() => { const next = new Set(closed); if (open) next.add(s.id); else next.delete(s.id); keep(next); }}
+              onClick={() => setOpened((was) => { const next = new Set(was); if (open) next.delete(s.id); else next.add(s.id); return next; })}
               aria-expanded={open}
               className="w-full flex items-center gap-2 px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-zinc-300 transition-colors"
               data-nav-section-toggle={s.id}

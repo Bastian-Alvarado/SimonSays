@@ -13,6 +13,7 @@ import { SCRIPT_URL, assert, engine, fs, test } from './harness.js';
 
 const {
   MAX_DOCK_PAGES, pageCount, cleanPageNames, pageOf, buttonsOnPage, firstFreeSlot, moveToPage, removePage,
+  sidewaysMode, foldCells, bestFold, squareSide,
 } = await import('../../../shared/dock-pages.js');
 const { DOCK_BUILTINS } = await import('../../../shared/dock-builtins.js');
 const read = (path) => fs.readFileSync(new URL(path, SCRIPT_URL), 'utf8');
@@ -86,7 +87,8 @@ test('the deck turns pages by its bar or a swipe, and each screen remembers its 
   const deck = read('../../web/components/DockDeck.tsx');
   assert.ok(deck.includes('<DockActionsGrid {...gridProps} page={page} pages={pages} />'), 'the deck does not draw one page');
   assert.ok(deck.includes('data-dock-pager') && deck.includes('const pager = pages > 1 && ('), 'there is no page bar, or one with a single page');
-  assert.ok(deck.includes("touchAction: 'pan-y'") && deck.includes('go(page + (dx < 0 ? 1 : -1))'), 'a swipe does not turn the page');
+  // A page at a time, or two at a time when two show side by side.
+  assert.ok(deck.includes("touchAction: 'pan-y'") && deck.includes('go((paired ? page - (page % 2) : page) + (dx < 0 ? step : -step));'), 'a swipe does not turn the page');
   assert.ok(deck.includes('onClickCapture={onClickCapture}'), 'a swipe also presses the button it started on');
   assert.ok(deck.includes('localStorage.setItem(remember, String(next))'), 'the page is forgotten');
   const app = read('../../web/App.tsx');
@@ -131,7 +133,69 @@ test('the page buttons go over the grid or under it, as the editor says, and are
   engine.store.setDockGrid({ pagerAt: 'bottom', pages: before?.pages ?? 1, pageNames: before?.pageNames ?? [''], columns: before?.columns ?? 3 });
   const deck = read('../../web/components/DockDeck.tsx');
   assert.ok(deck.includes('{onTop && pager}') && deck.includes('{!onTop && pager}'), 'the page buttons cannot go over the grid');
-  assert.ok(deck.includes("const box = 'max-w-[2.5rem] h-10 text-xs';"), 'the page buttons are not 40px');
+  assert.ok(deck.includes("const pageBox = 'max-w-[2.5rem] h-10 text-xs';"), 'the page buttons are not 40px');
   const view = read('../../web/components/views/DockActionsView.tsx');
   assert.ok(view.includes('data-dock-pager-place') && view.includes('onClick={() => setDockGrid({ pagerAt: place })}'), 'the editor has no say in where they go');
+});
+
+// ---------------------------------------------------------------- a phone held sideways
+
+test('sideways, a page folds its rows side by side, each row whole and in order', () => {
+  const page = Array.from({ length: 24 }, (_, i) => i);
+  // A 4×6 page folded twice is 8×3: rows 1 and 2 make the new first row.
+  const folded = foldCells(page, 4, 2);
+  assert.deepEqual(folded.slice(0, 8), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(folded.slice(16, 24), [16, 17, 18, 19, 20, 21, 22, 23]);
+  assert.deepEqual(foldCells(page, 4, 1), page, 'not folding changed the page');
+  // An odd number of rows leaves the end of the last folded row empty, not another row's buttons.
+  assert.deepEqual(foldCells([0, 1, 2, 3, 4, 5], 2, 2), [0, 1, 2, 3, 4, 5, null, null]);
+  // Folded as far as makes the buttons biggest: a phone's 780×350 takes 8×3, ~91px buttons rather than ~52.
+  assert.equal(bestFold(4, 6, 780, 350, 8), 2);
+  assert.ok(squareSide(8, 3, 780, 350, 8) > squareSide(4, 6, 780, 350, 8) * 1.6);
+  // Upright, or a page of one row, nothing is gained, so nothing folds.
+  assert.equal(bestFold(4, 6, 390, 700, 8), 1);
+  assert.equal(bestFold(4, 1, 780, 350, 8), 1);
+});
+
+test('sideways it folds unless the Dock Actions screen asks for two pages at once', () => {
+  const before = engine.store.getDockGrid();
+  assert.equal(sidewaysMode({}), 'fold');
+  assert.equal(engine.store.setDockGrid({ sideways: 'pages' }).sideways, 'pages');
+  assert.equal(engine.store.setDockGrid({ columns: 4 }).sideways, 'pages', 'changing the columns forgot the choice');
+  assert.equal(engine.store.setDockGrid({ sideways: 'upside-down' }).sideways, 'fold');
+  engine.store.setDockGrid({ ...before, sideways: before?.sideways ?? 'fold' });
+  const view = read('../../web/components/views/DockActionsView.tsx');
+  assert.ok(view.includes('onClick={() => setDockGrid({ sideways: how })}') && view.includes('data-dock-sideways-place'), 'there is nowhere to choose');
+});
+
+test('on a phone held sideways the tabs and page buttons stand at the sides, and the grid fills the rest', () => {
+  const hook = read('../../web/hooks/useSideways.ts');
+  // A touch screen, wider than tall, and short: not a tablet, not a wide OBS dock with a mouse.
+  assert.ok(hook.includes("'(orientation: landscape) and (max-height: 600px) and (hover: none) and (pointer: coarse)'"));
+  const deck = read('../../web/components/DockDeck.tsx');
+  assert.ok(deck.includes('const sideways = useSideways();') && deck.includes('data-dock-pager-at="side"'), 'the page buttons stay over or under the grid sideways');
+  assert.ok(deck.includes('<DockActionsGrid {...gridProps} page={page} pages={pages} fit={boxSize} />'), 'the grid is not given the box to fill');
+  assert.ok(deck.includes("const paired = sideways && sidewaysMode(grid) === 'pages' && pages > 1;"));
+  const grid = read('../../web/components/DockActionsGrid.tsx');
+  // Never folded while it is being arranged: the arrangement is the upright one.
+  assert.ok(grid.includes('const fitting = Boolean(fit && fit.width > 0 && fit.height > 0 && !preview && !arrange);'));
+  const tabs = read('../../web/components/DockTabs.tsx');
+  assert.ok(tabs.includes('data-dock-tabs-side'), 'the dock tabs have no column');
+  const app = read('../../web/App.tsx');
+  assert.ok(app.includes('vertical={dockSideways} footer={dockSideways ? <ScreenControls t={t} /> : null}'), 'the dock does not stand its tabs at the side');
+  assert.ok(app.includes('railExtras={<ScreenControls t={t} />}'), 'the deck page has no full-screen or keep-awake buttons');
+  assert.equal(app.split('<HoldAwake />').length - 1, 2, 'keeping the screen on is not held on both deck pages');
+});
+
+test('full screen and keep the screen on are only offered where the browser can do them', () => {
+  const controls = read('../../web/components/ScreenControls.tsx');
+  assert.ok(controls.includes('document.fullscreenEnabled && document.documentElement.requestFullscreen'));
+  // Keeping the screen on needs a secure page: never offered on plain http on the home network.
+  assert.ok(controls.includes('window.isSecureContext && (navigator as any).wakeLock?.request'));
+  // Asked for again when the page comes back: the browser lets go of it whenever it is hidden.
+  assert.ok(controls.includes("document.addEventListener('visibilitychange', take);"));
+  const constants = read('../../web/constants.ts');
+  for (const key of ['dockSidewaysPlace', 'dockSidewaysFold', 'dockSidewaysPages', 'dockSidewaysFoldHint', 'dockSidewaysPagesHint', 'screenFullscreenOn', 'screenFullscreenOff', 'screenAwakeOn', 'screenAwakeOff']) {
+    assert.equal(constants.split(`    ${key}: '`).length - 1, 2, `${key} is not in both languages`);
+  }
 });

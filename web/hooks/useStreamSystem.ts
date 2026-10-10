@@ -870,7 +870,7 @@ export const useStreamSystem = () => {
       C2S.RUN_DOCK_ACTION, typeof ref === 'string' ? { id: ref } : ref,
     ),
     setDockButtons: (buttons: any[]) => send(C2S.SET_DOCK_BUTTONS, buttons),
-    setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' }) => send(C2S.SET_DOCK_GRID, next),
+    setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom'; sideways?: 'fold' | 'pages' }) => send(C2S.SET_DOCK_GRID, next),
     setOmnibar: (config: any) => send(C2S.SET_OMNIBAR, config),
     setOmnibars: (bars: any[]) => send(C2S.SET_OMNIBARS, bars),
     setViewers: (config: any) => send(C2S.SET_VIEWERS, config),
@@ -1423,6 +1423,9 @@ export const useStreamSystem = () => {
       },
       obsHost: c.obs?.host ?? 'localhost',
       obsPort: c.obs?.port ?? 4455,
+      // Set up, whether or not OBS is open now: a password kept, or reached before (for the Guides).
+      obsHasPassword: Boolean(c.obs?.hasPassword),
+      obsLastConnectedAt: Number(c.obs?.lastConnectedAt) || 0,
       obsPassword: obsPasswordDraft,
       tiktokUrl: c.tiktok?.username ?? '',
       // The old key is still read, so a proxy set before this keeps working.
@@ -1694,7 +1697,7 @@ export const useStreamSystem = () => {
       welcomeGoodbyeConfig: (snapshot as any).welcomeGoodbyeConfig ?? {},
       discordSearchResults,
       dockButtons: ((snapshot as any).dockButtons ?? []) as DockButton[],
-      dockGrid: ((snapshot as any).dockGrid ?? { columns: 3, rows: 0, pages: 1, pageNames: [''], pagerAt: 'bottom' }) as { columns: number; rows: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' },
+      dockGrid: ((snapshot as any).dockGrid ?? { columns: 3, rows: 0, pages: 1, pageNames: [''], pagerAt: 'bottom' }) as { columns: number; rows: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom'; sideways?: 'fold' | 'pages' },
       xpData: (snapshot as any).xpData ?? {},
       leaderboard: snapshot.leaderboard,
       subscribers: (snapshot as any).subscribers,

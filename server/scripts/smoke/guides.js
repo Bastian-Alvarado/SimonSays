@@ -268,9 +268,45 @@ test('a walkthrough says how far along each platform is', () => {
   assert.equal(state('twitch', { status: { twitch: 'connected' } }), 'on');
   assert.equal(state('twitch-bot', { status: { twitch: 'connected' } }), 'off');
   assert.equal(state('twitch-bot', { status: { twitchBot: 'connected' } }), 'on');
-  assert.equal(state('tiktok', { status: { tiktok: 'waiting' } }), 'waiting');
-  assert.equal(state('tiktok', { status: { tiktok: 'polling' } }), 'waiting');
+  assert.equal(state('tiktok', { status: { tiktok: 'waiting' } }), 'ready');
+  assert.equal(state('tiktok', { status: { tiktok: 'polling' } }), 'ready');
   assert.equal(state('tiktok', { status: { tiktok: 'connected' } }), 'on');
   assert.equal(state('obs', { status: { obs: 'connected' } }), 'on');
   assert.equal(state('spotify', { status: { spotify: 'disconnected' } }), 'off');
+});
+
+test('YouTube, TikTok and OBS count as done once set up, not only while connected; the menu still lights only what is connected', () => {
+  const state = (id, s) => g.PLATFORM_SETUPS.find((p) => p.id === id).state(s);
+  const step = (id, s) => g.SETUP_CHECKS.find((c) => c.id === id).done(s);
+  const off = { youtube: 'disconnected', tiktok: 'disconnected', obs: 'error', twitch: 'disconnected' };
+  // Signed in to YouTube, a TikTok username, OBS with a password or reached before: set up, between streams too.
+  assert.equal(state('youtube', { status: off, connections: { youtubeAuthorised: true } }), 'ready');
+  assert.equal(state('tiktok', { status: off, connections: { tiktokUrl: 'someone' } }), 'ready');
+  assert.equal(state('obs', { status: off, connections: { obsHasPassword: true } }), 'ready');
+  assert.equal(state('obs', { status: off, connections: { obsLastConnectedAt: 1791000000000 } }), 'ready');
+  // Nothing kept: still not.
+  assert.equal(state('youtube', { status: off, connections: { youtubeAuthorised: false } }), 'off');
+  assert.equal(state('tiktok', { status: off, connections: { tiktokUrl: '  ' } }), 'off');
+  assert.equal(state('obs', { status: off, connections: { obsHasPassword: false, obsLastConnectedAt: 0 } }), 'off');
+  // Connected beats set up.
+  assert.equal(state('youtube', { status: { youtube: 'connected' }, connections: { youtubeAuthorised: true } }), 'on');
+  // The steps tick the same way.
+  assert.equal(step('platform', { status: off, connections: { youtubeAuthorised: true } }), true);
+  assert.equal(step('platform', { status: off, connections: {} }), false);
+  assert.equal(step('obs', { status: off, connections: { obsHasPassword: true } }), true);
+  assert.equal(step('obs', { status: off, connections: {} }), false);
+  // Both places hand the rules what is set up.
+  const view = read('../../web/components/views/GuidesView.tsx');
+  assert.ok(view.includes('p.state({ status: system?.status, data: system?.data, connections: system?.connections })'));
+  assert.ok(view.includes("state === 'on' || state === 'ready' ? 'bg-emerald-500/10 text-emerald-400'"), 'set up is not shown as done');
+  const app = read('../../web/App.tsx');
+  assert.ok(app.includes('setupState({ status: system.status, data: system.data, connections: system.connections }'));
+  // The server says OBS was reached before, and when.
+  const obs = read('../platforms/obs.js');
+  assert.ok(obs.includes('creds.set({ ...creds.get(), lastConnectedAt: Date.now() });') && obs.includes('lastConnectedAt: Number(c.lastConnectedAt) || 0'));
+  const hook = read('../../web/hooks/useStreamSystem.ts');
+  assert.ok(hook.includes('obsHasPassword: Boolean(c.obs?.hasPassword),') && hook.includes('obsLastConnectedAt: Number(c.obs?.lastConnectedAt) || 0,'));
+  // The menu's row of platforms is untouched: lit by the status, connected or not.
+  for (const id of ['youtube', 'tiktok', 'obs']) assert.ok(app.includes('ok: system.status.' + id + " === 'connected' }"), 'the menu lights ' + id + ' when it is only set up');
+  for (const key of ['guidesPlatformReady']) assert.equal(constants.split(`    ${key}: '`).length - 1, 2, `${key} is not in both languages`);
 });

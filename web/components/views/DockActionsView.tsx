@@ -22,7 +22,7 @@ import { copyText } from '../../utils';
 import { builtinName, refusalWords, fill } from '../../words';
 import { CommittedInput } from '../CommittedInput';
 import {
-  MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace, pageOf, buttonsOnPage, firstFreeSlot, moveToPage, removePage,
+  MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace, pageOf, buttonsOnPage, firstFreeSlot, moveToPage, removePage, sidewaysMode,
 } from '../../../shared/dock-pages.js';
 import { StillImg } from '../StillPicture';
 
@@ -32,8 +32,8 @@ interface DockActionsViewProps {
   dockButtons: DockButton[];
   streamActions: StreamAction[];
   setDockButtons: (buttons: DockButton[]) => void;
-  dockGrid: { columns: number; rows: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' };
-  setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom' }) => void;
+  dockGrid: { columns: number; rows: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom'; sideways?: 'fold' | 'pages' };
+  setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom'; sideways?: 'fold' | 'pages' }) => void;
   runDockAction: (id: string) => Promise<any>;
   /** The server's live numbers, so the preview shows a state button's state. */
   stats?: Record<string, any>;
@@ -659,6 +659,31 @@ export const DockActionsView: React.FC<DockActionsViewProps> = ({
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+            {/* On a phone held sideways: the page folded to fill the width, or two pages at once. */}
+            {pages > 1 && (
+              <div className="mb-3 flex-shrink-0" data-dock-sideways-place>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600 whitespace-nowrap">{t.dockSidewaysPlace || 'Phone sideways'}</span>
+                  <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+                    {(['fold', 'pages'] as const).map((how) => (
+                      <button
+                        key={how}
+                        onClick={() => setDockGrid({ sideways: how })}
+                        className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-colors ${
+                          sidewaysMode(dockGrid) === how ? 'bg-current-accent/10 text-current-accent' : 'text-zinc-600 hover:text-zinc-300'
+                        }`}
+                        data-dock-sideways={how}
+                      >
+                        {how === 'fold' ? (t.dockSidewaysFold || 'Folded') : (t.dockSidewaysPages || 'Two pages')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[9px] text-zinc-600 mt-1">{sidewaysMode(dockGrid) === 'pages'
+                  ? (t.dockSidewaysPagesHint || 'Held sideways, the deck shows two pages next to each other, each as it is upright.')
+                  : (t.dockSidewaysFoldHint || 'Held sideways, the deck lays its rows side by side so the buttons can grow into the width.')}</p>
               </div>
             )}
             {/* The deck sits centred in whatever room is left, so it reads as a

@@ -2,6 +2,13 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.1.3] — 2026-10-10
+
+- Deck on a phone held sideways: the page folds its rows side by side so the buttons are bigger, the tabs and page buttons move to the sides, and "Phone sideways" in Dock Actions can show two pages at once instead.
+- Full screen and keep-the-screen-on buttons on the sideways deck (keeping it on needs the https address).
+- The menu starts collapsed except the section you are in, and layer groups in Overlays start collapsed.
+- Guides count YouTube, TikTok and OBS as set up once they are, even when not live; the sidebar still lights only what is connected.
+
 ## [1.1.2] — 2026-10-09
 
 - "!pregunta" works in any Discord channel and is answered there. Built-in chat words step aside only for a command of your own that has an action.

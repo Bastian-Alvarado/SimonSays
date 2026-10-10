@@ -102,7 +102,8 @@ function setStatus(next, error = null) {
 export const getStatus = () => ({ status, error: lastError?.message ?? null, ...obsState });
 export const getCredentials = () => {
   const c = creds.get();
-  return { host: c.host, port: c.port, hasPassword: Boolean(c.password) };
+  // When it was last reached: OBS closed is still OBS set up, for the Guides.
+  return { host: c.host, port: c.port, hasPassword: Boolean(c.password), lastConnectedAt: Number(c.lastConnectedAt) || 0 };
 };
 export const setCredentials = (patch) => creds.set({ ...creds.get(), ...patch });
 
@@ -121,6 +122,7 @@ export async function connect() {
     if (!wanted) { await disconnect(); return; }
     setStatus('connected');
     connectFailures = 0;
+    creds.set({ ...creds.get(), lastConnectedAt: Date.now() });
     log.info(`connected to ${c.host}:${c.port}`);
 
     wireEvents();
