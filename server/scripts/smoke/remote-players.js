@@ -554,7 +554,7 @@ test('the step, the slot choice and the seat buttons are on the screens, in both
   const slot = read('../../web/components/SourceLayerPanel.tsx');
   assert.ok(slot.includes('<option value={ON_SCREEN_SOURCE}>'), 'a slot cannot be the player on screen');
   const omniPanel = read('../../web/components/OmnilayerPanel.tsx');
-  assert.equal(omniPanel.split('y.config.source !== ON_SCREEN_SOURCE').length - 1, 2, 'the Omnilayer card looks for the stand-in in OBS');
+  assert.equal(omniPanel.split('y.config.source !== ON_SCREEN_SOURCE').length - 1, 3, 'the Omnilayer card looks for the stand-in in OBS');
   const view = read('../../web/components/views/RemotePlayersView.tsx');
   assert.ok(view.includes("run(key('screen'), 'onscreen', { n: s.n })"));
   const constants = read('../../web/constants.ts');

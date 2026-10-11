@@ -37,6 +37,7 @@ import { PIXEL_ID, PIXEL_NAME } from '../../shared/pixel-avatars.js';
 import { HOUSE_CHARACTER } from '../../shared/house-avatar.js';
 import { GROUP_ID, tidyGroups } from '../../shared/layer-groups.js';
 import { aspectRatio } from '../../shared/aspect.js';
+import { cleanVertical, cleanOnly } from '../../shared/layout-formats.js';
 
 /**
  * The layers a layout may hold.
@@ -824,6 +825,12 @@ function normaliseLayer(incoming, type) {
       so the box is where the source really shows. Only when there is one.
     */
     ...(aspectRatio(incoming?.aspect) ? { aspect: incoming.aspect } : {}),
+    /*
+      Kept to one of the layout's two shapes (shared/layout-formats.js):
+      drawn only on the horizontal overlay, or only on the vertical one.
+      Only when it is; a layer is on both unless it says otherwise.
+    */
+    ...(cleanOnly(incoming?.only) ? { only: cleanOnly(incoming.only) } : {}),
 
     /*
       How the layer is drawn, as opposed to what it draws.
@@ -1051,8 +1058,15 @@ export function normaliseLayout(incoming) {
     ...(cleanTypeId(incoming?.sceneType) ? { sceneType: cleanTypeId(incoming.sceneType) } : {}),
     ...(grouped.groups.length ? { groups: grouped.groups } : {}),
     layers: grouped.layers,
+    // Its vertical side (shared/layout-formats.js): only once something on it is its own.
+    ...vertical(incoming?.vertical, grouped.layers),
   };
 }
+
+const vertical = (incoming, layers) => {
+  const v = cleanVertical(incoming, layers.map((l) => l.uid));
+  return v ? { vertical: v } : {};
+};
 
 /**
  * Nothing until someone builds one.

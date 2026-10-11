@@ -63,13 +63,23 @@ const bool = (v, fallback) => {
   return v === 'true' || v === '1';
 };
 
+/*
+  The install: this folder's parent, or — started by the launcher (start.js)
+  from a version's own folder under versions/ — the folder the app was
+  installed in. Whatever is the streamer's lives there whichever version runs.
+  A relative DATA_DIR or ASSETS_DIR is from the install's server folder, where
+  the server has always been started, not from the version running.
+*/
+const install = process.env.SIMONSAYS_ROOT || path.join(__dirname, '..');
+const place = (dir, fallback) => (dir ? path.resolve(install, 'server', dir) : fallback);
+
 export const config = {
   port: num(process.env.PORT, 8081),
   host: process.env.HOST || '0.0.0.0',
 
   // Where runtime state lives. Override to relocate the whole database.
-  dataDir: process.env.DATA_DIR || path.join(__dirname, '..', 'data'),
-  assetsDir: process.env.ASSETS_DIR || path.join(__dirname, '..', 'assets'),
+  dataDir: place(process.env.DATA_DIR, path.join(install, 'data')),
+  assetsDir: place(process.env.ASSETS_DIR, path.join(install, 'assets')),
 
   // Served to the config UI so it can build OAuth redirect URLs.
   publicUrl: process.env.PUBLIC_URL || 'http://localhost:5173',

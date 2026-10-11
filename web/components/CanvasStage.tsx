@@ -85,6 +85,8 @@ export interface CanvasLayer {
   group?: string;
   /** A shape the editor keeps it to while it is resized, as '16:9'. '' or none is free. See shared/aspect.js. */
   aspect?: string;
+  /** Kept to one of the layout's two shapes: drawn only on that overlay. None is both. See shared/layout-formats.js. */
+  only?: 'horizontal' | 'vertical';
   /* How it is drawn, as opposed to what it draws. All optional, all no-ops. */
   rotation?: number;
   flipH?: boolean;
@@ -127,6 +129,14 @@ export interface CanvasLayout {
   /** Folders in the editor's list of layers. See shared/layer-groups.js. */
   groups?: { id: string; name: string }[];
   layers: CanvasLayer[];
+  /**
+   * Its vertical side, for OBS's vertical canvas: the canvas's size when it is
+   * not 1080×1920, and the boxes of the layers placed there by hand, by uid.
+   * See shared/layout-formats.js.
+   */
+  vertical?: { width?: number; height?: number; boxes?: Record<string, { x: number; y: number; width: number; height: number }> };
+  /** Set on the editor's vertical view of a layout, which is taken apart again before it is saved. */
+  _view?: 'vertical';
 }
 
 interface CanvasStageProps {

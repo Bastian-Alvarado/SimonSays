@@ -17,3 +17,8 @@ Thumbs.db
 
 # Deploy tarball, built on demand by the push-to-phone step.
 update.tgz
+
+# Updates (start.js, server/engine/updater.js): versions side by side, the one running, the backups taken first.
+versions/
+current.json
+backups/

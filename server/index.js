@@ -33,6 +33,7 @@ import { initProfileCard } from './engine/profile-card.js';
 import { initHighlights } from './engine/highlights.js';
 import { initLiveDms } from './engine/live-dms.js';
 import { initRemotePlayers, aliasFor, everyAliasOf } from './engine/remote-players.js';
+import { initUpdater } from './engine/updater.js';
 import * as omnilayer from './engine/omnilayer.js';
 import { getGreetings } from './engine/welcome.js';
 import { initDiscordQuestions } from './engine/discord-questions.js';
@@ -52,7 +53,7 @@ import * as tts from './platforms/tts.js';
 import * as droidcam from './platforms/droidcam.js';
 
 import { createHttpServer } from './api/http.js';
-import { initWebSocket } from './api/ws.js';
+import { initWebSocket, closeWebSocket } from './api/ws.js';
 import { VERSION } from '../shared/version.js';
 
 const log = createLogger('boot');
@@ -165,15 +166,20 @@ async function main() {
   server.listen(config.port, config.host, () => {
     log.info(`listening on http://${config.host}:${config.port}`);
     log.info('the stack is now live and does not need a browser open');
+    // Started by the launcher (start.js): it waits for this before trusting a new version.
+    if (process.send) process.send({ type: 'simonsays-ready', version: VERSION });
   });
 
-  installShutdownHandlers(server);
+  const shutdown = installShutdownHandlers(server);
+  // Updates from GitHub, for the public edition: ready a new version, then stop for the launcher to start it.
+  initUpdater({ restarter: (code) => shutdown('update', code), obsService: obs });
 }
 
 function installShutdownHandlers(server) {
   let shuttingDown = false;
 
-  const shutdown = async (signal) => {
+  // An exit code other than 0 tells the launcher why: RESTART_FOR_UPDATE starts the version just readied.
+  const shutdown = async (signal, code = 0) => {
     if (shuttingDown) return;
     shuttingDown = true;
     log.info(`${signal} received — shutting down`);
@@ -182,7 +188,12 @@ function installShutdownHandlers(server) {
     // piece of state we cannot rebuild.
     flushAll();
 
-    await Promise.allSettled([
+    // Don't hang forever: on a stuck socket, or a platform slow to say goodbye.
+    // An update waits on this, with the overlays off, so it is seconds, not tens.
+    setTimeout(() => process.exit(code), 6000).unref();
+
+    // Saying goodbye to each platform is a courtesy, so it gets three seconds.
+    await Promise.race([new Promise((resolve) => { setTimeout(resolve, 3000); }), Promise.allSettled([
       twitch.disconnect(),
       tiktok.disconnect(),
       obs.disconnect(),
@@ -190,15 +201,13 @@ function installShutdownHandlers(server) {
       Promise.resolve(stopAnnounce()),
       Promise.resolve(discord.disconnect()),
       Promise.resolve(spotify.stop()),
-    ]);
+    ])]);
 
+    closeWebSocket();
     server.close(() => {
       log.info('goodbye');
-      process.exit(0);
+      process.exit(code);
     });
-
-    // Don't hang forever on a stuck socket.
-    setTimeout(() => process.exit(0), 5000).unref();
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));
@@ -212,6 +221,7 @@ function installShutdownHandlers(server) {
   process.on('unhandledRejection', (reason) => {
     log.error('unhandled rejection:', reason);
   });
+  return shutdown;
 }
 
 main().catch((err) => {

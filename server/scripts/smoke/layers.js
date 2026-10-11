@@ -875,8 +875,8 @@ test('one accent for every layout of the profile, when the switch says so', () =
   assert.ok(view.includes('onChange={(e) => setAccent(e.target.value)}') && view.includes("onClick={() => setAccent('')}"), 'the accent is set around the switch');
   assert.ok(!view.includes("patchLayout({ accent:"), 'an accent change still goes to this layout alone');
   // On: one save with every layout wearing it. Switched on: this layout's accent goes on all of them there and then.
-  assert.ok(view.includes('if (accentAll) setLayouts(layouts.map((l) => (l.id === next.id ? next : { ...l, accent })));'), 'the accent does not go on every layout');
-  assert.ok(view.includes("if (on && w) setLayouts(layouts.map((l) => (l.id === w.id ? w : { ...l, accent: w.accent || '' })));"), 'switching it on leaves the others as they were');
+  assert.ok(view.includes('if (accentAll) saveLayouts(layouts.map((l) => (l.id === next.id ? next : { ...l, accent })));'), 'the accent does not go on every layout');
+  assert.ok(view.includes("if (on && w) saveLayouts(layouts.map((l) => (l.id === w.id ? w : { ...l, accent: w.accent || '' })));"), 'switching it on leaves the others as they were');
   assert.ok(view.includes("localStorage.getItem('layouts_accent_all') === '1'") && view.includes('data-layout-accent-all'), 'the switch is not there, or not remembered');
   for (const key of ['layoutAccentAll', 'layoutAccentAllOn', 'layoutAccentAllOne', 'layoutAccentAllSome', 'layoutAccentAllSame']) {
     assert.equal(words.split(`    ${key}: '`).length - 1, 2, `${key} is not in both languages`);

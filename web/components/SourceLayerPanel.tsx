@@ -14,6 +14,8 @@ import { ON_SCREEN_SOURCE } from '../../shared/remote-players.js';
 interface Props {
   config: Record<string, any>;
   patch: (next: Record<string, any>) => void;
+  /** Which side of the layout is being edited: on the vertical one, the fit there is its own to choose. */
+  format?: 'horizontal' | 'vertical';
   /** What OBS has, by name, to choose from. Empty while OBS is not connected. */
   sources: string[];
   t: any;
@@ -22,7 +24,7 @@ interface Props {
 const field = 'w-full bg-zinc-950/60 border border-zinc-800 rounded-md px-1.5 py-1 text-[10px] text-zinc-300 outline-none focus:border-current-accent';
 const label = 'text-[8px] font-black uppercase tracking-widest text-zinc-600';
 
-export const SourceLayerPanel = ({ config, patch, sources, t }: Props) => {
+export const SourceLayerPanel = ({ config, patch, sources, t, format = 'horizontal' }: Props) => {
   // "Player on screen" is no source in OBS: it stands for whichever remote player is on screen.
   const onScreen = config.source === ON_SCREEN_SOURCE;
   const known = onScreen || sources.includes(config.source);
@@ -50,8 +52,21 @@ export const SourceLayerPanel = ({ config, patch, sources, t }: Props) => {
         <select value={config.fit || 'fit'} onChange={(e) => patch({ fit: e.target.value })} className={field}>
           <option value="fit">{t.sourceSlotFitInside || 'Whole, inside the box'}</option>
           <option value="stretch">{t.sourceSlotStretch || 'Stretched to the box'}</option>
+          <option value="fill">{t.sourceSlotFill || 'Filling the box, edges cut off'}</option>
         </select>
       </label>
+      {/* On the vertical side, a fit of its own: a wide game usually fills a tall box rather than sitting small in it. */}
+      {format === 'vertical' && (
+        <label className="block" data-source-vertical-fit>
+          <span className={label}>{t.sourceSlotVerticalFit || 'In the vertical box'}</span>
+          <select value={config.verticalFit || ''} onChange={(e) => patch({ verticalFit: e.target.value })} className={field}>
+            <option value="">{t.sourceSlotVerticalSame || 'The same as horizontal'}</option>
+            <option value="fit">{t.sourceSlotFitInside || 'Whole, inside the box'}</option>
+            <option value="stretch">{t.sourceSlotStretch || 'Stretched to the box'}</option>
+            <option value="fill">{t.sourceSlotFill || 'Filling the box, edges cut off'}</option>
+          </select>
+        </label>
+      )}
       <div>
         <span className={label}>{t.sourceSlotCrop || 'Cut off its edges first (its own pixels)'}</span>
         <div className="grid grid-cols-4 gap-1.5 mt-1">

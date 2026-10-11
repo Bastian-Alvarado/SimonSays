@@ -97,6 +97,26 @@ Everything is then on `http://localhost:8081`.
 
 ---
 
+## Updating
+
+Started with `npm run serve` (or `npm start` once the UI is built), the app
+keeps itself up to date. It checks GitHub once a day, and **Settings → About**
+shows when a new version is out, with what's new in it. **Update now**
+downloads it, checks it arrived whole, backs up `data/` to `backups/` and
+restarts into it. That takes a few seconds, and overlays come back by
+themselves. If the new version won't start, the app goes back to the one you
+had.
+
+It never updates on its own, and never while OBS is streaming or recording.
+Each version gets its own folder under `versions/`; your `data/`, `assets/`
+and `.env` stay where they are.
+
+Prefer git? `git pull`, `npm install` and `npm run serve` still work, and a
+newer copy from git wins over an older version installed from Settings.
+`npm run dev` has no updater: update that one with git.
+
+---
+
 ## The important part: closing the UI
 
 Start the server, configure your commands, then **close every browser tab**.

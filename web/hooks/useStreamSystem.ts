@@ -895,6 +895,8 @@ export const useStreamSystem = () => {
     /** Private go-live messages: 'settings', 'post' or 'test' (server/engine/live-dms.js). */
     liveDms: (op: string, payload: Record<string, any> = {}) => request(C2S.LIVE_DMS, { ...payload, op }),
     remotePlayers: (op: string, payload: Record<string, any> = {}) => request(C2S.REMOTE_PLAYERS, { ...payload, op }),
+    // Updates from GitHub (server/engine/updater.js): 'check', or 'apply' to get the newest ready and restart into it.
+    updates: (op: 'check' | 'apply') => request(C2S.UPDATES, { op }),
     /** Which Discord channels feed the Questions dock (server/engine/discord-questions.js). */
     setDiscordQuestions: (settings: Record<string, any>) => request(C2S.DISCORD_QUESTIONS, { settings }),
     /** The game requests board (server/engine/game-requests.js). */
@@ -1621,6 +1623,8 @@ export const useStreamSystem = () => {
       liveDms: (snapshot as any).liveDms,
       // Remote players' seats, their links and how each is doing (server/engine/remote-players.js).
       remotePlayers: (snapshot as any).remotePlayers,
+      // Whether a newer version is out, and how an update is going (server/engine/updater.js); null on a copy updated by hand.
+      updates: (snapshot as any).updates || null,
       discordQuestions: (snapshot as any).discordQuestions,
       gameRequests: (snapshot as any).gameRequests,
       moderation: (snapshot as any).moderation,

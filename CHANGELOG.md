@@ -2,6 +2,14 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.2.0] — 2026-10-11
+
+- Updates from the app: Settings → About checks GitHub once a day, and "Update now" backs up your data, installs the new version and restarts into it (and goes back if it won't start). Start the app with `npm run serve` or `npm start` for this.
+- Overlays have a vertical side for OBS's vertical canvas (Twitch dual format, TikTok): arrange each layout for vertical, show a layer on both sides or just one, and add the vertical browser source.
+- Omnilayer can move sources on a vertical canvas too, where OBS lets it (Aitum Vertical yes, SE.Live's no); OBS source boxes can fill their box, with a fit of their own on vertical.
+- Roadmap: every update so far and the big ones planned, under Setup. It doubles as the changelog.
+- Stopping or restarting the app takes a second or two instead of waiting for every page.
+
 ## [1.1.4] — 2026-10-10
 
 - Error messages are in your language on every screen (Go live, Discord buttons, Role management, Tags, DroidCam, backups and more); DroidCam says whether the phone did not answer or could not be reached.

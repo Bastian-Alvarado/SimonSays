@@ -282,7 +282,8 @@ export function useBackend() {
         ws.send(JSON.stringify({
           type: C2S.HELLO,
           // And whether it is inside OBS, which gives its pages `obsstudio`: the Guides checklist counts on it.
-          payload: { mode: query.get('mode') || 'dashboard', layout: query.get('layout') || undefined, obs: Boolean((window as any).obsstudio) },
+          // A canvas on OBS's vertical canvas says so: it shows the vertical side, and the horizontal one keeps the sound.
+          payload: { mode: query.get('mode') || 'dashboard', layout: query.get('layout') || undefined, obs: Boolean((window as any).obsstudio), ...(query.get('format') === 'vertical' ? { format: 'vertical' } : {}) },
         }));
 
         flushOutbox();

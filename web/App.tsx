@@ -4,12 +4,14 @@
 */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
-  Layout, Package, MessageSquare, ListOrdered, MessageCircleQuestion, Menu, X, Terminal, Share2, Zap, Monitor, Bell, Settings as SettingsIcon, Tag, 
+  Layout, Package, MessageSquare, ListOrdered, MessageCircleQuestion, Menu, X, Terminal, Share2, Zap, Monitor, Bell, Settings as SettingsIcon, GitBranch, Tag, 
   Wifi, WifiOff, LogOut, Send, Bot, User, Check, Eye, EyeOff, Ghost, Link as LinkIcon, Loader2, Copy, ExternalLink,
   HelpCircle, Info, AlertTriangle, List, ChevronDown, Shield, Trash2, Clock, MousePointerClick, DoorOpen, GripHorizontal, Trophy, Newspaper, Coins, History
 , Smile, LayoutGrid, Sword, Gem, Star, Video, Radio, Layers, Gamepad2, Palette, Users, BarChart3, Gift, Headphones, Megaphone, Mic, Sparkles, Inbox, Cast, BookOpen
 } from 'lucide-react';
 import { NavSections, StatusRow, NavSearch, SearchButton, ScreenTabs, PhoneBar, type NavSection, type SearchEntry } from './components/NavMenu';
+import { useReloadAfterUpdate } from './components/UpdatesPanel';
+import { formatLayout } from '../shared/layout-formats.js';
 import { Button } from './components/Button';
 import { NotFoundPage } from './components/NotFoundPage';
 import { EmojiPicker } from './components/EmojiPicker';
@@ -38,6 +40,7 @@ import { useStreamSystem } from './hooks/useStreamSystem';
 // Import Views
 import { DashboardView } from './components/views/DashboardView';
 import { SettingsView } from './components/views/SettingsView';
+import { RoadmapView } from './components/views/RoadmapView';
 import { StudioView } from './components/views/StudioView';
 import { CommandEditorModal } from './components/CommandEditorModal';
 import { DockDeck } from './components/DockDeck';
@@ -155,6 +158,8 @@ const APP_PATHS = ['/', '/index.html'];
 export default function App() {
   // --- Initialize "The Brain" ---
   const system = useStreamSystem();
+  // After an update started here, the page reloads into the new version once the server is back as it.
+  useReloadAfterUpdate((system.data as any).serverVersion || '', (system.data as any).updates || null);
   
   // --- UI State (Non-Persistent / View-Specific) ---
   const [showIntro, setShowIntro] = useState(true);
@@ -259,6 +264,7 @@ export default function App() {
     omnibar: t.omnibar || 'Omnibar',
     levels: t.levels || 'Levels & XP',
     guides: t.guidesNav || 'Guides',
+    roadmap: t.roadmapNav || 'Roadmap',
   };
 
   // The browser tab says which screen it is; a page OBS shows keeps the app's name.
@@ -779,9 +785,11 @@ export default function App() {
 
     // In order: an explicit layout always wins; then whichever is on stream —
     // the scene binding, or the first layout while nobody binds any (liveLayout).
-    const layout = wanted
+    const chosenLayout = wanted
       ? layouts.find((l: any) => l.id === wanted)
       : liveLayout(layouts, currentScene, omni);
+    // On OBS's vertical canvas, the same layout's vertical side (shared/layout-formats.js).
+    const layout = formatLayout(chosenLayout, searchParams.get('format') === 'vertical' ? 'vertical' : 'horizontal');
     return (
       <div className="min-h-screen bg-transparent overflow-hidden">
         <style>{`body, html { background-color: transparent !important; background-image: none !important; overflow: hidden; margin: 0; height: 100%; }`}</style>
@@ -942,6 +950,9 @@ export default function App() {
   const pollOpen = (system.data as any).poll?.mode === 'open';
   const giveawayOpen = (system.data as any).giveaway?.mode === 'open';
   const remoteSending = ((system.data as any).remotePlayers?.seats || []).some((s: any) => s.status?.state === 'live');
+  // A newer version out (server/engine/updater.js), unless it is the one that would not start.
+  const updates = (system.data as any).updates;
+  const updateOut = updates?.enabled && updates.available && updates.latest && !(updates.failed || []).includes(updates.latest.version) ? updates.latest.version : '';
   const I = 18;
   /*
     By when a screen is used: live, the community, what is on screen,
@@ -997,7 +1008,9 @@ export default function App() {
     { id: 'setup', label: t.navSetup || 'Setup', items: [
       { view: 'gallery', label: t.connections, icon: <Share2 size={I} />, dot: dropped.length ? 'alert' : undefined, hint: dropped.length ? fill(t.navDropped || '{names} dropped since it was on', { names: dropped.join(', ') }) : undefined },
       { view: 'twitch', label: t.twitchNav || 'Twitch', icon: <TwitchIcon size={I} />, keywords: 'raid shoutout hype clips schedule' },
-      { view: 'settings', label: t.settings, icon: <SettingsIcon size={I} />, keywords: 'language theme idioma version versión about acerca backup' },
+      // Where the app has been and is going: every release, and the major updates planned.
+      { view: 'roadmap', label: t.roadmapNav || 'Roadmap', icon: <GitBranch size={I} />, keywords: 'changelog changes updates versions what new novedades cambios versiones hoja de ruta plan' },
+      { view: 'settings', label: t.settings, icon: <SettingsIcon size={I} />, keywords: 'language theme idioma version versión about acerca backup update actualizar', dot: updateOut ? 'news' : undefined, hint: updateOut ? fill(t.updatesAvailable || 'Version {version} is out', { version: updateOut }) : undefined },
       // Last in the menu: where somebody new starts, counting the setup steps still to do.
       { view: 'guides', label: t.guidesNav || 'Guides', icon: <BookOpen size={I} />, keywords: 'help ayuda tutorial start empezar setup configurar how como glossary glosario',
         number: guidesReady && setupProgress.left ? setupProgress.left : undefined,
@@ -1169,8 +1182,20 @@ export default function App() {
                exportConfig={system.actions.exportConfig}
                importConfig={system.actions.importConfig}
                serverVersion={(system.data as any).serverVersion}
+               updates={(system.data as any).updates}
+               updatesAct={system.actions.updates}
+               openRoadmap={() => goTo('roadmap')}
                t={t} 
              /> 
+           )}
+           {view === 'roadmap' && (
+             <RoadmapView
+               t={t}
+               activeTheme={activeTheme}
+               language={system.settings.language}
+               updates={(system.data as any).updates}
+               openUpdates={() => goTo('settings')}
+             />
            )}
            {view === 'dashboard' && ( <DashboardView activeTheme={activeTheme} t={t} setView={setView} spotify={system.spotify} setup={guidesReady ? setupProgress : null} /> )}
            {view === 'guides' && (

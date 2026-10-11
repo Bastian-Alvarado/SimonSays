@@ -567,7 +567,7 @@ test('a locked layer is not offered to the pointer at all', () => {
     layer sitting over the canvas, so leaving it there would keep catching
     drags meant for whatever is on top of it.
   */
-  assert.ok(LAYOUTS_VIEW.includes('.filter((l) => l.visible && !l.locked)'),
+  assert.ok(LAYOUTS_VIEW.includes('.filter((l) => l.visible && !l.locked && shownIn(l, format))'),
     'a locked layer still has a handle over it');
 });
 
@@ -616,7 +616,7 @@ test('both switches start on, and are remembered', () => {
     'the names switch is not remembered, or does not default to on');
   // Private mode throws rather than returning nothing, so both sides catch.
   const reads = LAYOUTS_VIEW.split('catch { return true; }').length - 1;
-  assert.equal(reads, 2, 'a blocked localStorage would break the editor');
+  assert.equal(reads, 3, 'a blocked localStorage would break the editor');
   assert.ok(LAYOUTS_VIEW.includes('catch { /* private mode */ }'), 'writing the switch is unguarded');
 });
 

@@ -6,10 +6,11 @@
 import React, { useRef } from 'react';
 import { Language, ThemeConfig, ThemeId } from '../../types';
 import { THEMES } from '../../constants';
-import { Palette, Sun, Moon, Check, Languages, Globe, Save, Upload, Download, Database, Info, RefreshCw } from 'lucide-react';
+import { Palette, Sun, Moon, Check, Languages, Globe, Save, Upload, Download, Database, Info, RefreshCw, GitBranch } from 'lucide-react';
 import { Button } from '../Button';
 import { VERSION } from '../../../shared/version.js';
 import { fill, refusalWords } from '../../words';
+import { UpdatesPanel, type UpdatesState } from '../UpdatesPanel';
 
 interface SettingsViewProps {
   activeTheme: ThemeConfig;
@@ -21,6 +22,11 @@ interface SettingsViewProps {
   importConfig: (bundle: any) => Promise<any>;
   /** The server's version, once it has said; this page's own is VERSION. */
   serverVersion?: string;
+  /** Updates from GitHub, on a copy that updates itself (null on one updated by hand), and the way to ask for them. */
+  updates?: UpdatesState | null;
+  updatesAct?: (op: 'check' | 'apply') => Promise<any>;
+  /** To the Roadmap screen: every release, and the ones planned. */
+  openRoadmap?: () => void;
   t: any;
 }
 
@@ -33,6 +39,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   exportConfig,
   importConfig,
   serverVersion,
+  updates,
+  updatesAct,
+  openRoadmap,
   t
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -245,6 +254,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ) : serverVersion ? (
           <p className="mt-2 text-xs text-zinc-500" data-version-same>{t.versionSame || 'The server runs this same version.'}</p>
         ) : null}
+        {openRoadmap && (
+          <button onClick={openRoadmap} className="mt-3 flex items-center gap-1.5 text-xs font-bold text-current-accent hover:underline" data-settings-roadmap>
+            <GitBranch size={14} /> {t.roadmapAboutLink || 'See the roadmap: every update, and what is next'}
+          </button>
+        )}
+        {updates?.enabled && updatesAct && (
+          <UpdatesPanel updates={updates} act={updatesAct} language={language} light={activeTheme.id === 'light'} t={t} />
+        )}
       </section>
     </div>
   );

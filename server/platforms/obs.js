@@ -81,7 +81,7 @@ const emptyState = () => ({
 
 let obsState = emptyState();
 
-const itemIdCache = new Map(); // `${scene}\u0000${source}` -> number
+const itemIdCache = new Map(); // `${canvas}\u0000${scene}\u0000${source}` -> number (canvas '' is the main one)
 
 export function initObs() {
   creds = collection('obs_credentials', {
@@ -262,11 +262,12 @@ function ensure() {
   return obs;
 }
 
-async function itemId(sceneName, sourceName) {
-  const key = `${sceneName}\u0000${sourceName}`;
+/** A scene item's id, in the main canvas or — with `canvasUuid` — in another one, such as the vertical canvas. */
+async function itemId(sceneName, sourceName, canvasUuid = '') {
+  const key = `${canvasUuid}\u0000${sceneName}\u0000${sourceName}`;
   if (itemIdCache.has(key)) return itemIdCache.get(key);
 
-  const { sceneItemId } = await ensure().call('GetSceneItemId', { sceneName, sourceName });
+  const { sceneItemId } = await ensure().call('GetSceneItemId', { sceneName, sourceName, ...(canvasUuid ? { canvasUuid } : {}) });
   itemIdCache.set(key, sceneItemId);
   return sceneItemId;
 }
@@ -400,34 +401,84 @@ export async function videoSize() {
 const TOP_LEFT = 5;
 const CENTRE = 0;
 
+/** How a source fills its box: whole inside it, stretched to it, or filling it with the overflow cropped. */
+const BOUNDS = { fit: 'OBS_BOUNDS_SCALE_INNER', stretch: 'OBS_BOUNDS_STRETCH', fill: 'OBS_BOUNDS_SCALE_OUTER' };
+
 /**
  * Put a source in a box and show it: at the box's top left, scaled to fit
- * inside it (or stretched to it), with its edges cropped first. Bounds
+ * inside it (or stretched to it, or filling it with what overflows cut off —
+ * a wide game in a tall vertical box), with its edges cropped first. Bounds
  * rather than a scale, so the size is the box's whatever the source's own
  * resolution is — a game capture that changes resolution mid-stream still
- * fills the same box.
+ * fills the same box. `canvasUuid` places it in a scene of another canvas,
+ * the vertical one.
  */
-export async function placeSource(sceneName, sourceName, { x, y, width, height, fit = 'fit', crop = {} }) {
-  const id = await itemId(sceneName, sourceName);
+export async function placeSource(sceneName, sourceName, { x, y, width, height, fit = 'fit', crop = {} }, canvasUuid = '') {
+  const id = await itemId(sceneName, sourceName, canvasUuid);
+  const where = { sceneName, sceneItemId: id, ...(canvasUuid ? { canvasUuid } : {}) };
   await ensure().call('SetSceneItemTransform', {
-    sceneName,
-    sceneItemId: id,
+    ...where,
     sceneItemTransform: {
       positionX: Number(x) || 0,
       positionY: Number(y) || 0,
       rotation: 0,
       alignment: TOP_LEFT,
-      boundsType: fit === 'stretch' ? 'OBS_BOUNDS_STRETCH' : 'OBS_BOUNDS_SCALE_INNER',
+      boundsType: BOUNDS[fit] || BOUNDS.fit,
       boundsAlignment: CENTRE,
       boundsWidth: Math.max(1, Number(width) || 1),
       boundsHeight: Math.max(1, Number(height) || 1),
+      // Cut to the box when it fills it, and never otherwise, so a slot set back to fit shows all of it again.
+      cropToBounds: fit === 'fill',
       cropTop: Number(crop.top) || 0,
       cropRight: Number(crop.right) || 0,
       cropBottom: Number(crop.bottom) || 0,
       cropLeft: Number(crop.left) || 0,
     },
   });
-  await ensure().call('SetSceneItemEnabled', { sceneName, sceneItemId: id, sceneItemEnabled: true });
+  await ensure().call('SetSceneItemEnabled', { ...where, sceneItemEnabled: true });
+}
+
+// ------------------------------------------------------------------ canvases
+
+/*
+  OBS's other canvases (OBS 31.1 and later, obs-websocket 5.7): the vertical
+  one SE.Live or Aitum Vertical adds, with scenes of its own. None from an OBS
+  too old to say — `supported` false, not an error, since a stream without a
+  vertical canvas is the usual thing.
+*/
+export async function canvases() {
+  let list;
+  try {
+    ({ canvases: list } = await ensure().call('GetCanvasList'));
+  } catch (err) {
+    // 204: a request this obs-websocket does not know.
+    if (err?.code === 204 || /unknown request/i.test(err?.message || '')) return { supported: false, canvases: [] };
+    throw err;
+  }
+  return {
+    supported: true,
+    canvases: (list || [])
+      .filter((c) => !c?.canvasFlags?.MAIN)
+      .map((c) => ({
+        uuid: String(c.canvasUuid || ''),
+        name: String(c.canvasName || ''),
+        width: Number(c.canvasVideoSettings?.baseWidth) || 0,
+        height: Number(c.canvasVideoSettings?.baseHeight) || 0,
+      }))
+      .filter((c) => c.uuid),
+  };
+}
+
+/** A canvas's scenes, as OBS lists them, top first. A canvas has no scene "on": it shows what its plugin shows. */
+export async function canvasScenes(canvasUuid) {
+  const { scenes } = await ensure().call('GetSceneList', { canvasUuid });
+  return (scenes || []).slice().sort((a, b) => b.sceneIndex - a.sceneIndex).map((s) => s.sceneName);
+}
+
+/** Show or hide a source in a scene of another canvas. */
+export async function setSourceVisibleIn(canvasUuid, sceneName, sourceName, visible) {
+  const id = await itemId(sceneName, sourceName, canvasUuid);
+  await ensure().call('SetSceneItemEnabled', { canvasUuid, sceneName, sceneItemId: id, sceneItemEnabled: visible });
 }
 
 // ------------------------------------------------------------------ remote players
@@ -501,9 +552,9 @@ export async function reloadBrowser(inputName) {
   await ensure().call('PressInputPropertiesButton', { inputName, propertyName: 'refreshnocache' });
 }
 
-/** What a scene holds, top of the stack first, for the setup check. */
-export async function sceneSources(sceneName) {
-  const { sceneItems } = await ensure().call('GetSceneItemList', { sceneName });
+/** What a scene holds, top of the stack first, for the setup check — in the main canvas, or in another. */
+export async function sceneSources(sceneName, canvasUuid = '') {
+  const { sceneItems } = await ensure().call('GetSceneItemList', { sceneName, ...(canvasUuid ? { canvasUuid } : {}) });
   return (sceneItems || [])
     .slice()
     .sort((a, b) => b.sceneItemIndex - a.sceneItemIndex)
@@ -518,6 +569,8 @@ export const service = {
   toggleSourceVisible, toggleFilter, toggleMuted,
   setVolumeDb, setMuted, saveReplayBuffer, stopStream, setBrowserUrl, setTransform, setMetersWanted,
   placeSource, videoSize, sceneSources, currentScene, isConnected,
+  // The vertical canvas, for Omnilayer: which canvases there are, their scenes, and hiding inside one.
+  canvases, canvasScenes, setSourceVisibleIn,
   setBrowserSettings, ensureBrowserSource, inputMuted, reloadBrowser,
   // Whether OBS is sending the stream: what a repeating action waits for when Twitch cannot say.
   isStreaming: () => Boolean(obsState.streamStatus?.active),

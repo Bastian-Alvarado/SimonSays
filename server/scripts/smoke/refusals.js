@@ -32,7 +32,7 @@ const questions = await import('../../engine/questions.js');
 // ------------------------------------------------------------ every code has words
 
 test('every refusal the server can send has words in both languages', () => {
-  const sources = ['plan.js', 'people.js', 'questions.js', 'index.js', 'twitch-extras.js', 'pixel-avatars.js', 'welcome.js', 'announce.js', 'schedule-events.js', 'giveaway.js', 'discord-pages.js', 'viewer-history.js', 'points.js', 'highlights.js', 'live-dms.js', 'remote-players.js', 'game-requests.js', 'moderation.js', 'banner-text.js', 'discord-roles.js', 'role-sync.js', 'backup.js'].map((f) => read(`../engine/${f}`)).join('\n')
+  const sources = ['plan.js', 'people.js', 'questions.js', 'index.js', 'twitch-extras.js', 'pixel-avatars.js', 'welcome.js', 'announce.js', 'schedule-events.js', 'giveaway.js', 'discord-pages.js', 'viewer-history.js', 'points.js', 'highlights.js', 'live-dms.js', 'remote-players.js', 'game-requests.js', 'moderation.js', 'banner-text.js', 'discord-roles.js', 'role-sync.js', 'backup.js', 'updater.js'].map((f) => read(`../engine/${f}`)).join('\n')
     // And outside the engine: DroidCam, OBS, and the socket's own (secrets and imports from this computer only).
     + ['../platforms/droidcam.js', '../platforms/obs.js', '../api/ws.js'].map((f) => read(f)).join('\n');
   const codes = new Set([

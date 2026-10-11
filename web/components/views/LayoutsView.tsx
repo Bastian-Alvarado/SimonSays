@@ -49,6 +49,7 @@ import { dropLayer } from '../../../shared/layer-order.js';
 import { tidyGroups, displayUnits, dropInGroup, groupBox, fitGroup, groupLayers, ungroupLayers, newGroupId, groupKey, cleanGroupName } from '../../../shared/layer-groups.js';
 import { useDragOrder, DragGrip, DragOrder } from '../../hooks/useDragOrder';
 import { ASPECTS, aspectRatio, fitAspect, holdAspect, sizeWithAspect } from '../../../shared/aspect.js';
+import { viewOf, fromVerticalView, shownIn, PHONE_SAFE_ZONES } from '../../../shared/layout-formats.js';
 import { LayerGroupFolder } from '../LayerGroupFolder';
 import { CommittedInput } from '../CommittedInput';
 import { fill, refusalWords } from '../../words';
@@ -61,7 +62,7 @@ import { ThemeConfig } from '../../types';
 import {
   Check, Copy, ExternalLink, Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Lock, LockOpen, SquareDashed, Tag,
   MessageSquare, Bell, Radio, Clock, Users, BarChart3, Headphones, Music, MonitorPlay, Monitor, IdCard, Image as ImageIcon, Target, ListOrdered, MessageCircleQuestion, Type, Square, CopyPlus, Gamepad2, Smile, Mic, X,
-  TrainFront, Megaphone, Trophy, Gift, Folder, FolderPlus, FolderOutput, SquareCheck, Ungroup,
+  TrainFront, Megaphone, Trophy, Gift, Folder, FolderPlus, FolderOutput, SquareCheck, Ungroup, Smartphone, RotateCcw,
 } from 'lucide-react';
 
 /**
@@ -103,6 +104,11 @@ const SIZE_PRESETS = [
   { label: '1080p', width: 1920, height: 1080 },
   { label: '720p', width: 1280, height: 720 },
   { label: 'Vertical', width: 1080, height: 1920 },
+];
+/** The vertical side's sizes: OBS's vertical canvas is a phone's screen, at 1080p or 720p. */
+const VERTICAL_SIZE_PRESETS = [
+  { label: '1080×1920', width: 1080, height: 1920 },
+  { label: '720×1280', width: 720, height: 1280 },
 ];
 
 /**
@@ -307,6 +313,34 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   const dragging = useRef(false);
   const scaleRef = useRef(1);
 
+  /*
+    Which of the layout's two shapes is being edited (shared/layout-formats.js).
+    On the vertical side the editor works on the layout's vertical view — the
+    vertical canvas, each layer at its vertical box — and every save takes
+    that view apart again: what is shared back onto the layers, the boxes
+    into the layout's vertical side. Remembered in this browser, like the
+    outlines: how one person is looking, not a fact about the layout.
+  */
+  const [format, setFormatState] = useState<'horizontal' | 'vertical'>(() => {
+    try { return localStorage.getItem('layout_format') === 'vertical' ? 'vertical' : 'horizontal'; } catch { return 'horizontal'; }
+  });
+  const formatRef = useRef(format);
+  // The layout as it is stored, beside the view being edited: what a vertical save is taken apart onto.
+  const storedRef = useRef<CanvasLayout | null>(null);
+  const layoutsRef = useRef(layouts);
+  layoutsRef.current = layouts;
+  // Where the phone apps draw over a vertical stream, shaded on the vertical canvas.
+  const [showSafeZones, setShowSafeZones] = useState(() => {
+    try { return localStorage.getItem('layout_safe_zones') !== 'off'; } catch { return true; }
+  });
+
+  /** A layout as it is saved: a vertical view taken apart onto the stored layout, anything else as it is. */
+  const toStored = (l: CanvasLayout | null | undefined): CanvasLayout => (l && l._view === 'vertical'
+    ? fromVerticalView(storedRef.current?.id === l.id ? storedRef.current : layoutsRef.current.find((x) => x.id === l.id), l)
+    : l) as CanvasLayout;
+  /** Every save of the whole list goes through here, so no view is ever stored as a layout. */
+  const saveLayouts = (list: CanvasLayout[]) => setLayouts(list.map(toStored));
+
   const saved = layouts.find((l) => l.id === selectedId) || layouts[0] || null;
 
   /**
@@ -320,6 +354,8 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
    * where it was let go.
    */
   const applyWorking = useCallback((next: CanvasLayout | null) => {
+    // The stored layout follows the view, so a save at any moment saves what is on screen.
+    storedRef.current = next ? toStored(next) : null;
     workingRef.current = next;
     setWorking(next);
   }, []);
@@ -328,14 +364,44 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   // between two pointer moves would otherwise yank the layer back.
   useEffect(() => {
     if (dragging.current) return;
-    applyWorking(saved ? JSON.parse(JSON.stringify(saved)) : null);
+    const copy: CanvasLayout | null = saved ? JSON.parse(JSON.stringify(saved)) : null;
+    storedRef.current = copy;
+    applyWorking(copy ? viewOf(copy, formatRef.current) : null);
   }, [saved]);
 
   const commit = useCallback((next?: CanvasLayout | null) => {
     const layout = next || workingRef.current;
     if (!layout) return;
-    setLayouts(layouts.map((l) => (l.id === layout.id ? layout : l)));
+    setLayouts(layouts.map((l) => (l.id === layout.id ? toStored(layout) : l)));
   }, [layouts, setLayouts]);
+
+  /** Edit the other shape: the same layout, seen as that format. */
+  const setFormat = (f: 'horizontal' | 'vertical') => {
+    formatRef.current = f;
+    setFormatState(f);
+    try { localStorage.setItem('layout_format', f); } catch { /* private mode */ }
+    const stored = storedRef.current;
+    applyWorking(stored ? viewOf(stored, f) : null);
+  };
+
+  /** One layer, or every one, back where the vertical side places it by itself, from its horizontal box. */
+  const verticalAuto = (uid?: string) => {
+    const stored = storedRef.current;
+    if (!stored?.vertical?.boxes) return;
+    const boxes = { ...stored.vertical.boxes };
+    if (uid) delete boxes[uid];
+    else for (const k of Object.keys(boxes)) delete boxes[k];
+    const { boxes: _gone, ...size } = stored.vertical;
+    const vertical = Object.keys(boxes).length ? { ...size, boxes } : size;
+    const { vertical: _was, ...rest } = stored;
+    const next = (Object.keys(vertical).length ? { ...rest, vertical } : rest) as CanvasLayout;
+    storedRef.current = next;
+    applyWorking(viewOf(next, formatRef.current));
+    setLayouts(layoutsRef.current.map((l) => (l.id === next.id ? next : l)));
+  };
+  // How many layers have a vertical place of their own: read from the stored layout, which every edit updates first.
+  const placedByHand = (uid: string) => Boolean(storedRef.current?.vertical?.boxes?.[uid]);
+  const placedCount = Object.keys(storedRef.current?.vertical?.boxes || {}).length;
 
   /**
    * Change one layer, in local state only.
@@ -450,14 +516,14 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
     if (!w) return;
     const next = { ...w, accent };
     applyWorking(next);
-    if (accentAll) setLayouts(layouts.map((l) => (l.id === next.id ? next : { ...l, accent })));
+    if (accentAll) saveLayouts(layouts.map((l) => (l.id === next.id ? next : { ...l, accent })));
     else commit(next);
   };
   const toggleAccentAll = (on: boolean) => {
     setAccentAll(on);
     try { localStorage.setItem('layouts_accent_all', on ? '1' : '0'); } catch { /* private mode */ }
     const w = workingRef.current;
-    if (on && w) setLayouts(layouts.map((l) => (l.id === w.id ? w : { ...l, accent: w.accent || '' })));
+    if (on && w) saveLayouts(layouts.map((l) => (l.id === w.id ? w : { ...l, accent: w.accent || '' })));
   };
   // How many layouts of the profile wear an accent other than this one's: what the switch would change.
   const accentOthers = working ? layouts.filter((l) => l.id !== working.id && (l.accent || '') !== (working.accent || '')).length : 0;
@@ -809,7 +875,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
       return l.id === w.id ? { ...w, scenes } : { ...l, scenes };
     });
     applyWorking(next.find((l) => l.id === w.id) as CanvasLayout);
-    setLayouts(next);
+    saveLayouts(next);
   };
 
   /**
@@ -829,7 +895,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
       return rest as CanvasLayout;
     });
     applyWorking(next.find((l) => l.id === w.id) as CanvasLayout);
-    setLayouts(next);
+    saveLayouts(next);
   };
 
   // ----------------------------------------------------------------- url
@@ -845,9 +911,11 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   const omni = (system?.data as any)?.omnilayer;
   const usingBindings = layouts.some((l) => l.scenes?.length) || Boolean(omni?.enabled);
   const shownUrl = usingBindings ? autoUrl : canvasUrl;
+  // On the vertical side, the one for OBS's vertical canvas: the same source, drawing the vertical side.
+  const linkUrl = shownUrl && format === 'vertical' ? `${shownUrl}&format=vertical` : shownUrl;
 
   const copyUrl = () => {
-    copyText(shownUrl);
+    copyText(linkUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -895,7 +963,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
       ...l,
       layers: (l.layers || []).map((y: any) => (y.type === 'chat' ? { ...y, config: { ...settings } } : y)),
     }));
-    setLayouts(next);
+    saveLayouts(next);
   };
 
   /*
@@ -959,6 +1027,40 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
             />
           </label>
         ))}
+      </div>
+      {/*
+        On the vertical side: a layer moved there has a place of its own,
+        which it can give back to follow its horizontal one again.
+      */}
+      {format === 'vertical' && placedByHand(layer.uid) && (
+        <div className="flex items-center gap-2" data-layer-vertical-placed>
+          <span className="flex-1 min-w-0 text-[9px] text-zinc-500 leading-snug">{t.layoutVerticalPlaced || 'Placed by hand on the vertical side'}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); verticalAuto(layer.uid); }}
+            className="shrink-0 flex items-center gap-1 px-1.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+            data-layer-vertical-auto
+          >
+            <RotateCcw size={11} /> {t.layoutVerticalAuto || 'Back to automatic'}
+          </button>
+        </div>
+      )}
+      {/* Which of the two overlays draws it: both, or one. */}
+      <div data-layer-only>
+        <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">{t.layoutShowOn || 'Shown on'}</span>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {([['', t.layoutShowBoth || 'Both'], ['horizontal', t.layoutShowHorizontal || 'Horizontal only'], ['vertical', t.layoutShowVertical || 'Vertical only']] as const).map(([value, label]) => (
+            <button
+              key={value || 'both'}
+              onClick={(e) => { e.stopPropagation(); patchLayerAndSave(layer.uid, { only: (value || undefined) as CanvasLayer['only'] }); }}
+              className={`px-1.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border transition-all ${
+                (layer.only || '') === value ? 'bg-current-accent/10 border-current-accent text-current-accent' : 'bg-zinc-950/60 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+              }`}
+              data-layer-only-choice={value || 'both'}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {/*
         A shape to keep while resizing, for the layers whose shape is a fact
@@ -1178,6 +1280,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
 
       {layer.type === 'source' && (
         <SourceLayerPanel
+          format={format}
           config={layer.config || {}}
           patch={(next) => patchLayerAndSave(layer.uid, { config: { ...(layer.config || {}), ...next } })}
           sources={((system?.connections?.obsData?.sources || []) as any[]).map((i) => i.inputName).filter(Boolean)}
@@ -1465,7 +1568,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
           : setSelectedLayer(layer.uid))}
         className={`rounded-xl border p-3 cursor-pointer transition-all ${
           active || ticked ? 'border-current-accent bg-current-accent/10' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
-        } ${order.held === layer.uid ? 'opacity-40' : ''}`}
+        } ${order.held === layer.uid ? 'opacity-40' : !shownIn(layer, format) ? 'opacity-50' : ''}`}
       >
         {/* On a narrow screen the buttons go under the name rather than squeezing it out. */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1485,6 +1588,11 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               </span>
             )}
           </span>
+          {layer.only && (
+            <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-800 text-[8px] font-black uppercase tracking-widest text-zinc-400" data-layer-only-badge={layer.only}>
+              {layer.only === 'vertical' ? (t.layoutFormatVertical || 'Vertical') : (t.layoutFormatHorizontal || 'Horizontal')}
+            </span>
+          )}
           <div className="flex items-center ml-auto">
           {/*
             Locking is here rather than on the canvas because a
@@ -1593,6 +1701,41 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               onPointerDown={() => { setSelectedLayer(null); setSelectedGroup(null); }}
               className="glass-panel rounded-3xl border border-zinc-800 p-4 outline-none focus:border-zinc-700"
             >
+              {/*
+                The layout's two shapes. The vertical one is the same layout on
+                OBS's vertical canvas: moved or resized here, a layer is placed
+                there only; what it is stays shared.
+              */}
+              <div className="flex flex-wrap items-center gap-2 mb-3 px-1" onPointerDown={(e) => e.stopPropagation()} data-layout-format={format}>
+                {([['horizontal', Monitor, t.layoutFormatHorizontal || 'Horizontal'], ['vertical', Smartphone, t.layoutFormatVertical || 'Vertical']] as const).map(([f, Icon, label]) => (
+                  <button
+                    key={f}
+                    onClick={() => setFormat(f)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                      format === f ? 'bg-current-accent text-white border-transparent' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
+                    data-layout-format-choice={f}
+                  >
+                    <Icon size={12} /> {label}
+                  </button>
+                ))}
+                <span className="text-[9px] font-mono text-zinc-600">{working.width}×{working.height}</span>
+                {format === 'vertical' && placedCount > 0 && (
+                  <button
+                    onClick={() => verticalAuto()}
+                    title={t.layoutVerticalAutoAllHint || 'Every layer back where the vertical side places it by itself, from its horizontal place'}
+                    className="ml-auto flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                    data-layout-vertical-auto-all
+                  >
+                    <RotateCcw size={11} /> {t.layoutVerticalAutoAll || 'Put every layer back'}
+                  </button>
+                )}
+                {format === 'vertical' && (
+                  <p className="basis-full text-[9px] text-zinc-500 leading-snug">
+                    {t.layoutFormatVerticalHint || 'The same layout on OBS\'s vertical canvas. Move or resize a layer here and that is its place on the vertical side only; everything else about it stays shared.'}
+                  </p>
+                )}
+              </div>
               <div
                 className="relative w-full mx-auto overflow-hidden"
                 style={{
@@ -1626,7 +1769,8 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                 }}
               >
                 <CanvasStage
-                  layout={working}
+                  // What this side's overlay draws: a layer kept to the other side is left off.
+                  layout={{ ...working, layers: working.layers.filter((l) => shownIn(l, format)) }}
                   system={system}
                   t={t}
                   showGuides
@@ -1641,7 +1785,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                     // A locked layer is not offered to the pointer at all, so
                     // there is nothing over it to catch a drag meant for
                     // whatever sits on top.
-                    .filter((l) => l.visible && !l.locked)
+                    .filter((l) => l.visible && !l.locked && shownIn(l, format))
                     // The selected layer’s handle goes last, so it is on top and
                     // can always be grabbed. Without this an alerts layer — which
                     // covers the whole canvas by design — sits over everything
@@ -1740,6 +1884,23 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                       ))}
                     </div>
                   )}
+                  {/*
+                    Where the phone apps draw their own buttons, names and
+                    comments over a vertical stream: shaded, so nothing that has
+                    to be read goes there. A guide in the editor only.
+                  */}
+                  {format === 'vertical' && showSafeZones && PHONE_SAFE_ZONES.map((z) => (
+                    <div
+                      key={z.id}
+                      data-safe-zone={z.id}
+                      className="absolute pointer-events-none"
+                      style={{
+                        left: z.x * working.width, top: z.y * working.height, width: z.width * working.width, height: z.height * working.height,
+                        background: 'repeating-linear-gradient(45deg, rgba(251,191,36,0.16) 0 14px, rgba(251,191,36,0.05) 14px 28px)',
+                        outline: '2px dashed rgba(251,191,36,0.55)',
+                      }}
+                    />
+                  ))}
                 </CanvasStage>
               </div>
               <div className="flex items-center gap-3 mt-3 px-1">
@@ -1771,6 +1932,19 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   <Tag size={12} />
                   {t.layoutNames || 'Names'}
                 </button>
+                {format === 'vertical' && (
+                  <button
+                    onClick={() => { setShowSafeZones((v) => { setChrome('layout_safe_zones', !v); return !v; }); }}
+                    title={t.layoutSafeZonesHint || 'Shade where TikTok and Twitch draw their buttons, names and comments over a vertical stream (approximate)'}
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                      showSafeZones ? 'bg-current-accent/10 border-current-accent text-current-accent' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
+                    data-layout-safe-zones={showSafeZones ? 'on' : 'off'}
+                  >
+                    <Smartphone size={12} />
+                    {t.layoutSafeZones || 'Phone apps'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1827,9 +2001,9 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               </label>
 
               <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.layoutSize || 'Canvas size'}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{format === 'vertical' ? (t.layoutSizeVertical || 'Vertical canvas size') : (t.layoutSize || 'Canvas size')}</span>
                 <div className="flex gap-2 mt-1">
-                  {SIZE_PRESETS.map((p) => (
+                  {(format === 'vertical' ? VERTICAL_SIZE_PRESETS : SIZE_PRESETS).map((p) => (
                     <button
                       key={p.label}
                       onClick={() => patchLayout({ width: p.width, height: p.height })}
@@ -2131,11 +2305,13 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
             <div className="glass-panel rounded-3xl border border-zinc-800 p-5">
               <div className="flex items-center gap-2 mb-2">
                 <MonitorPlay size={13} className="text-current-accent" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.layoutSource || 'Browser source'}</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{format === 'vertical' ? (t.layoutSourceVertical || 'Vertical browser source') : (t.layoutSource || 'Browser source')}</span>
               </div>
-              <code className="text-[10px] text-current-accent font-mono break-all block mb-2">{shownUrl}</code>
+              <code className="text-[10px] text-current-accent font-mono break-all block mb-2" data-layout-link={format}>{linkUrl}</code>
               <p className="text-[9px] text-zinc-600 mb-3 leading-snug">
-                {usingBindings
+                {format === 'vertical'
+                  ? (t.layoutSourceVerticalHint || 'Add this to a scene on OBS\'s vertical canvas, set to the vertical canvas size above. It shows the vertical side of whatever is live.')
+                  : usingBindings
                   ? (t.layoutSourceAutoHint || 'One source, added to every scene. It follows whichever scene is live. Set it to the canvas size above.')
                   : (t.layoutSourceHint || 'Set the source to the canvas size above.')}
               </p>
@@ -2147,7 +2323,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   size="sm"
                   variant="secondary"
                   icon={<ExternalLink size={13} />}
-                  onClick={() => window.open(shownUrl, '_blank', `width=${Math.min(1280, working.width)},height=${Math.min(720, working.height)}`)}
+                  onClick={() => window.open(linkUrl, '_blank', `width=${Math.min(1280, working.width)},height=${Math.min(720, working.height)}`)}
                 >
                   {t.preview || 'Open'}
                 </Button>

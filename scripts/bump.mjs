@@ -13,8 +13,9 @@
  * shared/version.js holds the number; the three package files and their
  * lockfiles say it too (only the app's own entries — a dependency that
  * happens to share the number is left alone), and CHANGELOG.md gets the
- * new version's heading, dated today, to be filled in. Nothing is committed
- * or tagged: that is done once the entry says what changed.
+ * new version's heading, dated today: on the notes already written under
+ * "## [Unreleased]", or empty, to be filled in. Nothing is committed or
+ * tagged: that is done once the entry says what changed.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -69,15 +70,29 @@ for (const file of ['package-lock.json', 'server/package-lock.json', 'web/packag
   write(file, head + rest);
 }
 
-// The changelog: a heading for this version, above the last one, to be filled in.
-const logFile = 'CHANGELOG.md';
-const log = fs.readFileSync(at(logFile), 'utf8');
-const nl = log.includes('\r\n') ? '\r\n' : '\n';
-const first = log.indexOf('## [');
-if (first < 0) throw new Error('CHANGELOG.md has no version headings to put this one above');
+// The changelogs — this one, and the public edition's where it is here. The
+// work written up as it was done, under "## [Unreleased]" (the roadmap's
+// "in progress"), becomes this version's entry; without it, a heading for
+// this version above the last one, to be filled in.
 const today = new Date().toISOString().slice(0, 10);
-write(logFile, `${log.slice(0, first)}## [${next}] — ${today}${nl}${nl}- ${nl}${nl}${log.slice(first)}`);
+const UNRELEASED = /^## \[Unreleased\][^\r\n]*$/m;
+let carried = false;
+for (const logFile of ['CHANGELOG.md', 'public-edition/overrides/CHANGELOG.md']) {
+  if (!fs.existsSync(at(logFile))) continue;
+  const log = fs.readFileSync(at(logFile), 'utf8');
+  if (UNRELEASED.test(log)) {
+    write(logFile, log.replace(UNRELEASED, `## [${next}] — ${today}`));
+    carried = true;
+    continue;
+  }
+  const nl = log.includes('\r\n') ? '\r\n' : '\n';
+  const first = log.indexOf('## [');
+  if (first < 0) throw new Error(`${logFile} has no version headings to put this one above`);
+  write(logFile, `${log.slice(0, first)}## [${next}] — ${today}${nl}${nl}- ${nl}${nl}${log.slice(first)}`);
+}
 
 console.log(`${current} → ${next}`);
 for (const file of changed) console.log(`  ${file}`);
-console.log(`Now say what changed under [${next}] in CHANGELOG.md, then commit and tag v${next}.`);
+console.log(carried
+  ? `What was under [Unreleased] is now [${next}]'s entry: read it over, then commit and tag v${next}.`
+  : `Now say what changed under [${next}] in CHANGELOG.md, then commit and tag v${next}.`);

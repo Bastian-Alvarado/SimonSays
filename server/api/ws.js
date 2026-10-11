@@ -18,6 +18,7 @@ import { refusal } from '../core/refusal.js';
 import { C2S, S2C } from '../../shared/protocol.js';
 import { VERSION } from '../../shared/version.js';
 import { liveLayout } from '../../shared/live-layout.js';
+import { formatLayout } from '../../shared/layout-formats.js';
 import { connectAlertGate, offerAlert, alertGateState, controlAlerts } from '../engine/alert-gate.js';
 import * as engine from '../engine/index.js';
 import * as tags from '../engine/tags.js';
@@ -34,6 +35,7 @@ import * as profileCard from '../engine/profile-card.js';
 import * as highlights from '../engine/highlights.js';
 import * as liveDms from '../engine/live-dms.js';
 import * as remotePlayers from '../engine/remote-players.js';
+import * as updater from '../engine/updater.js';
 import * as discordQuestions from '../engine/discord-questions.js';
 import * as gameRequests from '../engine/game-requests.js';
 import * as moderation from '../engine/moderation.js';
@@ -68,11 +70,16 @@ let lastConnectionsJson = '';
  * ticks "the stream page is in OBS" from this instead of asking.
  */
 export function countSurfaces(list) {
-  const out = { canvas: 0, dock: 0, alerts: 0, canvasInObs: 0, dockInObs: 0, alertsInObs: 0 };
+  const out = { canvas: 0, dock: 0, alerts: 0, canvasInObs: 0, dockInObs: 0, alertsInObs: 0, vertical: 0, verticalInObs: 0 };
   for (const c of list) {
     if (!c || !(c.mode in out)) continue;
     out[c.mode] += 1;
     if (c.inObs) out[`${c.mode}InObs`] += 1;
+    // The canvases drawing the vertical side, counted again on their own.
+    if (c.mode === 'canvas' && c.format === 'vertical') {
+      out.vertical += 1;
+      if (c.inObs) out.verticalInObs += 1;
+    }
   }
   return out;
 }
@@ -97,7 +104,9 @@ function publishSurfaces() {
  *   1. a surface that shows the alerts — the alerts page, or a layout on the
  *      canvas with an alerts layer — so an alert is read
  *      out by the page showing it, in step with it, and TTS lives with the
- *      alerts in OBS rather than needing the dock open
+ *      alerts in OBS rather than needing the dock open; of two that do, the
+ *      horizontal overlay before the vertical one, since OBS's main canvas
+ *      is the one sure to carry its sound
  *   2. the chat dock — the surface meant to stay open, and its audio is
  *      picked up by a desktop-audio capture so the stream hears it too
  *   3. a client on this machine — a phone opening the dashboard should not
@@ -132,7 +141,8 @@ export function canvasLayout(client, layouts = [], scene = '', omnilayer = null)
 export function showsAlerts(client, layouts = [], scene = '', omnilayer = null) {
   if (client?.mode === 'alerts') return true;
   if (client?.mode !== 'canvas') return false;
-  const layout = canvasLayout(client, layouts, scene, omnilayer);
+  // As this canvas draws it: an alerts layer kept to the other shape is not on this one.
+  const layout = formatLayout(canvasLayout(client, layouts, scene, omnilayer), client?.format);
   return Boolean(layout?.layers?.some((l) => l.type === 'alerts' && l.visible !== false));
 }
 
@@ -141,6 +151,10 @@ export function preferred(a, b, layouts = [], live = {}) {
   const aAlerts = showsAlerts(a, layouts, live.scene, live.omnilayer);
   const bAlerts = showsAlerts(b, layouts, live.scene, live.omnilayer);
   if (aAlerts !== bAlerts) return aAlerts;
+  // Between two that show them, the horizontal overlay: OBS's main canvas is the one sure to carry its sound.
+  const aVertical = a.format === 'vertical';
+  const bVertical = b.format === 'vertical';
+  if (aVertical !== bVertical) return bVertical;
   const aDock = a.mode === 'dock';
   const bDock = b.mode === 'dock';
   if (aDock !== bDock) return aDock;
@@ -266,6 +280,17 @@ export function broadcast(type, payload) {
 }
 
 export const clientCount = () => clients.size;
+
+/**
+ * Every page let go, for a shutdown: an open socket keeps the HTTP server
+ * from closing, so without this every stop waited out its timer. The pages
+ * reconnect by themselves to whatever starts next.
+ */
+export function closeWebSocket() {
+  for (const ws of clients) { try { ws.terminate(); } catch { /* already gone */ } }
+  clients.clear();
+  try { wss?.close(); } catch { /* never opened */ }
+}
 
 function wireBusToClients() {
   bus.on(EVENTS.CHAT, (m) => broadcast(S2C.CHAT, m));
@@ -393,6 +418,7 @@ function buildSnapshot() {
     ...highlights.snapshot(),
     ...liveDms.snapshot(),
     ...remotePlayers.snapshot(),
+    ...updater.snapshot(),
     ...discordQuestions.snapshot(),
     ...gameRequests.snapshot(),
     ...moderation.snapshot(),
@@ -443,6 +469,8 @@ async function handleMessage(ws, raw) {
         ws.mode = typeof payload.mode === 'string' ? payload.mode : 'dashboard';
         // And, for a canvas, which layout it shows — whether it shows the alerts.
         ws.layoutId = typeof payload.layout === 'string' ? payload.layout.slice(0, 80) : null;
+        // And which of the layout's two shapes it draws (shared/layout-formats.js).
+        ws.format = payload.format === 'vertical' ? 'vertical' : 'horizontal';
         // Whether it is a page inside OBS, as it says.
         ws.inObs = payload.obs === true;
         reply(buildSnapshot());
@@ -563,6 +591,10 @@ async function handleMessage(ws, raw) {
       // Remote players: who is in each seat, the OBS sources, invites, and the director's buttons.
       case C2S.REMOTE_PLAYERS:
         return reply(await remotePlayers.control(payload));
+
+      // Updates: check for a newer version, or get it ready and restart into it.
+      case C2S.UPDATES:
+        return reply(await updater.control(payload));
 
       // Which Discord channels feed the Questions dock, and whether answers go back there.
       case C2S.DISCORD_QUESTIONS:

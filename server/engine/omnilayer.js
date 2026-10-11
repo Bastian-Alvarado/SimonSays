@@ -27,6 +27,7 @@
  */
 
 import { collection } from '../core/store.js';
+import { formatLayout } from '../../shared/layout-formats.js';
 import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import { refusal } from '../core/refusal.js';
@@ -37,8 +38,8 @@ const log = createLogger('omnilayer');
 
 /** How a layout can arrive: all at once, or behind a wipe. */
 export const OMNI_TRANSITIONS = ['cut', 'cover'];
-/** How a game fits its slot: whole inside it, or stretched to it. */
-export const SOURCE_FITS = ['fit', 'stretch'];
+/** How a game fits its slot: whole inside it, stretched to it, or filling it with the overflow cropped. */
+export const SOURCE_FITS = ['fit', 'stretch', 'fill'];
 
 const DEFAULT = {
   enabled: false,
@@ -57,7 +58,26 @@ const DEFAULT = {
    * same list whichever overlay profile is on.
    */
   types: [],
+  /**
+   * OBS's vertical canvas (SE.Live's, Aitum Vertical's), worked the same way:
+   * one scene there, the vertical overlay on top and the same sources under
+   * it, which going live moves to the layout's vertical boxes. The canvas by
+   * its id, and by name to find it again if the id changes.
+   */
+  vertical: { enabled: false, canvas: '', canvasName: '', scene: '' },
 };
+
+/** The vertical canvas's settings, held to their shape. */
+function cleanVerticalTarget(from, prev = DEFAULT.vertical) {
+  const f = from && typeof from === 'object' ? from : {};
+  const pick = (k) => (Object.prototype.hasOwnProperty.call(f, k) ? f[k] : prev?.[k]);
+  return {
+    enabled: pick('enabled') === true,
+    canvas: String(pick('canvas') ?? '').trim().slice(0, 64),
+    canvasName: String(pick('canvasName') ?? '').trim().slice(0, 256),
+    scene: String(pick('scene') ?? '').trim().slice(0, 256),
+  };
+}
 
 /*
   How long a switch waits on things it does not control.
@@ -146,6 +166,7 @@ export function cleanOmnilayer(incoming, prev = DEFAULT) {
     holdMs: bounded(has('holdMs') ? from.holdMs : prev.holdMs, 0, 3000, DEFAULT.holdMs),
     live: String((has('live') ? from.live : prev.live) ?? '').slice(0, 64),
     types: cleanSceneTypes(has('types') ? from.types : prev.types),
+    vertical: cleanVerticalTarget(has('vertical') ? from.vertical : prev.vertical, prev.vertical),
   };
 }
 
@@ -159,6 +180,8 @@ export function normaliseSourceLayer(c) {
   return {
     source: String(c?.source ?? '').trim().slice(0, 256),
     fit: SOURCE_FITS.includes(c?.fit) ? c.fit : 'fit',
+    // On OBS's vertical canvas, a fit of its own — a wide game filling a tall box. Only when it has one, so a slot without stays as it was saved.
+    ...(SOURCE_FITS.includes(c?.verticalFit) ? { verticalFit: c.verticalFit } : {}),
     cropTop: crop(c?.cropTop),
     cropRight: crop(c?.cropRight),
     cropBottom: crop(c?.cropBottom),
@@ -355,7 +378,7 @@ export function managedSources(layouts, alias = (name) => name, every = (name) =
  * scaled from the layout's canvas to OBS's. Sources with no visible slot are
  * listed to be hidden.
  */
-export function placements(layout, layouts, video, alias = (name) => name, every = (name) => [alias(name)]) {
+export function placements(layout, layouts, video, alias = (name) => name, every = (name) => [alias(name)], format = 'horizontal') {
   const kx = (video?.width || layout.width) / layout.width;
   const ky = (video?.height || layout.height) / layout.height;
   const slots = (layout.layers || []).filter((y) => y.type === 'source' && y.visible !== false && y.config?.source);
@@ -370,7 +393,7 @@ export function placements(layout, layouts, video, alias = (name) => name, every
       source,
       x: Math.round(y.x * kx), y: Math.round(y.y * ky),
       width: Math.max(1, Math.round(y.width * kx)), height: Math.max(1, Math.round(y.height * ky)),
-      fit: y.config.fit || 'fit',
+      fit: (format === 'vertical' && y.config.verticalFit) || y.config.fit || 'fit',
       crop: { top: y.config.cropTop || 0, right: y.config.cropRight || 0, bottom: y.config.cropBottom || 0, left: y.config.cropLeft || 0 },
     });
   }
@@ -408,7 +431,8 @@ async function place(layout, { takeScene = false } = {}) {
   }
   let video = null;
   try { video = await obs.videoSize?.(); } catch { /* the layout's own size, then */ }
-  const { place: go, hide: stillManaged } = placements(layout, layoutsNow(), video, sourceFor, everySourceFor);
+  // As the horizontal overlay draws it: a slot kept to the vertical side has no place here.
+  const { place: go, hide: stillManaged } = placements(formatLayout(layout, 'horizontal'), layoutsNow(), video, sourceFor, everySourceFor);
   const leaving = [...released].filter((name) => !go.some((p) => p.source === name));
   const hide = [...stillManaged, ...leaving];
   for (const p of go) {
@@ -428,9 +452,47 @@ async function place(layout, { takeScene = false } = {}) {
       found.push({ code: 'source_missing', source: name, scene, message: err.message });
     }
   }
+  await placeVertical(layout, found, leaving);
   problems = found;
-  if (found.length) log.warn(`placing ${layout.name}: ${found.map((f) => f.source || f.scene).join(', ')} could not be placed`);
+  if (found.length) log.warn(`placing ${layout.name}: ${found.map((f) => f.source || f.scene || f.canvas).join(', ')} could not be placed`);
   publish();
+}
+
+/**
+ * The same on OBS's vertical canvas, when it is set up: the layout's
+ * vertical boxes (shared/layout-formats.js), scaled to that canvas's own
+ * size, in the scene chosen there. A source the vertical scene does not hold
+ * is said, like on the main canvas; one to hide that it does not hold is
+ * already hidden.
+ */
+async function placeVertical(layout, found, leaving = []) {
+  const v = db.get().vertical;
+  if (!v?.enabled || !v.scene || !obs?.canvases) return;
+  let canvas = null;
+  try {
+    const { canvases: list = [] } = await obs.canvases();
+    canvas = list.find((c) => c.uuid === v.canvas) || (v.canvasName ? list.find((c) => c.name === v.canvasName) : null);
+  } catch (err) {
+    found.push({ code: 'vertical_unreadable', message: err.message });
+    return;
+  }
+  if (!canvas) {
+    found.push({ code: 'vertical_canvas_missing', canvas: v.canvasName || v.canvas });
+    return;
+  }
+  const video = canvas.width && canvas.height ? { width: canvas.width, height: canvas.height } : null;
+  const { place: go, hide } = placements(formatLayout(layout, 'vertical'), layoutsNow(), video, sourceFor, everySourceFor, 'vertical');
+  for (const p of go) {
+    try {
+      await obs.placeSource(v.scene, p.source, p, canvas.uuid);
+    } catch (err) {
+      found.push({ code: 'source_missing', source: p.source, scene: v.scene, canvas: 'vertical', message: err.message });
+    }
+  }
+  // Those no layout has a box for any more too, hidden here as on the main canvas.
+  for (const name of new Set([...hide, ...leaving])) {
+    try { await obs.setSourceVisibleIn(canvas.uuid, v.scene, name, false); } catch { /* not in the vertical scene: nothing to hide */ }
+  }
 }
 
 /**
@@ -520,16 +582,42 @@ export async function goLiveType(typeId, opts = {}) {
   return goLive(layout.id, opts);
 }
 
-/** Ask OBS what the scene holds, top first, for the screen's setup check. */
+/** Ask OBS what the scene holds, top first, for the screen's setup check — and the vertical scene, when there is one. */
 export async function inspect() {
   const s = db.get();
   const scene = s.scene || obs?.currentScene?.() || '';
-  if (!obs?.sceneSources || !scene) return { scene, items: [] };
+  const vertical = await inspectVertical(s.vertical);
+  if (!obs?.sceneSources || !scene) return { scene, items: [], ...(vertical ? { vertical } : {}) };
   try {
-    return { scene, items: await obs.sceneSources(scene) };
+    return { scene, items: await obs.sceneSources(scene), ...(vertical ? { vertical } : {}) };
   } catch (err) {
-    return { scene, items: [], error: err.message };
+    return { scene, items: [], error: err.message, ...(vertical ? { vertical } : {}) };
   }
+}
+
+async function inspectVertical(v) {
+  if (!v?.enabled || !v.scene || !obs?.canvases) return null;
+  try {
+    const { canvases: list = [] } = await obs.canvases();
+    const canvas = list.find((c) => c.uuid === v.canvas) || list.find((c) => c.name === v.canvasName);
+    if (!canvas) return { scene: v.scene, items: [], error: 'vertical_canvas_missing' };
+    return { scene: v.scene, canvas: canvas.name, items: await obs.sceneSources(v.scene, canvas.uuid) };
+  } catch (err) {
+    return { scene: v.scene, items: [], error: err.message };
+  }
+}
+
+/** OBS's other canvases and each one's scenes, for choosing the vertical one on the screen. */
+export async function listCanvases() {
+  if (!obs?.canvases) return { supported: false, canvases: [] };
+  const { supported, canvases: list } = await obs.canvases();
+  const withScenes = [];
+  for (const c of list) {
+    let scenes = [];
+    try { scenes = await obs.canvasScenes(c.uuid); } catch { /* listed without them */ }
+    withScenes.push({ ...c, scenes });
+  }
+  return { supported, canvases: withScenes };
 }
 
 /** Every way the screens and steps change it. */
@@ -542,6 +630,7 @@ export async function control(payload) {
       : goLive(payload.layoutId, { transition: payload.transition });
   }
   if (op === 'inspect') return inspect();
+  if (op === 'canvases') return listCanvases();
   throw refusal('bad_request', `omnilayer: unknown operation "${op}"`);
 }
 

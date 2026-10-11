@@ -128,13 +128,21 @@ engine.initEngine({
     setSourceVisible: async (scene, source, visible) => { obsCalls.push(['visible', scene, source, visible]); },
     // Omnilayer: where each source was put, OBS's canvas, a source OBS does not have when asked to fail,
     // and an OBS that has stopped answering (a half-open connection), which never settles at all.
-    placeSource: async (scene, source, box) => {
-      obsCalls.push(['place', scene, source, box]);
+    // On another canvas (the vertical one), with its id last; a source that canvas's scene lacks fails there (doubles.obsMissingVertical).
+    placeSource: async (scene, source, box, canvas) => {
+      obsCalls.push(canvas ? ['place', scene, source, box, canvas] : ['place', scene, source, box]);
       if (doubles.obsHang) return new Promise(() => {});
-      if ((doubles.obsMissing || []).includes(source)) throw new Error(`No source was found by the name of ${source}`);
+      if (canvas ? (doubles.obsMissingVertical || []).includes(source) : (doubles.obsMissing || []).includes(source)) throw new Error(`No source was found by the name of ${source}`);
+    },
+    // OBS's other canvases and their scenes, as a test gives them (doubles.obsCanvases, doubles.obsCanvasScenes).
+    canvases: async () => (doubles.obsNoCanvases ? { supported: false, canvases: [] } : { supported: true, canvases: doubles.obsCanvases || [] }),
+    canvasScenes: async (uuid) => (doubles.obsCanvasScenes || {})[uuid] || [],
+    setSourceVisibleIn: async (canvas, scene, source, visible) => {
+      obsCalls.push(['visible', scene, source, visible, canvas]);
+      if ((doubles.obsMissingVertical || []).includes(source)) throw new Error(`No source was found by the name of ${source}`);
     },
     videoSize: async () => doubles.obsVideo || { width: 1920, height: 1080 },
-    sceneSources: async () => doubles.obsItems || [],
+    sceneSources: async (scene, canvas) => (canvas ? doubles.obsItemsVertical : doubles.obsItems) || [],
     currentScene: () => doubles.obsScene ?? '',
     isConnected: () => doubles.obsConnected !== false,
     // Sending the stream: what a repeating action waits for when Twitch cannot say (doubles.obsStreaming).

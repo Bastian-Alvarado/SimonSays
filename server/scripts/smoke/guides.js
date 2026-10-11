@@ -174,7 +174,7 @@ test('the server counts the pages open, by kind, and those inside OBS', () => {
     { mode: 'whatever' },
     null,
   ]);
-  assert.deepEqual(counted, { canvas: 2, dock: 1, alerts: 1, canvasInObs: 1, dockInObs: 1, alertsInObs: 0 });
+  assert.deepEqual(counted, { canvas: 2, dock: 1, alerts: 1, canvasInObs: 1, dockInObs: 1, alertsInObs: 0, vertical: 0, verticalInObs: 0 });
   const ws = read('../api/ws.js');
   assert.ok(ws.includes('ws.inObs = payload.obs === true;'), 'a page says whether it is in OBS');
   assert.ok(ws.includes('surfaces: surfacesNow(),'), 'a new page is told what is open');

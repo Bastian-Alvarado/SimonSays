@@ -89,6 +89,8 @@ export const C2S = {
   LIVE_DMS: 'live_dms',
   /** Remote players: { op: 'set' | 'setup' | 'invite' | 'kick' | 'swap' | 'mute' | 'reload', … } (server/engine/remote-players.js). */
   REMOTE_PLAYERS: 'remote_players',
+  /** Updates from GitHub: { op: 'check' | 'apply' } (server/engine/updater.js). */
+  UPDATES: 'updates',
   /** Questions from Discord: { settings } (server/engine/discord-questions.js). */
   DISCORD_QUESTIONS: 'discord_questions',
   /** Game requests: { op: 'settings' | 'read' | 'plan' | 'played' | 'dismiss' | 'reopen' | 'remove', … } (server/engine/game-requests.js). */

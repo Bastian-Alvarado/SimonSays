@@ -180,7 +180,7 @@ export const MANIFEST = [
  *                                 where the avatars themselves (pixel_avatars)
  *                                 travel
  */
-export const EXCLUDED = ['event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'banner_text'];
+export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'banner_text'];
 
 /** Everything needed to stand this install up somewhere else. */
 export function buildBundle() {

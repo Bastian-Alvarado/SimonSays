@@ -34,8 +34,8 @@ export interface NavItem {
   icon: React.ReactNode;
   /** Something waiting, as a number. */
   number?: number;
-  /** A mark: something running now, or something wrong. */
-  dot?: 'on' | 'alert';
+  /** A mark: something running now, something wrong, or something new (a newer version). */
+  dot?: 'on' | 'alert' | 'news';
   /** Says what the mark means, on hover. */
   hint?: string;
   /** Other words to find it by. */
@@ -50,8 +50,8 @@ export interface NavSection {
 
 export const isOn = (item: NavItem, view: AppView) => item.view === view || Boolean(item.also?.includes(view));
 
-const Dot = ({ kind }: { kind: 'on' | 'alert' }) => (
-  <span className={`w-2 h-2 rounded-full shrink-0 ${kind === 'alert' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400 animate-pulse'}`} data-nav-dot={kind} />
+const Dot = ({ kind }: { kind: 'on' | 'alert' | 'news' }) => (
+  <span className={`w-2 h-2 rounded-full shrink-0 ${kind === 'alert' ? 'bg-rose-500 animate-pulse' : kind === 'news' ? 'bg-current-accent' : 'bg-emerald-400 animate-pulse'}`} data-nav-dot={kind} />
 );
 
 export const NavButton = ({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) => (
@@ -91,6 +91,7 @@ export const NavSections = ({ sections, view, go }: { sections: NavSection[]; vi
         // Folded, it still says when something in it wants doing.
         const waiting = !open && s.items.some((i) => i.number || i.dot === 'alert');
         const running = !open && s.items.some((i) => i.dot === 'on');
+        const news = !open && s.items.some((i) => i.dot === 'news');
         return (
           <div key={s.id} className={n ? 'pt-3' : ''} data-nav-section={s.id}>
             <button
@@ -103,6 +104,7 @@ export const NavSections = ({ sections, view, go }: { sections: NavSection[]; vi
               <span className="flex-1 text-left opacity-70">{s.label}</span>
               {waiting && <Dot kind="alert" />}
               {!waiting && running && <Dot kind="on" />}
+              {!waiting && !running && news && <Dot kind="news" />}
               <ChevronDown size={12} className={`transition-transform ${open ? '' : '-rotate-90'}`} />
             </button>
             {open && (
