@@ -95,6 +95,16 @@ export const VARIABLE_GROUPS: Group[] = [
     ],
   },
   {
+    id: 'repeat',
+    en: 'Repeat', es: 'Repetir',
+    noteEn: 'Only inside a Repeat step, in the steps it repeats.',
+    noteEs: 'Solo dentro de un paso Repetir, en los pasos que repite.',
+    vars: [
+      { token: 'repeat.count', en: 'Which time this is, from 1.', es: 'Que vez es esta, desde 1.', sample: '2', conditional: true },
+      { token: 'repeat.times', en: 'How many times it runs in all.', es: 'Cuantas veces se ejecuta en total.', sample: '3', conditional: true },
+    ],
+  },
+  {
     id: 'plan',
     en: 'Stream plan', es: 'Plan del stream',
     noteEn: 'Always present. After a Plan step they describe where it moved to, so put the message after the step.',

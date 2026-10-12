@@ -2,6 +2,15 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.2.2] — 2026-10-12
+
+- When an action step fails, the server log says which scene, source or filter it was looking for.
+- New Logic steps: Wait, Stop here, Repeat, Pick one at random (with weights) and Later.
+- Later runs its steps after a set time (up to 7 days) or when the stream ends, even after a restart; using the action again starts the wait over. The Actions screen lists what is waiting, with Run now and Cancel.
+- "Add steps here" under any list inside a step: the menus then add any step there, conditions included.
+- New triggers: gifted sub bundles, the Hype Train (start, new level, end), Twitch going live and ending, YouTube Super Chats, members and gifted memberships, and somebody's first message this stream or ever.
+- The trigger menus no longer redraw themselves while open.
+
 ## [1.2.1] — 2026-10-12
 
 - Custom CSS boxes hold 10,000 characters (layers had 2,500), count as you type, and won't save past the limit instead of cutting the end off.

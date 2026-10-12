@@ -420,13 +420,23 @@ export default function App() {
         youtube_set_title: { title: '{input}' },
         youtube_set_description: { description: '' },
         youtube_toggle_category: { categoryA: '20', categoryB: '22' },
+        wait: { seconds: 5 },
+        repeat: { times: 3, waitSeconds: 1 },
+        later: { mode: 'after', amount: 5, unit: 'minutes' },
+        random_choice: { weight: 1 },
     };
 
+    const stepId = () => Math.random().toString(36).substr(2, 9);
     const newStep: ActionStep = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: stepId(),
         type,
         config: { ...(defaultConfig[type] || {}) },
     };
+    // The steps that hold steps start with their list, and a random pick with two choices to pick from.
+    if (type === 'repeat' || type === 'later' || type === 'random_choice') newStep.thenActions = [];
+    if (type === 'random_pick') {
+        newStep.thenActions = [1, 2].map(() => ({ id: stepId(), type: 'random_choice' as ActionStepType, config: { weight: 1 }, thenActions: [] }));
+    }
 
     if (!parentId) {
         // Add to root
@@ -1251,6 +1261,8 @@ export default function App() {
                 regulars={(system.data as any).people?.regulars || []}
                 listServerMembers={system.status.discord === 'connected' ? (system.actions as any).listServerMembers : undefined}
                 streamActions={system.data.streamActions}
+                laterSteps={(system.data as any).laterSteps || []}
+                laterControl={(system.actions as any).laterControl}
                 setStreamActions={() => {}} // CRUD
                 isActionModalOpen={isActionModalOpen}
                 setIsActionModalOpen={setIsActionModalOpen}

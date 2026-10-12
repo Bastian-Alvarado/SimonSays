@@ -843,6 +843,10 @@ async function handleMessage(ws, raw) {
         await engine.testAction(payload.id);
         return reply({ ok: true });
 
+      // The Actions screen's Waiting list: Run now or Cancel. The list itself follows as a config patch.
+      case C2S.LATER_STEP:
+        return reply(await engine.laterControl(payload?.op, payload?.key));
+
       case C2S.TEST_ALERT:
         // With a variation's id, that variation, at numbers its conditions hold for.
         engine.testAlert(payload.id, payload.variationId);

@@ -11,7 +11,8 @@
  */
 
 import { collection } from '../core/store.js';
-import { bus, EVENTS } from '../core/bus.js';
+import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
+import { onTwitchLive } from '../core/twitch-live.js';
 import { DEFAULT_CHAT, cleanChatSettings, normaliseChatLayer, isWholeChat } from './chat-settings.js';
 import { dockBuiltin, DOCK_FACE_SECONDS } from '../../shared/dock-builtins.js';
 import { MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace, sidewaysMode } from '../../shared/dock-pages.js';
@@ -20,8 +21,9 @@ import { HOUSE_CHARACTER } from '../../shared/house-avatar.js';
 import { youtubeCategoryName } from '../../shared/youtube-categories.js';
 import { createLogger } from '../core/logger.js';
 import { refusal } from '../core/refusal.js';
-import { buildContext } from './variables.js';
-import { runSteps } from './steps.js';
+import { buildContext, nowPlayingVars } from './variables.js';
+import { runSteps, runFor } from './steps.js';
+import * as later from './later.js';
 import * as commands from './commands.js';
 import * as cooldowns from './cooldowns.js';
 import * as alerts from './alerts.js';
@@ -288,6 +290,17 @@ function normaliseAction(action) {
   return { ...action, actions: fix(action.actions) };
 }
 
+/** A step anywhere in an action's steps, inside conditions, repeats and the rest. */
+function findStepIn(steps, id) {
+  for (const step of steps || []) {
+    if (!step) continue;
+    if (step.id === id) return step;
+    const inside = findStepIn(step.thenActions, id) || findStepIn(step.elseActions, id);
+    if (inside) return inside;
+  }
+  return null;
+}
+
 let db = null;
 /**
  * Save the players list and tell every screen. Every change goes through
@@ -432,6 +445,8 @@ export function initEngine(platformServices) {
       putOnScreen: (words) => remotePlayers.putOnScreen(words),
       liveShowsPlayers: () => Boolean(omnilayer.onAir()?.layers?.some((y) => y.type === 'source' && y.visible !== false && remotePlayers.isPlayerSource(y.config?.source))),
     },
+    // Later steps: written down, and run on their own when their time comes. See later.js.
+    later: { schedule: (step, ctx, runState) => later.schedule(step, ctx, runState) },
   };
 
   db = {
@@ -776,6 +791,40 @@ export function initEngine(platformServices) {
   bus.on(EVENTS.EVENT, onEvent);
   bus.on(EVENTS.TRIGGER, (event) => { runTriggered(event).catch((err) => log.warn(`${event?.type} actions failed: ${err.message}`)); });
 
+  /*
+    The Hype Train, as actions see it: when one starts, each time it reaches
+    a new level, and when it ends. Twitch sends progress every contribution,
+    so only a level higher than the last counts. One already running when the
+    server started is joined at its level, not announced as climbing to it.
+  */
+  let trainLevel = 0;
+  bus.on('twitch:hypetrain', (h) => {
+    const top = h?.top?.[0]?.user || '';
+    const fire = (type) => bus.emit(EVENTS.TRIGGER, normaliseEvent({
+      type, platform: 'twitch', user: top || 'Hype Train',
+      data: { level: h.level, total: h.total, golden: Boolean(h.golden), top },
+    }));
+    if (h?.phase === 'begin') { trainLevel = h.level; fire('twitch_hype_train_begin'); }
+    else if (h?.phase === 'progress') {
+      if (trainLevel && h.level > trainLevel) fire('twitch_hype_train_level');
+      trainLevel = Math.max(trainLevel, h.level);
+    } else if (h?.phase === 'end') { trainLevel = 0; fire('twitch_hype_train_end'); }
+  });
+
+  /*
+    Going live and ending, as Twitch tells it — the stream itself, where the
+    OBS triggers are OBS's button, which also fires for a test stream or a
+    stream elsewhere. The first answer after a start is where things stand,
+    not a change: a restart mid-stream must not say "went live" again.
+  */
+  let twitchWasLive = null;
+  onTwitchLive((s) => {
+    if (!s.known) return;
+    if (twitchWasLive === null || s.live === twitchWasLive) { twitchWasLive = s.live; return; }
+    twitchWasLive = s.live;
+    bus.emit(EVENTS.TRIGGER, normaliseEvent({ type: s.live ? 'twitch_stream_online' : 'twitch_stream_offline', platform: 'twitch', user: '', data: {} }));
+  });
+
   // "Every few minutes": actions that repeat, while live and once chat has said enough. See repeat.js.
   repeat.initRepeat({
     actions: () => db.actions.get(),
@@ -785,8 +834,33 @@ export function initEngine(platformServices) {
       nowPlaying: services.spotify?.getNowPlaying?.() ?? null,
       upNext: services.spotify?.getUpNext?.() ?? null,
       platform: 'system',
-    }), services),
+    }), services, runFor(action)),
     autoTick: platformServices.repeatAutoTick !== false,
+  });
+
+  /*
+    Later steps, kept on disk and picked back up here. Each runs the step as
+    the action holds it now — see later.js — with who and what from when it
+    was set, and the song playing now.
+  */
+  later.initLater({
+    actionName: (id) => db.actions.get().find((a) => a.id === id)?.name || '',
+    run: (entry) => {
+      const action = entry.actionId ? db.actions.get().find((a) => a.id === entry.actionId) : null;
+      const step = action ? findStepIn(action.actions, entry.stepId) : null;
+      const steps = entry.actionId ? step?.thenActions : entry.steps;
+      if (entry.actionId && !step) {
+        log.info(`a Later step of "${entry.actionName}" is no longer in it; nothing to run`);
+        return null;
+      }
+      const ctx = {
+        ...entry.ctx,
+        spotify: nowPlayingVars(services.spotify?.getNowPlaying?.() ?? null, services.spotify?.getUpNext?.() ?? null),
+      };
+      return runSteps(steps, ctx, services, runFor(action));
+    },
+    autoTimer: platformServices.laterAutoTimer !== false,
+    ...(platformServices.laterBootGraceMs !== undefined ? { bootGraceMs: platformServices.laterBootGraceMs } : {}),
   });
 
   log.info(`ready — ${db.commands.get().length} commands, ${db.actions.get().length} actions, ${db.alerts.get().length} alerts`);
@@ -1195,7 +1269,7 @@ async function onChat(chat) {
 
   log.info(`"${hit.trigger}" by ${chat.user} -> ${linked.length} action(s)`);
   for (const action of linked) {
-    await runSteps(action.actions, ctx, services);
+    await runSteps(action.actions, ctx, services, runFor(action));
   }
 }
 
@@ -1248,8 +1322,15 @@ async function runTriggered(event) {
   const matching = db.actions.get().filter((a) => a.enabled && a.trigger?.type === event.type && passesFilter(a, event));
   if (matching.length === 0) return;
 
+  /*
+    What somebody said, when the event carries it — a first message, a cheer's
+    or a Super Chat's words — is {message}, as a command's is. And who they are,
+    where the event knows, so a condition on "is a sub" can be asked of them.
+  */
+  const d = event.data || {};
   const ctx = buildContext({
-    user: { name: event.user, avatar: event.avatar, platform: event.platform },
+    user: { name: event.user, id: d.userId, avatar: event.avatar, platform: event.platform, isSub: d.isSub, isMod: d.isMod, isVip: d.isVip },
+    message: typeof d.message === 'string' ? d.message : '',
     nowPlaying: services.spotify?.getNowPlaying?.() ?? null,
     upNext: services.spotify?.getUpNext?.() ?? null,
     event,
@@ -1258,7 +1339,7 @@ async function runTriggered(event) {
 
   log.info(`${event.type} by ${event.user} -> ${matching.length} action(s)`);
   for (const action of matching) {
-    await runSteps(action.actions, ctx, services);
+    await runSteps(action.actions, ctx, services, runFor(action));
   }
 }
 
@@ -1268,6 +1349,14 @@ function passesFilter(action, event) {
 
   if (event.type === 'twitch_cheer' && cfg.minBits) {
     if ((event.data?.bits ?? event.data?.amount ?? 0) < cfg.minBits) return false;
+  }
+
+  // A bundle of gifts of at least so many, on Twitch or YouTube; a Super Chat of at least so much, in its own currency.
+  if ((event.type === 'twitch_sub_gift_bulk' || event.type === 'youtube_sub_gift_bulk') && Number(cfg.minGifts) > 0) {
+    if ((Number(event.data?.count) || 0) < Number(cfg.minGifts)) return false;
+  }
+  if (event.type === 'youtube_cheer' && Number(cfg.minValue) > 0) {
+    if ((Number(event.data?.value) || 0) < Number(cfg.minValue)) return false;
   }
 
   if (event.type === 'tiktok_gift' && cfg.giftName) {
@@ -1317,6 +1406,8 @@ export function snapshot() {
   return {
     commands: db.commands.get(),
     streamActions: db.actions.get(),
+    // Later steps waiting their turn, soonest first, for the Actions screen's Waiting list.
+    laterSteps: later.list(),
     alertConfigs: db.alerts.get(),
     eventHistory: db.history.get(),
     viewerEvents: db.viewerEvents.get(),
@@ -2137,7 +2228,11 @@ export async function runDockAction(actionId) {
   });
 
   log.info(`dock action: "${action.name}"`);
-  await runSteps(action.actions, ctx, services);
+  // Answered when it finishes, or when it first waits: a Wait outlasts the
+  // dock's fifteen seconds of patience, and the rest carries on regardless.
+  await new Promise((answered) => {
+    runSteps(action.actions, ctx, services, runFor(action, { onWait: answered })).then(answered, answered);
+  });
   return { ok: true, name: action.name };
 }
 
@@ -2158,8 +2253,18 @@ export async function runActionFor(actionId, { name, id, avatar, platform = 'sys
     upNext: services.spotify?.getUpNext?.() ?? null,
   });
   log.info(`"${action.name}" for ${name}`);
-  await runSteps(action.actions, ctx, services);
+  await runSteps(action.actions, ctx, services, runFor(action));
   return { ok: true, name: action.name };
+}
+
+/** The Waiting list's two buttons: run a Later step now, or let it go. */
+export async function laterControl(op, key) {
+  const known = later.list().some((e) => e.key === key);
+  if (!known) throw refusal('later_gone', 'that step is no longer waiting');
+  if (op === 'run') await later.runNow(key);
+  else if (op === 'cancel') later.cancel(key);
+  else throw refusal('later_op', `nothing knows how to ${op} a waiting step`, { op });
+  return { ok: true };
 }
 
 export async function testAction(actionId) {
@@ -2177,7 +2282,7 @@ export async function testAction(actionId) {
   });
 
   log.info(`test run: "${action.name}"`);
-  await runSteps(action.actions, ctx, services);
+  await runSteps(action.actions, ctx, services, runFor(action));
 }
 
 /** Fire one alert config through the real dispatch path. */

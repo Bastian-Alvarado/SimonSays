@@ -109,6 +109,9 @@ export const spotifyOps = [];
 export const youtubeCalls = [];
 
 engine.initEngine({
+  // Later steps run when a test says it is time (later.fireDue), not on a clock of their own.
+  laterAutoTimer: false,
+  laterBootGraceMs: 0,
   youtube: {
     setTitle: async (title) => { youtubeCalls.push(['title', title]); },
     setDescription: async (description) => { youtubeCalls.push(['description', description]); },
@@ -125,7 +128,11 @@ engine.initEngine({
   },
   obs: {
     setScene: async (name) => { scenes.push(name); doubles.obsScene = name; },
-    setSourceVisible: async (scene, source, visible) => { obsCalls.push(['visible', scene, source, visible]); },
+    // A source a scene does not hold (doubles.obsNoItem) gets OBS's own answer, which names neither.
+    setSourceVisible: async (scene, source, visible) => {
+      obsCalls.push(['visible', scene, source, visible]);
+      if ((doubles.obsNoItem || []).includes(source)) throw new Error('No scene items were found in the specified scene by that name or offset.');
+    },
     // Omnilayer: where each source was put, OBS's canvas, a source OBS does not have when asked to fail,
     // and an OBS that has stopped answering (a half-open connection), which never settles at all.
     // On another canvas (the vertical one), with its id last; a source that canvas's scene lacks fails there (doubles.obsMissingVertical).

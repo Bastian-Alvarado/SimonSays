@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ActionStep, ActionStepType, Command, StreamAction, ThemeConfig, TriggerCategory, TriggerType, SingleCondition } from '../../types';
 import { Button } from '../Button';
-import { GlassWater, Hourglass, MonitorPlay, Target, Activity, Plus, Zap, ArrowRight, Play, Edit2, Trash2, X, RefreshCcw, ToggleRight, ToggleLeft, Monitor, Terminal, GitBranch, Split, Workflow, Smile, Search, Gamepad2, Type, GitMerge, Check, ArrowDown, ChevronDown, Eye, Type as TypeIcon, Heart, Star, Coins, Users, Share2, Gift, Ticket, Radio, Disc, Square, AlertTriangle, Music, SkipForward, SkipBack, Pause, ListPlus, Volume2, VolumeX, Save, Globe, Move, Mic, Sliders, Layers, LayoutGrid, List, ArrowDownAZ, History, Clock, Braces, Camera, Cpu, CalendarDays, Tag, Timer, User, Megaphone, Eraser, Undo2, MessageCircleQuestion, BarChart3, Shirt, Skull, Repeat, Trophy, Headphones } from 'lucide-react';
+import { GlassWater, Hourglass, MonitorPlay, Target, Activity, Plus, Zap, ArrowRight, Play, Edit2, Trash2, X, RefreshCcw, ToggleRight, ToggleLeft, Monitor, Terminal, GitBranch, Split, Workflow, Smile, Search, Gamepad2, Type, GitMerge, Check, ArrowDown, ChevronDown, Eye, Type as TypeIcon, Heart, Star, Coins, Users, Share2, Gift, Ticket, Radio, Disc, Square, AlertTriangle, Music, SkipForward, SkipBack, Pause, ListPlus, Volume2, VolumeX, Save, Globe, Move, Mic, Sliders, Layers, LayoutGrid, List, ArrowDownAZ, History, Clock, Braces, Camera, Cpu, CalendarDays, Tag, Timer, User, Megaphone, Eraser, Undo2, MessageCircleQuestion, BarChart3, Shirt, Skull, Repeat, Trophy, Headphones, OctagonX, Dices, AlarmClock, CornerDownRight, MessageSquare, TrainFront, Sparkles } from 'lucide-react';
 import { EmojiPicker } from '../EmojiPicker';
 import { VariablePicker } from '../VariablePicker';
 import { SpotifyIcon } from '../SpotifyPlayer';
@@ -31,7 +31,7 @@ import { AVATAR_EXPRESSIONS_LIST, AVATAR_DRESS_WORDS, AVATAR_ACTIONS_LIST } from
 import { REMOTE_SEATS } from '../../../shared/run.js';
 import { useDragOrder, DragGrip, DragOrder } from '../../hooks/useDragOrder';
 import { CallPersonSelect } from '../CallPersonSelect';
-import { fill } from '../../words';
+import { fill, refusalWords } from '../../words';
 
 const TwitchIcon = ({ size = 24, className = "" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} width={size} height={size}><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7" /></svg>
@@ -54,18 +54,24 @@ const DiscordIcon = ({ size = 24, className = "" }: { size?: number, className?:
  */
 const triggerTint = (category?: string) => (
   category === 'twitch' ? 'bg-[#9146FF]'
+    : category === 'youtube' ? 'bg-[#FF0000]'
     : category === 'tiktok' ? 'bg-[#ff0050]'
       : category === 'spotify' ? 'bg-[#1DB954]'
         : category === 'obs' ? 'bg-zinc-700'
+          : category === 'discord' ? 'bg-[#5865F2]'
+          : category === 'chat' ? 'bg-emerald-600'
           : category === 'system' ? 'bg-sky-600'
           : 'bg-current-accent'
 );
 
 const TriggerGlyph = ({ category, size }: { category?: string; size: number }) => (
   category === 'twitch' ? <TwitchIcon size={size} />
+    : category === 'youtube' ? <YouTubeIcon size={size} />
     : category === 'tiktok' ? <TikTokIcon size={size} />
       : category === 'spotify' ? <SpotifyIcon size={size} />
         : category === 'obs' ? <Monitor size={size} />
+          : category === 'discord' ? <DiscordIcon size={size} />
+          : category === 'chat' ? <MessageSquare size={size} />
           : category === 'system' ? <Timer size={size} />
           : <Terminal size={size} />
 );
@@ -131,6 +137,12 @@ type GoalSlotRef = { id: string; bar: string; name: string; source: string };
 /** A saved countdown, as the Countdown step and trigger pick one. */
 type CountdownPresetRef = { id: string; name: string };
 
+/** The Logic menu's steps, Trigger Action aside: it chains to another action, and keeps its own plain chip. */
+const LOGIC_STEPS = new Set(['condition', 'wait', 'stop', 'repeat', 'random_pick', 'random_choice', 'later']);
+
+/** A list of steps the menus add into instead of the action's own: a step holding steps, and which of its lists. */
+type AddTarget = { parentId: string; branch: 'then' | 'else' };
+
 /**
  * Flow filters, keyed by what a step actually talks to rather than by what
  * triggers the action — "show me everything that touches OBS" is the question
@@ -143,7 +155,7 @@ const FLOW_FILTERS: { id: string; label: string; match: (type: string) => boolea
   { id: 'spotify', label: 'Spotify', match: (t) => t.startsWith('spotify_'), tint: 'border-[#1DB954] bg-[#1DB954]/10 text-[#1DB954]' },
   { id: 'discord', label: 'Discord', match: (t) => t.startsWith('discord_'), tint: 'border-[#5865F2] bg-[#5865F2]/10 text-[#5865F2]' },
   { id: 'tts', label: 'TTS', match: (t) => t.startsWith('browser_'), tint: 'border-current-accent bg-current-accent/10 text-current-accent' },
-  { id: 'logic', label: 'Logic', match: (t) => t === 'condition' || t === 'trigger_action', tint: 'border-amber-500 bg-amber-500/10 text-amber-500' },
+  { id: 'logic', label: 'Logic', match: (t) => t === 'trigger_action' || LOGIC_STEPS.has(t), tint: 'border-amber-500 bg-amber-500/10 text-amber-500' },
   { id: 'overlay', label: 'Overlay', match: isOverlayStep, tint: 'border-sky-400 bg-sky-400/10 text-sky-400' },
 ];
 
@@ -164,9 +176,9 @@ const collectStepTypes = (steps: any[] | undefined, out: Set<string> = new Set<s
   return out;
 };
 
-/** One step rendered as a compact chip. Conditions get their own colour. */
+/** One step rendered as a compact chip. Conditions and the other Logic steps get their own colour. */
 const stepChipLabel = (type: string) => (
-  type === 'condition' ? 'Logic' : type.startsWith('browser_') ? 'TTS' : type.split('_')[0]
+  LOGIC_STEPS.has(type) ? 'Logic' : type.startsWith('browser_') ? 'TTS' : type.split('_')[0]
 );
 
 /**
@@ -271,6 +283,56 @@ const ActionCategoryDropdown = ({
     );
 };
 
+/*
+  The trigger's two pickers. Out here, not inside the screen: a component
+  declared inside another's render is a new component every render, so React
+  threw the open list away and built it again — the slide-in replayed and the
+  scroll went back to the top whenever anything on the screen changed, which
+  with live data arriving and the pointer moving was all the time.
+*/
+type PickOption = { value: string; label: string; icon: any; color?: string };
+const SelectionDropdown = ({ id, selected, options, onSelect, colorClass, activeDropdown, setActiveDropdown }: {
+  id: string;
+  selected: PickOption;
+  options: PickOption[];
+  onSelect: (val: string) => void;
+  colorClass: string;
+  activeDropdown: string | null;
+  setActiveDropdown: (id: string | null) => void;
+}) => {
+  const isOpen = activeDropdown === id;
+  const Icon = selected.icon;
+  return (
+    <div className="relative w-full" onClick={(e) => e.stopPropagation()} data-trigger-picker={id}>
+      <button
+        onClick={() => setActiveDropdown(isOpen ? null : id)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-bold transition-all hover:bg-zinc-800 ${isOpen ? 'ring-2 ring-opacity-50 ' + colorClass.replace('text-', 'ring-') : ''}`}
+      >
+        <div className="flex items-center gap-3">
+          <Icon size={16} className={colorClass} />
+          <span className="text-zinc-300">{selected.label}</span>
+        </div>
+        <ChevronDown size={14} className={`text-zinc-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 w-full bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden animate-slide-up max-h-60 overflow-y-auto" data-trigger-options>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onSelect(opt.value); setActiveDropdown(null); }}
+              className={`w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-zinc-800 flex items-center gap-3 transition-colors border-b border-zinc-800/50 last:border-none ${opt.value === selected.value ? 'bg-white/5 text-white' : 'text-zinc-400'}`}
+            >
+              <opt.icon size={14} className={opt.color || 'opacity-70'} />
+              {opt.label}
+              {opt.value === selected.value && <Check size={12} className="ml-auto text-current-accent" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface StepRendererProps {
   /** What the pixel avatars drawn in the Pixel avatars tab can do, for the "Avatar: do something" step. */
   avatarActions?: string[];
@@ -299,6 +361,11 @@ interface StepRendererProps {
   addActionStep: (type: ActionStepType, parentId?: string, branch?: 'then' | 'else') => void;
   onOpenPicker: (stepId: string, field: string, e: React.MouseEvent) => void;
   searchCategories: (query: string) => Promise<any[]>;
+  /** The list the step menus add into, when it is not the action's own, and how a list asks to be it. */
+  addInto?: AddTarget | null;
+  onAddInto?: (target: AddTarget | null) => void;
+  /** A random choice: the weights of it and its neighbours together, for its chance in percent. */
+  choiceTotal?: number;
 }
 
 /**
@@ -450,7 +517,8 @@ const LayoutTarget = ({ sceneType, layoutId, types, layouts, anyLabel, set, clas
   );
 };
 
-const StepRenderer: React.FC<StepRendererProps> = ({
+const StepRenderer: React.FC<StepRendererProps> = (props) => {
+  const {
   avatarActions = [],
   omnibarSlots,
   layouts,
@@ -459,8 +527,8 @@ const StepRenderer: React.FC<StepRendererProps> = ({
   sceneTypes = [],
   seatNames = [],
   step,
-  index, 
-  t, 
+  index,
+  t,
   obsData,
   streamActions,
   removeActionStep,
@@ -469,8 +537,11 @@ const StepRenderer: React.FC<StepRendererProps> = ({
   updateActionStepConfig,
   addActionStep,
   onOpenPicker,
-  searchCategories
-}) => {
+  searchCategories,
+  addInto,
+  onAddInto,
+  choiceTotal,
+  } = props;
      const [gameQuery, setGameQuery] = useState('');
      // A condition's then and else are lists of their own: a step is dragged among its own neighbours.
      const thenOrder = useDragOrder(({ id, gap }) => moveActionStep?.(id, gap));
@@ -532,6 +603,154 @@ const StepRenderer: React.FC<StepRendererProps> = ({
          
          updateActionStepConfig(step.id, 'logic.conditions', newConditions);
      };
+
+     /*
+       A list of steps inside a step: a condition's then and else, and the one
+       list in a repeat, a later and a random choice. Each can be the list the
+       step menus add into — the button under it asks — so anything the menus
+       offer can go inside, where a condition's quick buttons only ever had
+       chat, speech and a scene.
+     */
+     const innerList = (list: ActionStep[] | undefined, ord: DragOrder, branch: 'then' | 'else' = 'then', extra: Partial<StepRendererProps> = { choiceTotal: undefined }, canAdd = true) => {
+         const here = addInto?.parentId === step.id && addInto?.branch === branch;
+         return (
+             <div ref={ord.listRef} data-step-list={`${step.id}:${branch}`} className={`relative space-y-3 pl-2 rounded-xl ${here ? 'ring-2 ring-amber-500/60 ring-offset-4 ring-offset-zinc-950' : ''}`}>
+                 {ord.line}
+                 {list?.map((subStep, i) => (<StepRenderer {...props} {...extra} key={subStep.id} step={subStep} index={i} order={ord} />))}
+                 {(!list || list.length === 0) && <div className="text-[9px] text-zinc-600 italic p-3 border border-dashed border-zinc-800 rounded-xl text-center">{t.noActionsDefined}</div>}
+                 {canAdd && onAddInto && (
+                     <button onClick={() => onAddInto(here ? null : { parentId: step.id, branch })} data-add-here={`${step.id}:${branch}`} className={`w-full py-1.5 rounded-xl border border-dashed text-[10px] font-bold flex items-center justify-center gap-1 transition-all ${here ? 'border-amber-500 text-amber-500 bg-amber-500/10' : 'border-zinc-800 text-zinc-500 hover:border-amber-500 hover:text-amber-500'}`}>
+                         <CornerDownRight size={12} /> {here ? (t.addingHere || 'The menus above add steps here') : (t.addStepsHere || 'Add steps here')}
+                     </button>
+                 )}
+             </div>
+         );
+     };
+
+     // The Logic steps' own card: the condition's look, its icon and its name.
+     const logicCard = (Icon: any, title: string, body: React.ReactNode) => (
+         <div {...order?.row(step.id)} data-logic-step={step.type} className={`bg-zinc-950/40 rounded-3xl border border-zinc-800 relative group animate-slide-up ml-4 mb-4 overflow-hidden ${order?.held === step.id ? 'opacity-40' : ''}`}>
+             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                 <button onClick={() => removeActionStep(step.id)} className="text-zinc-600 hover:text-red-500 bg-zinc-900 rounded-full p-1"><X size={14} /></button>
+             </div>
+             <div className="bg-zinc-900/50 p-3 border-b border-zinc-800 flex items-center gap-2">
+                 {stepGrip}
+                 <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-amber-500 text-white shadow-lg shadow-amber-500/20"><Icon size={14} /></div>
+                 <span className="text-xs font-black uppercase tracking-wider text-zinc-300">{title}</span>
+             </div>
+             {body}
+         </div>
+     );
+     const logicHint = (text: string) => <p className="text-[9px] text-zinc-500 leading-relaxed">{text}</p>;
+     const numberField = (key: string, label: string, value: any, min: number, max: number, by = 1) => (
+         <label className="flex flex-col gap-1 w-28">
+             <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</span>
+             <input type="number" min={min} max={max} step={by} value={value ?? ''} data-logic-field={key}
+                 onChange={(e) => updateActionStepConfig(step.id, key, e.target.value === '' ? '' : Number(e.target.value))}
+                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs font-mono text-white outline-none focus:border-amber-500" />
+         </label>
+     );
+
+     if (step.type === 'wait') {
+         return logicCard(Hourglass, t.stepWait || 'Wait', (
+             <div className="p-4 space-y-2">
+                 {numberField('seconds', t.stepWaitSeconds || 'Seconds', step.config.seconds, 0, 600, 0.5)}
+                 {logicHint(t.stepWaitHint || 'Holds the action here, then carries on with the next step. Up to 10 minutes: a restart in the middle loses the rest, so for anything longer use Later.')}
+             </div>
+         ));
+     }
+
+     if (step.type === 'stop') {
+         return logicCard(OctagonX, t.stepStop || 'Stop here', (
+             <div className="p-4">{logicHint(t.stepStopHint || 'The steps after this one do not run. Most useful inside a Condition: not a mod, say so and stop.')}</div>
+         ));
+     }
+
+     if (step.type === 'repeat') {
+         return logicCard(Repeat, t.stepRepeat || 'Repeat', (
+             <>
+                 <div className="p-4 space-y-2 border-b border-zinc-800">
+                     <div className="flex flex-wrap items-end gap-3">
+                         {numberField('times', t.stepRepeatTimes || 'Times', step.config.times, 1, 50)}
+                         {numberField('waitSeconds', t.stepRepeatGap || 'Seconds between', step.config.waitSeconds, 0, 600, 0.5)}
+                     </div>
+                     {logicHint(t.stepRepeatHint || 'Runs the steps below this many times, up to 50. {repeat.count} is which time it is, from 1.')}
+                 </div>
+                 <div className="p-4 bg-amber-900/5">{innerList(step.thenActions, thenOrder)}</div>
+             </>
+         ));
+     }
+
+     if (step.type === 'later') {
+         const mode = step.config.mode === 'streamEnd' ? 'streamEnd' : 'after';
+         const units: [string, string][] = [['seconds', t.unitSeconds || 'Seconds'], ['minutes', t.unitMinutes || 'Minutes'], ['hours', t.unitHours || 'Hours'], ['days', t.unitDays || 'Days']];
+         return logicCard(AlarmClock, t.stepLater || 'Later', (
+             <>
+                 <div className="p-4 space-y-3 border-b border-zinc-800">
+                     <div className="flex w-fit bg-black/40 rounded-lg p-0.5 border border-zinc-700/50">
+                         {(['after', 'streamEnd'] as const).map((m) => (
+                             <button key={m} onClick={() => updateActionStepConfig(step.id, 'mode', m)} data-later-mode={m} className={`px-3 py-1 rounded text-[9px] font-bold uppercase transition-all ${mode === m ? 'bg-amber-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                                 {m === 'after' ? (t.stepLaterAfter || 'After a time') : (t.stepLaterStreamEnd || 'When the stream ends')}
+                             </button>
+                         ))}
+                     </div>
+                     {mode === 'after' && (
+                         <div className="flex flex-wrap items-end gap-3">
+                             {numberField('amount', t.stepLaterAmount || 'How long', step.config.amount, 1, 10080)}
+                             <label className="flex flex-col gap-1 w-32">
+                                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.stepLaterUnit || 'Of'}</span>
+                                 <select value={step.config.unit || 'minutes'} onChange={(e) => updateActionStepConfig(step.id, 'unit', e.target.value)} data-logic-field="unit" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500">
+                                     {units.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                                 </select>
+                             </label>
+                         </div>
+                     )}
+                     {logicHint(mode === 'after'
+                         ? (t.stepLaterHint || 'The action carries on now, and the steps below run on their own when the time is up, up to 7 days, even after a restart. Running this step again starts its wait over. Waiting steps are listed on the Actions screen.')
+                         : (t.stepLaterStreamEndHint || 'The steps below run once the stream is over: five minutes after it stops, so a quick restart is not an end. Running this step again replaces the one waiting.'))}
+                 </div>
+                 <div className="p-4 bg-amber-900/5">{innerList(step.thenActions, thenOrder)}</div>
+             </>
+         ));
+     }
+
+     if (step.type === 'random_pick') {
+         const choices = (step.thenActions || []).filter((s) => s.type === 'random_choice');
+         const total = choices.reduce((n, c) => n + Math.max(0, Number(c.config.weight ?? 1) || 0), 0);
+         return logicCard(Dices, t.stepRandom || 'Pick one at random', (
+             <div className="p-4 space-y-3 bg-amber-900/5">
+                 {logicHint(t.stepRandomHint || 'One of the choices runs, at random. A choice with weight 2 comes up twice as often as one with 1; 0 never.')}
+                 {innerList(step.thenActions, thenOrder, 'then', { choiceTotal: total }, false)}
+                 <button onClick={() => addActionStep('random_choice', step.id, 'then')} data-add-choice className="w-full py-2 border border-dashed border-zinc-700 hover:border-amber-500 rounded-xl text-[10px] font-bold text-zinc-500 hover:text-amber-500 flex items-center justify-center gap-1 transition-all">
+                     <Plus size={12} /> {t.stepRandomAdd || 'Add a choice'}
+                 </button>
+             </div>
+         ));
+     }
+
+     if (step.type === 'random_choice') {
+         const weight = Math.max(0, Number(step.config.weight ?? 1) || 0);
+         const chance = choiceTotal ? Math.round((weight / choiceTotal) * 100) : 0;
+         return (
+             <div {...order?.row(step.id)} data-logic-step="random_choice" className={`bg-zinc-900/60 rounded-2xl border border-zinc-800 relative group mb-2 overflow-hidden ${order?.held === step.id ? 'opacity-40' : ''}`}>
+                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                     <button onClick={() => removeActionStep(step.id)} className="text-zinc-600 hover:text-red-500 bg-zinc-900 rounded-full p-1"><X size={14} /></button>
+                 </div>
+                 <div className="p-3 pr-10 flex flex-wrap items-center gap-3 border-b border-zinc-800/60">
+                     {stepGrip}
+                     <span className="text-[10px] font-black uppercase text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{fill(t.stepRandomChoice || 'Choice {n}', { n: index + 1 })}</span>
+                     <label className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                         {t.stepRandomWeight || 'Weight'}
+                         <input type="number" min={0} max={1000} value={step.config.weight ?? ''} data-logic-field="weight"
+                             onChange={(e) => updateActionStepConfig(step.id, 'weight', e.target.value === '' ? '' : Number(e.target.value))}
+                             className="w-16 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs font-mono text-white outline-none focus:border-amber-500" />
+                     </label>
+                     <span className="text-[10px] font-mono text-zinc-400" data-choice-chance>{fill(t.stepRandomChance || '{n}% of the time', { n: chance })}</span>
+                 </div>
+                 <div className="p-3">{innerList(step.thenActions, thenOrder)}</div>
+             </div>
+         );
+     }
 
      if (step.type === 'condition') {
          const logic = step.config.logic || { conditions: [], matchType: 'AND' };
@@ -600,11 +819,7 @@ const StepRenderer: React.FC<StepRendererProps> = ({
                                 <button onClick={() => addActionStep('obs_scene', step.id, 'then')} className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Add Scene"><Monitor size={12}/></button>
                             </div>
                          </div>
-                         <div ref={thenOrder.listRef} className="relative space-y-3 pl-2">
-                             {thenOrder.line}
-                             {step.thenActions?.map((subStep, i) => (<StepRenderer key={subStep.id} step={subStep} index={i} t={t} obsData={obsData} streamActions={streamActions} avatarActions={avatarActions} omnibarSlots={omnibarSlots} layouts={layouts} goalSlots={goalSlots} countdownPresets={countdownPresets} sceneTypes={sceneTypes} seatNames={seatNames} removeActionStep={removeActionStep} order={thenOrder} moveActionStep={moveActionStep} updateActionStepConfig={updateActionStepConfig} addActionStep={addActionStep} onOpenPicker={onOpenPicker} searchCategories={searchCategories}/>))}
-                             {(!step.thenActions || step.thenActions.length === 0) && <div className="text-[9px] text-zinc-600 italic p-3 border border-dashed border-zinc-800 rounded-xl text-center">{t.noActionsDefined}</div>}
-                         </div>
+                         {innerList(step.thenActions, thenOrder, 'then')}
                      </div>
                      <div className="p-4 bg-red-900/5 relative border-t border-zinc-800/50">
                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
@@ -616,11 +831,7 @@ const StepRenderer: React.FC<StepRendererProps> = ({
                                 <button onClick={() => addActionStep('obs_scene', step.id, 'else')} className="p-1.5 hover:bg-zinc-800 rounded text-zinc-400 hover:text-white" title="Add Scene"><Monitor size={12}/></button>
                             </div>
                          </div>
-                         <div ref={elseOrder.listRef} className="relative space-y-3 pl-2">
-                             {elseOrder.line}
-                             {step.elseActions?.map((subStep, i) => (<StepRenderer key={subStep.id} step={subStep} index={i} t={t} obsData={obsData} streamActions={streamActions} avatarActions={avatarActions} omnibarSlots={omnibarSlots} layouts={layouts} goalSlots={goalSlots} countdownPresets={countdownPresets} sceneTypes={sceneTypes} seatNames={seatNames} removeActionStep={removeActionStep} order={elseOrder} moveActionStep={moveActionStep} updateActionStepConfig={updateActionStepConfig} addActionStep={addActionStep} onOpenPicker={onOpenPicker} searchCategories={searchCategories}/>))}
-                             {(!step.elseActions || step.elseActions.length === 0) && <div className="text-[9px] text-zinc-600 italic p-3 border border-dashed border-zinc-800 rounded-xl text-center">{t.noActionsDefined}</div>}
-                         </div>
+                         {innerList(step.elseActions, elseOrder, 'else')}
                      </div>
                  </div>
              </div>
@@ -1678,7 +1889,73 @@ interface ActionsViewProps {
   discordRoles?: any[];
   t: any;
   searchCategories: (query: string) => Promise<any[]>;
+  /** Later steps waiting their turn, soonest first (server/engine/later.js), and the Waiting list's two buttons. */
+  laterSteps?: LaterStepRef[];
+  laterControl?: (op: 'run' | 'cancel', key: string) => Promise<any>;
 }
+
+/** A Later step waiting its turn, as the server lists it. */
+type LaterStepRef = { key: string; actionId: string; actionName: string; stepId: string; mode: 'after' | 'streamEnd'; dueAt: number | null; setAt: number; user: string; input: string };
+
+/** How long until a moment, the way the Waiting list says it: 4 h 59 min, 12 min, 40 s. */
+const timeLeft = (ms: number) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s} s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+  const d = Math.floor(h / 24);
+  return h % 24 ? `${d} d ${h % 24} h` : `${d} d`;
+};
+
+/*
+  The Later steps waiting their turn: what each belongs to, who set it off,
+  how long is left, and the two things that can be done about one. Shown only
+  while something waits, since an empty list of nothing is clutter.
+*/
+const LaterWaitingList = ({ steps, control, t }: { steps: LaterStepRef[]; control?: (op: 'run' | 'cancel', key: string) => Promise<any>; t: any }) => {
+  // Read at every render, and rendered every second while anything waits: a
+  // clock kept from when the list first appeared said 30 s for a 20 s wait.
+  const [, setTick] = useState(0);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    if (!steps.length) return undefined;
+    const tick = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(tick);
+  }, [steps.length]);
+  if (!steps.length) return null;
+  const now = Date.now();
+  const act = (op: 'run' | 'cancel', key: string) => {
+    setError('');
+    control?.(op, key).catch((err: any) => setError(refusalWords(t, err)));
+  };
+  return (
+    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3" data-later-waiting>
+      <div className="flex items-center gap-2">
+        <AlarmClock size={14} className="text-amber-500" />
+        <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">{fill(t.laterWaitingTitle || 'Waiting to run ({n})', { n: steps.length })}</span>
+      </div>
+      <div className="space-y-2">
+        {steps.map((s) => (
+          <div key={s.key} data-later-row={s.key} className="flex flex-wrap items-center gap-3 bg-zinc-950/60 border border-zinc-800 rounded-xl px-3 py-2">
+            <div className="flex-1 min-w-[160px]">
+              <div className="text-xs font-bold text-zinc-200">{s.actionName || (t.laterNoAction || 'A step run on its own')}</div>
+              <div className="text-[10px] text-zinc-500">
+                {s.mode === 'streamEnd' ? (t.laterWhenStreamEnds || 'When the stream ends') : fill(t.laterIn || 'In {time}', { time: timeLeft((s.dueAt || 0) - now) })}
+                {s.user ? ` · ${fill(t.laterBy || 'set off by {user}', { user: s.user })}` : ''}
+                {s.input ? ` · “${s.input.length > 40 ? `${s.input.slice(0, 40)}…` : s.input}”` : ''}
+              </div>
+            </div>
+            <button onClick={() => act('run', s.key)} data-later-run className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-amber-500 hover:text-white text-[10px] font-bold text-zinc-300 flex items-center gap-1 transition-colors"><Play size={11} /> {t.laterRunNow || 'Run now'}</button>
+            <button onClick={() => act('cancel', s.key)} data-later-cancel className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-red-500 hover:text-white text-[10px] font-bold text-zinc-300 flex items-center gap-1 transition-colors"><X size={11} /> {t.laterCancel || 'Cancel'}</button>
+          </div>
+        ))}
+      </div>
+      {error && <p className="text-[10px] text-red-400">{error}</p>}
+    </div>
+  );
+};
 
 export const ActionsView: React.FC<ActionsViewProps> = ({
   avatarActions = [],
@@ -1716,8 +1993,23 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
   discordChannels,
   discordRoles,
   t,
-  searchCategories
+  searchCategories,
+  laterSteps = [],
+  laterControl,
 }) => {
+  /*
+    Where the step menus add: the action's own steps, or a list inside a step
+    that asked with its "Add steps here". A target that has since been
+    deleted is no target — the step goes to the action's own list rather
+    than nowhere — and opening another action starts at its own list.
+  */
+  const [addInto, setAddInto] = useState<AddTarget | null>(null);
+  useEffect(() => { setAddInto(null); }, [currentAction?.id, isActionModalOpen]);
+  const holdsStep = (steps: ActionStep[] | undefined, id: string): boolean => (steps || []).some((s) => s.id === id || holdsStep(s.thenActions, id) || holdsStep(s.elseActions, id));
+  const addStep = (type: ActionStepType) => {
+    if (addInto && holdsStep(currentAction.actions, addInto.parentId)) addActionStep(type, addInto.parentId, addInto.branch);
+    else { setAddInto(null); addActionStep(type); }
+  };
   // Card or row. Device-local like the Commands screen's equivalent, and kept
   // under its own key so the two screens can be set independently.
   // The action's own steps; a condition's then and else have theirs (StepRenderer).
@@ -1854,61 +2146,12 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
       }
   };
 
-  const SelectionDropdown = ({ 
-      id, 
-      selected, 
-      options, 
-      onSelect, 
-      colorClass 
-  }: { 
-      id: string, 
-      selected: { value: string, label: string, icon: any }, 
-      options: { value: string, label: string, icon: any, color?: string }[],
-      onSelect: (val: string) => void,
-      colorClass: string 
-  }) => {
-      const isOpen = activeDropdown === id;
-      const Icon = selected.icon;
-      
-      return (
-          <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
-              <button 
-                  onClick={() => setActiveDropdown(isOpen ? null : id)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-xs font-bold transition-all hover:bg-zinc-800 ${isOpen ? 'ring-2 ring-opacity-50 ' + colorClass.replace('text-', 'ring-') : ''}`}
-              >
-                  <div className="flex items-center gap-3">
-                      <Icon size={16} className={colorClass} />
-                      <span className="text-zinc-300">{selected.label}</span>
-                  </div>
-                  <ChevronDown size={14} className={`text-zinc-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-              </button>
-              
-              {isOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-full bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden animate-slide-up max-h-60 overflow-y-auto">
-                      {options.map((opt) => (
-                          <button
-                              key={opt.value}
-                              onClick={() => { 
-                                  onSelect(opt.value);
-                                  setActiveDropdown(null); 
-                              }}
-                              className={`w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-zinc-800 flex items-center gap-3 transition-colors border-b border-zinc-800/50 last:border-none ${opt.value === selected.value ? 'bg-white/5 text-white' : 'text-zinc-400'}`}
-                          >
-                              <opt.icon size={14} className={opt.color || "opacity-70"} />
-                              {opt.label}
-                              {opt.value === selected.value && <Check size={12} className="ml-auto text-current-accent"/>}
-                          </button>
-                      ))}
-                  </div>
-              )}
-          </div>
-      );
-  };
-
   const TRIGGER_CATEGORIES = [
       { value: 'command', label: t.triggerCommand, icon: Terminal, color: 'text-amber-500' },
       { value: 'twitch', label: t.triggerTwitch, icon: TwitchIcon, color: 'text-[#9146FF]' },
+      { value: 'youtube', label: t.triggerYoutube || 'YouTube', icon: YouTubeIcon, color: 'text-[#FF0000]' },
       { value: 'tiktok', label: t.triggerTiktok, icon: TikTokIcon, color: 'text-[#ff0050]' },
+      { value: 'chat', label: t.triggerChat || 'Chat', icon: MessageSquare, color: 'text-emerald-400' },
       { value: 'spotify', label: t.triggerSpotify, icon: SpotifyIcon, color: 'text-[#1DB954]' },
       { value: 'obs', label: t.triggerObs, icon: Monitor, color: 'text-zinc-400' },
       { value: 'discord', label: t.triggerDiscord || 'Discord', icon: DiscordIcon, color: 'text-[#5865F2]' },
@@ -1922,6 +2165,23 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
           { value: 'twitch_cheer', label: t.triggerCheer, icon: Coins, color: 'text-amber-500' },
           { value: 'twitch_raid', label: t.triggerRaid, icon: Users, color: 'text-orange-500' },
           { value: 'twitch_redemption', label: t.triggerRedeem, icon: Ticket, color: 'text-emerald-500' },
+          { value: 'twitch_sub_gift_bulk', label: t.triggerGiftBomb || 'Gifted subs (a bundle)', icon: Gift, color: 'text-purple-400' },
+          { value: 'twitch_hype_train_begin', label: t.triggerHypeBegin || 'Hype Train started', icon: TrainFront, color: 'text-fuchsia-400' },
+          { value: 'twitch_hype_train_level', label: t.triggerHypeLevel || 'Hype Train reached a new level', icon: TrainFront, color: 'text-fuchsia-400' },
+          { value: 'twitch_hype_train_end', label: t.triggerHypeEnd || 'Hype Train ended', icon: TrainFront, color: 'text-zinc-400' },
+          { value: 'twitch_stream_online', label: t.triggerTwitchOnline || 'Went live on Twitch', icon: Radio, color: 'text-green-500' },
+          { value: 'twitch_stream_offline', label: t.triggerTwitchOffline || 'Stream ended on Twitch', icon: X, color: 'text-red-500' },
+      ],
+      // YouTube's own: a Super Chat or Super Sticker, a new member or a milestone, gifted memberships.
+      youtube: [
+          { value: 'youtube_cheer', label: t.triggerSuperChat || 'Super Chat or Super Sticker', icon: Coins, color: 'text-amber-500' },
+          { value: 'youtube_sub', label: t.triggerYoutubeMember || 'New member or milestone', icon: Star, color: 'text-emerald-400' },
+          { value: 'youtube_sub_gift_bulk', label: t.triggerYoutubeGifts || 'Gifted memberships', icon: Gift, color: 'text-pink-400' },
+      ],
+      // Somebody arriving: their first words this stream, and their first words ever, on any stream chat.
+      chat: [
+          { value: 'chat_first_of_stream', label: t.triggerFirstOfStream || 'First message this stream', icon: Sparkles, color: 'text-emerald-400' },
+          { value: 'chat_first_ever', label: t.triggerFirstEver || 'First message ever', icon: Sparkles, color: 'text-amber-400' },
       ],
       tiktok: [
           { value: 'tiktok_follow', label: t.triggerFollow, icon: Heart, color: 'text-rose-500' },
@@ -2022,7 +2282,9 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                               selected={currentCategory}
                               options={TRIGGER_CATEGORIES}
                               colorClass={currentCategory.color}
-                              onSelect={(val) => updateTrigger(val as TriggerCategory, val === 'command' ? 'command_trigger' : val === 'twitch' ? 'twitch_follow' : val === 'tiktok' ? 'tiktok_follow' : val === 'spotify' ? 'spotify_track_change' : val === 'system' ? 'countdown_finished' : val === 'discord' ? 'discord_join' : 'obs_stream_started')}
+                              activeDropdown={activeDropdown}
+                              setActiveDropdown={setActiveDropdown}
+                              onSelect={(val) => updateTrigger(val as TriggerCategory, val === 'command' ? 'command_trigger' : val === 'twitch' ? 'twitch_follow' : val === 'youtube' ? 'youtube_cheer' : val === 'chat' ? 'chat_first_of_stream' : val === 'tiktok' ? 'tiktok_follow' : val === 'spotify' ? 'spotify_track_change' : val === 'system' ? 'countdown_finished' : val === 'discord' ? 'discord_join' : 'obs_stream_started')}
                           />
 
                           {currentCategory.value !== 'command' && (
@@ -2031,6 +2293,8 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                   selected={currentType}
                                   options={currentTypeList}
                                   colorClass={currentType.color || 'text-white'}
+                                  activeDropdown={activeDropdown}
+                                  setActiveDropdown={setActiveDropdown}
                                   onSelect={(val) => updateTrigger(currentCategory.value as TriggerCategory, val as TriggerType)}
                               />
                           )}
@@ -2106,6 +2370,32 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                           })()}
                           {currentAction.trigger?.type === 'twitch_cheer' && (
                               <input type="number" placeholder={`${t.minBits} (e.g. 100)`} value={currentAction.trigger.config.minBits || ''} onChange={(e) => updateTriggerConfig('minBits', parseInt(e.target.value))} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none" />
+                          )}
+                          {(currentAction.trigger?.type === 'twitch_sub_gift_bulk' || currentAction.trigger?.type === 'youtube_sub_gift_bulk') && (
+                              <div className="space-y-1">
+                                  <input type="number" min={0} placeholder={t.minGifts || 'At least this many gifts (empty: any)'} value={currentAction.trigger.config.minGifts || ''} onChange={(e) => updateTriggerConfig('minGifts', e.target.value === '' ? '' : Number(e.target.value))} data-trigger-field="minGifts" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none" />
+                                  <p className="text-[9px] text-zinc-600">{t.giftBombHint || 'Once per bundle, with {event.count} gifts. Each gift is still a sub of its own for the Sub trigger.'}</p>
+                              </div>
+                          )}
+                          {currentAction.trigger?.type === 'youtube_cheer' && (
+                              <div className="space-y-1">
+                                  <input type="number" min={0} placeholder={t.minSuperChat || 'At least this much, in its own currency (empty: any)'} value={currentAction.trigger.config.minValue || ''} onChange={(e) => updateTriggerConfig('minValue', e.target.value === '' ? '' : Number(e.target.value))} data-trigger-field="minValue" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none" />
+                                  <p className="text-[9px] text-zinc-600">{t.superChatHint || '{event.amount} is the amount as YouTube shows it, {message} what they wrote.'}</p>
+                              </div>
+                          )}
+                          {currentAction.trigger?.type === 'youtube_sub' && (
+                              <p className="text-[9px] text-zinc-600">{t.youtubeMemberHint || 'A new member, or a member showing a milestone: then {event.months} is how many months.'}</p>
+                          )}
+                          {(currentAction.trigger?.type || '').startsWith('twitch_hype_train_') && (
+                              <p className="text-[9px] text-zinc-600">{t.hypeTrainHint || '{event.level} is the level it is at, {event.total} the points so far, and {user} the top contributor.'}</p>
+                          )}
+                          {(currentAction.trigger?.type === 'twitch_stream_online' || currentAction.trigger?.type === 'twitch_stream_offline') && (
+                              <p className="text-[9px] text-zinc-600">{t.twitchLiveHint || 'When Twitch itself says the stream started or ended. The OBS triggers fire for any stream OBS sends, a test one too.'}</p>
+                          )}
+                          {(currentAction.trigger?.type === 'chat_first_of_stream' || currentAction.trigger?.type === 'chat_first_ever') && (
+                              <p className="text-[9px] text-zinc-600">{currentAction.trigger?.type === 'chat_first_of_stream'
+                                  ? (t.firstOfStreamHint || 'The first time somebody talks during a stream, on Twitch, YouTube, TikTok or Kick. Only while a stream is on. {message} is what they said, {event.streak} how many streams in a row they have been at.')
+                                  : (t.firstEverHint || 'The first time somebody ever talks in your chat. A brand-new chatter during a stream also sets off "First message this stream". {message} is what they said.')}</p>
                           )}
                           {currentAction.trigger?.type === 'tiktok_gift' && (
                               <input type="text" placeholder={`${t.giftName} (e.g. Rose)`} value={currentAction.trigger.config.giftName || ''} onChange={(e) => updateTriggerConfig('giftName', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none" />
@@ -2287,12 +2577,12 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: t.chat, onClick: () => addActionStep('twitch_chat'), icon: TwitchIcon },
-                                    { label: 'Set Title', onClick: () => addActionStep('twitch_set_title'), icon: TypeIcon },
-                                    { label: 'Set Game', onClick: () => addActionStep('twitch_set_category'), icon: Gamepad2 },
-                                    { label: t.twitchStepShoutout || 'Shout out', onClick: () => addActionStep('twitch_shoutout'), icon: Megaphone },
-                                    { label: t.twitchStepClip || 'Clip', onClick: () => addActionStep('twitch_clip'), icon: Camera },
-                                    { label: t.twitchStepMarker || 'Stream marker', onClick: () => addActionStep('twitch_marker'), icon: Tag },
+                                    { label: t.chat, onClick: () => addStep('twitch_chat'), icon: TwitchIcon },
+                                    { label: 'Set Title', onClick: () => addStep('twitch_set_title'), icon: TypeIcon },
+                                    { label: 'Set Game', onClick: () => addStep('twitch_set_category'), icon: Gamepad2 },
+                                    { label: t.twitchStepShoutout || 'Shout out', onClick: () => addStep('twitch_shoutout'), icon: Megaphone },
+                                    { label: t.twitchStepClip || 'Clip', onClick: () => addStep('twitch_clip'), icon: Camera },
+                                    { label: t.twitchStepMarker || 'Stream marker', onClick: () => addStep('twitch_marker'), icon: Tag },
                                 ]}
                              />
                              <ActionCategoryDropdown
@@ -2304,9 +2594,9 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: t.youtubeMenuTitle || 'Set Title', onClick: () => addActionStep('youtube_set_title'), icon: TypeIcon },
-                                    { label: t.youtubeMenuDescription || 'Set Description', onClick: () => addActionStep('youtube_set_description'), icon: List },
-                                    { label: t.youtubeMenuCategory || 'Toggle Category', onClick: () => addActionStep('youtube_toggle_category'), icon: RefreshCcw },
+                                    { label: t.youtubeMenuTitle || 'Set Title', onClick: () => addStep('youtube_set_title'), icon: TypeIcon },
+                                    { label: t.youtubeMenuDescription || 'Set Description', onClick: () => addStep('youtube_set_description'), icon: List },
+                                    { label: t.youtubeMenuCategory || 'Toggle Category', onClick: () => addStep('youtube_toggle_category'), icon: RefreshCcw },
                                 ]}
                              />
                              <ActionCategoryDropdown
@@ -2318,8 +2608,8 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: 'Speak (TTS)', onClick: () => addActionStep('browser_tts'), icon: Mic },
-                                    { label: 'Spotify Control', onClick: () => addActionStep('spotify_control'), icon: Play }
+                                    { label: 'Speak (TTS)', onClick: () => addStep('browser_tts'), icon: Mic },
+                                    { label: 'Spotify Control', onClick: () => addStep('spotify_control'), icon: Play }
                                 ]}
                              />
                              <ActionCategoryDropdown 
@@ -2331,8 +2621,8 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: t.discordSendStep || 'Send as the bot', onClick: () => addActionStep('discord_send'), icon: DiscordIcon },
-                                    { label: 'Send Webhook', onClick: () => addActionStep('discord_webhook'), icon: DiscordIcon }
+                                    { label: t.discordSendStep || 'Send as the bot', onClick: () => addStep('discord_send'), icon: DiscordIcon },
+                                    { label: 'Send Webhook', onClick: () => addStep('discord_webhook'), icon: DiscordIcon }
                                 ]}
                              />
                              <ActionCategoryDropdown 
@@ -2344,17 +2634,17 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: t.scene, onClick: () => addActionStep('obs_scene'), icon: Monitor },
-                                    { label: 'Source Visibility', onClick: () => addActionStep('obs_visibility'), icon: Eye },
-                                    { label: 'Set Text', onClick: () => addActionStep('obs_text'), icon: Type },
-                                    { label: 'Toggle Filter', onClick: () => addActionStep('obs_filter_toggle'), icon: AlertTriangle },
-                                    { label: 'Set Volume', onClick: () => addActionStep('obs_set_volume'), icon: Volume2 },
-                                    { label: 'Mute/Unmute', onClick: () => addActionStep('obs_set_mute'), icon: VolumeX },
-                                    { label: 'Save Replay', onClick: () => addActionStep('obs_save_replay'), icon: Save },
-                                    { label: t.obsStopStream || 'Stop streaming', onClick: () => addActionStep('obs_stop_stream'), icon: Square },
-                                    { label: 'Browser URL', onClick: () => addActionStep('obs_set_browser_url'), icon: Globe },
-                                    { label: 'Transform', onClick: () => addActionStep('obs_set_transform'), icon: Move },
-                                    { label: 'Phone Camera', onClick: () => addActionStep('droidcam_control'), icon: Camera },
+                                    { label: t.scene, onClick: () => addStep('obs_scene'), icon: Monitor },
+                                    { label: 'Source Visibility', onClick: () => addStep('obs_visibility'), icon: Eye },
+                                    { label: 'Set Text', onClick: () => addStep('obs_text'), icon: Type },
+                                    { label: 'Toggle Filter', onClick: () => addStep('obs_filter_toggle'), icon: AlertTriangle },
+                                    { label: 'Set Volume', onClick: () => addStep('obs_set_volume'), icon: Volume2 },
+                                    { label: 'Mute/Unmute', onClick: () => addStep('obs_set_mute'), icon: VolumeX },
+                                    { label: 'Save Replay', onClick: () => addStep('obs_save_replay'), icon: Save },
+                                    { label: t.obsStopStream || 'Stop streaming', onClick: () => addStep('obs_stop_stream'), icon: Square },
+                                    { label: 'Browser URL', onClick: () => addStep('obs_set_browser_url'), icon: Globe },
+                                    { label: 'Transform', onClick: () => addStep('obs_set_transform'), icon: Move },
+                                    { label: 'Phone Camera', onClick: () => addStep('droidcam_control'), icon: Camera },
                                 ]}
                              />
                              <ActionCategoryDropdown 
@@ -2366,8 +2656,13 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: 'Condition', onClick: () => addActionStep('condition'), icon: Split },
-                                    { label: 'Trigger Action', onClick: () => addActionStep('trigger_action'), icon: Workflow }
+                                    { label: 'Condition', onClick: () => addStep('condition'), icon: Split },
+                                    { label: 'Trigger Action', onClick: () => addStep('trigger_action'), icon: Workflow },
+                                    { label: t.stepWait || 'Wait', onClick: () => addStep('wait'), icon: Hourglass },
+                                    { label: t.stepStop || 'Stop here', onClick: () => addStep('stop'), icon: OctagonX },
+                                    { label: t.stepRepeat || 'Repeat', onClick: () => addStep('repeat'), icon: Repeat },
+                                    { label: t.stepRandom || 'Pick one at random', onClick: () => addStep('random_pick'), icon: Dices },
+                                    { label: t.stepLater || 'Later', onClick: () => addStep('later'), icon: AlarmClock },
                                 ]}
                              />
                              {/* What is on the overlay, wherever it came from. The
@@ -2382,13 +2677,19 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 setActiveDropdown={setActiveDropdown}
                                 scrollContainerRef={dropdownRef}
                                 items={[
-                                    { label: t.omnibarStepMenu || 'Omnibar slot', onClick: () => addActionStep('omnibar_set'), icon: Radio },
-                                    ...OVERLAY_STEPS.map((s) => ({ label: t[s.key] || s.label, onClick: () => addActionStep(s.type), icon: s.icon })),
+                                    { label: t.omnibarStepMenu || 'Omnibar slot', onClick: () => addStep('omnibar_set'), icon: Radio },
+                                    ...OVERLAY_STEPS.map((s) => ({ label: t[s.key] || s.label, onClick: () => addStep(s.type), icon: s.icon })),
                                 ]}
                              />
                         </div>
                     </div>
                     
+                    {addInto && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2" data-adding-into>
+                            <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1"><CornerDownRight size={12} /> {t.addingIntoInner || 'The menus now add steps into the highlighted list.'}</span>
+                            <button onClick={() => setAddInto(null)} data-adding-top className="text-[10px] font-bold text-zinc-300 hover:text-white underline">{t.addingBackToTop || 'Add to the action’s own steps again'}</button>
+                        </div>
+                    )}
                     <div ref={stepOrder.listRef} className={`relative min-h-[300px] bg-black/20 rounded-2xl border border-zinc-800/50 p-4 space-y-4 ${stepOrder.held ? 'select-none' : ''}`}>
                         {stepOrder.line}
                         {currentAction.actions?.map((step, i) => (
@@ -2413,6 +2714,8 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                              addActionStep={addActionStep}
                              onOpenPicker={handleOpenPicker}
                              searchCategories={searchCategories}
+                             addInto={addInto}
+                             onAddInto={setAddInto}
                            />
                         ))}
                         {(!currentAction.actions || currentAction.actions.length === 0) && (
@@ -2450,6 +2753,8 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
               <Button onClick={() => handleOpenActionModal()} icon={<Plus size={18} />}>{t.createInteraction}</Button>
           </div>
       </div>
+
+      <LaterWaitingList steps={laterSteps} control={laterControl} t={t} />
 
       {streamActions.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">

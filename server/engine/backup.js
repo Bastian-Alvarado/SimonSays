@@ -164,6 +164,9 @@ export const MANIFEST = [
  *   banner_text                 — which drawn banner each page block has: drawn again when missing
  *   giveaway                    — who entered tonight's giveaway: tonight's, not setup
  *   repeat_fired                — when each calendar action last ran
+ *   later_steps                 — Later steps waiting their turn: tonight's,
+ *                                 and a backup put back days later, or on
+ *                                 another computer, would run them out of time
  *   xp_data                     — the pre-migration shape, already converted
  *   poll                        — who voted for what: tonight's, not setup
  *   poll_history                — the last few polls' results, the same
@@ -180,7 +183,7 @@ export const MANIFEST = [
  *                                 where the avatars themselves (pixel_avatars)
  *                                 travel
  */
-export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'banner_text'];
+export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'later_steps', 'banner_text'];
 
 /** Everything needed to stand this install up somewhere else. */
 export function buildBundle() {

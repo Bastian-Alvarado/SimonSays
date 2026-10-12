@@ -8,7 +8,7 @@
  * boots — through scripts/smoke.js, never on its own.
  */
 
-import { EVENTS, SCRIPT_URL, assert, bus, chat, droidcamCalls, engine, fs, normaliseChat, normaliseEvent, obsCalls, said, settle, test } from './harness.js';
+import { EVENTS, SCRIPT_URL, assert, bus, chat, doubles, droidcamCalls, engine, fs, normaliseChat, normaliseEvent, obsCalls, said, settle, test } from './harness.js';
 
 // ------------------------------------------------- the subscriber ledger
 //
@@ -334,6 +334,47 @@ test('a toggle asks OBS where it is before flipping it, and a Show/Hide step fin
   for (const key of ['obsToggle', 'obsToggleHint', 'obsSceneOnAir', 'obsStepSource', 'obsPickSource', 'obsFilterName', 'obsFilterExample', 'obsEnable', 'obsDisable', 'obsMute', 'obsUnmute']) {
     assert.equal(strings.split(`    ${key}: '`).length - 1, 2, `${key} is not in both languages`);
   }
+});
+
+/*
+  A Show/Hide step whose source the scene does not hold. OBS's answer names
+  neither, and the phone's log filled with fifteen of them from steps still
+  hiding "Player 2" to "Player 4" after the seats became "Player 1" to
+  "Player 4". The failure line now says what the step was looking for, and
+  the step after it still runs.
+*/
+const { onLog } = await import('../../core/logger.js');
+const failedLines = [];
+const stopListening = onLog((e) => { if (e.scope === 'steps' && e.level === 'error') failedLines.push(e.message); });
+doubles.obsNoItem = ['Player 2', 'Player 3'];
+engine.store.saveAction({
+  id: 'act-old-seats', name: 'Old seat names', enabled: true,
+  trigger: { id: 't-os', category: 'command', type: 'command_trigger', config: { commandId: 'cmd-none' } },
+  actions: [
+    { id: 's-os2', type: 'obs_visibility', config: { sceneName: 'Omnilayer', sourceName: 'Player 2', visible: false } },
+    { id: 's-os3', type: 'obs_visibility', config: { sourceName: 'Player 3', visible: false } },
+    { id: 's-osf', type: 'obs_filter_toggle', config: { sourceName: 'Screen Capture', filterName: 'Blur' } },
+  ],
+});
+obsCalls.length = 0;
+await engine.testAction('act-old-seats');
+stopListening();
+doubles.obsNoItem = [];
+
+test('a failed step says which scene and source it was looking for', () => {
+  assert.equal(failedLines.length, 2, `expected two failures, got ${failedLines.length}`);
+  assert.ok(failedLines[0].startsWith('step "obs_visibility" (scene "Omnilayer", source "Player 2") failed:'), failedLines[0].split('\n')[0]);
+  assert.ok(failedLines[1].startsWith('step "obs_visibility" (the scene on air, source "Player 3") failed:'), failedLines[1].split('\n')[0]);
+  assert.ok(failedLines[0].includes('No scene items were found'), 'OBS\'s own words were dropped');
+  assert.deepEqual(obsCalls.filter((c) => c[0] === 'filter'), [['filter', 'Screen Capture', 'Blur', true]], 'the step after the failures did not run');
+});
+
+const { stepTarget } = await import('../../engine/steps.js');
+
+test('a step that names nothing adds nothing to its failure line', () => {
+  assert.equal(stepTarget({ type: 'twitch_chat', config: { message: 'hi' } }), '');
+  assert.equal(stepTarget({ type: 'obs_filter_toggle', config: { sourceName: 'Cam', filterName: 'Blur' } }), ' (source "Cam", filter "Blur")');
+  assert.equal(stepTarget(null), '');
 });
 
 // ------------------------------------------------- real service contracts

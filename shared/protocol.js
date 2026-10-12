@@ -101,6 +101,8 @@ export const C2S = {
   /** Change a count kept by hand (deaths): { name, op, value }. */
   COUNTER: 'counter',
   RUN_DOCK_ACTION: 'run_dock_action',
+  /** A Later step waiting its turn: { op: 'run' | 'cancel', key }. */
+  LATER_STEP: 'later_step',
   SET_ROLE_MAPPINGS: 'set_role_mappings',
   SET_WELCOME_GOODBYE: 'set_welcome_goodbye',
   SET_REACTION_ROLES: 'set_reaction_roles',

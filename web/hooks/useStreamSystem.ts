@@ -869,6 +869,8 @@ export const useStreamSystem = () => {
     runDockAction: (ref: string | { id?: string; builtin?: string }) => request(
       C2S.RUN_DOCK_ACTION, typeof ref === 'string' ? { id: ref } : ref,
     ),
+    // The Waiting list: a Later step run now or cancelled. Requested, so the list can say why not.
+    laterControl: (op: 'run' | 'cancel', key: string) => request(C2S.LATER_STEP, { op, key }),
     setDockButtons: (buttons: any[]) => send(C2S.SET_DOCK_BUTTONS, buttons),
     setDockGrid: (next: { columns?: number; rows?: number; pages?: number; pageNames?: string[]; pagerAt?: 'top' | 'bottom'; sideways?: 'fold' | 'pages' }) => send(C2S.SET_DOCK_GRID, next),
     setOmnibar: (config: any) => send(C2S.SET_OMNIBAR, config),
@@ -1676,6 +1678,8 @@ export const useStreamSystem = () => {
       eventHistory: snapshot.eventHistory as AppEvent[],
       viewerEvents: ((snapshot as any).viewerEvents || []) as AppEvent[],
       eventTotals: (snapshot as any).eventTotals,
+      // Later steps waiting their turn, for the Actions screen (server/engine/later.js).
+      laterSteps: ((snapshot as any).laterSteps || []) as any[],
       eventsDockSettings: (snapshot as any).eventsDockSettings,
       viewers: (snapshot as any).viewers,
       layouts: (snapshot as any).layouts ?? [],

@@ -564,11 +564,19 @@ export interface LevelProfile {
 
 // --- New Action System Types ---
 
-export type TriggerCategory = 'command' | 'twitch' | 'tiktok' | 'obs' | 'discord' | 'spotify' | 'system';
+export type TriggerCategory = 'command' | 'twitch' | 'youtube' | 'tiktok' | 'obs' | 'discord' | 'spotify' | 'chat' | 'system';
 
-export type TriggerType = 
-  | 'command_trigger' 
+export type TriggerType =
+  | 'command_trigger'
   | 'twitch_follow' | 'twitch_sub' | 'twitch_cheer' | 'twitch_raid' | 'twitch_redemption'
+  // A bundle of gifted subs; the Hype Train starting, climbing a level and ending; Twitch going live and ending.
+  | 'twitch_sub_gift_bulk'
+  | 'twitch_hype_train_begin' | 'twitch_hype_train_level' | 'twitch_hype_train_end'
+  | 'twitch_stream_online' | 'twitch_stream_offline'
+  // YouTube: a Super Chat or Super Sticker, a new member or a milestone, gifted memberships.
+  | 'youtube_cheer' | 'youtube_sub' | 'youtube_sub_gift_bulk'
+  // Somebody's first message during this stream, and ever (server/engine/viewer-history.js).
+  | 'chat_first_of_stream' | 'chat_first_ever'
   | 'tiktok_follow' | 'tiktok_sub' | 'tiktok_share' | 'tiktok_gift'
   | 'obs_stream_started' | 'obs_stream_stopped' | 'obs_recording_started' | 'obs_recording_stopped'
   | 'obs_scene_changed' // NEW
@@ -601,6 +609,9 @@ export interface ActionTrigger {
   config: {
     commandId?: string; // Changed from command string to ID for better linking
     minBits?: number;
+    /** A bundle of gifted subs or memberships: at least this many. A Super Chat: at least this much, in its own currency. */
+    minGifts?: number | '';
+    minValue?: number | '';
     giftName?: string;
     rewardName?: string; // For Channel Point Redemptions
     rewardId?: string; // Unique ID for Channel Point Redemptions
@@ -684,6 +695,13 @@ export type ActionStepType =
   | 'droidcam_control'
   | 'condition'
   | 'trigger_action'
+  // Logic: a pause, the end of the action, its steps again, one choice at random, and steps for later (server/engine/later.js).
+  | 'wait'
+  | 'stop'
+  | 'repeat'
+  | 'random_pick'
+  | 'random_choice'
+  | 'later'
   | 'browser_tts'; // NEW: Text to Speech
 
 export interface SingleCondition {
@@ -796,6 +814,15 @@ export interface ActionStep {
     spotifyUri?: string; // For adding to queue
     // Condition Config
     logic?: ConditionLogic;
+    /** repeat: how many times, and the seconds between each (wait uses `seconds`). */
+    times?: number;
+    waitSeconds?: number;
+    /** random_choice: how likely, against the other choices (1 each by default). */
+    weight?: number;
+    /** later: after a length of time, or when the stream ends; the length as a number and a unit. */
+    mode?: 'after' | 'streamEnd';
+    amount?: number;
+    unit?: 'seconds' | 'minutes' | 'hours' | 'days';
     // OBS Advanced
     filterName?: string;
     filterEnabled?: boolean;
@@ -814,7 +841,7 @@ export interface ActionStep {
     ttsPitch?: number; // 0 - 2
     ttsVolume?: number; // 0 - 1
   };
-  // Recursive Branches
+  // Recursive Branches. A condition's then and else; the one list inside a repeat, a later, a random pick (its choices) and a choice.
   thenActions?: ActionStep[];
   elseActions?: ActionStep[];
 }

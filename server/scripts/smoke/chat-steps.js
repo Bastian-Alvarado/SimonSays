@@ -398,7 +398,7 @@ test('an action can stop the stream in OBS, and does nothing when there is none'
   assert.ok(obsSrc.includes('saveReplayBuffer, stopStream,'), 'actions cannot reach it');
   // Offered with the other OBS steps, saying what it does, in both languages.
   const view = fs.readFileSync(new URL('../../web/components/views/ActionsView.tsx', SCRIPT_URL), 'utf8');
-  assert.ok(view.includes("addActionStep('obs_stop_stream')"), 'the OBS menu does not offer it');
+  assert.ok(view.includes("addStep('obs_stop_stream')"), 'the OBS menu does not offer it');
   assert.ok(view.includes("step.type === 'obs_stop_stream' && ("), 'the step has nothing to say for itself');
   const types = fs.readFileSync(new URL('../../web/types.ts', SCRIPT_URL), 'utf8');
   assert.ok(types.includes("| 'obs_stop_stream'"));

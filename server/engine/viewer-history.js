@@ -23,7 +23,7 @@
  */
 
 import { collection } from '../core/store.js';
-import { bus, EVENTS } from '../core/bus.js';
+import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import { refusal } from '../core/refusal.js';
 import * as leveling from '../leveling/index.js';
@@ -99,20 +99,43 @@ export function historyOfAccount(platform, id) {
 
 // ------------------------------------------------------------ what feeds it
 
+/** The stream's own chats, where a first message sets an action off. A Discord channel is taking part, not saying hello on stream. */
+const GREETING_CHATS = new Set(['twitch', 'youtube', 'tiktok', 'kick']);
+
 function onChat(chat, { stream = true } = {}, now = Date.now()) {
   if (!chat?.userId || chat.isBot || !chat.platform) return;
   const uid = leveling.personFor(chat.platform, chat.userId, chat.user, chat.avatar);
   const live = stream && STREAM_CHATS.has(chat.platform) ? sessions.current() : null;
+  let firstEver = false;
+  let firstThisStream = false;
+  let streak = 0;
+  let streams = 0;
   touch(uid, (r) => {
+    firstEver = Object.values(r.msgs).reduce((a, b) => a + b, 0) === 0;
     r.first = r.first || now;
     r.last = now;
     r.msgs[chat.platform] = (r.msgs[chat.platform] || 0) + 1;
     if (live && !r.attended.includes(live.n)) {
+      firstThisStream = true;
       r.attended.push(live.n);
       r.best = Math.max(r.best || 0, streaks(r.attended, live.n).best);
     }
+    streak = live ? streaks(r.attended, live.n).current : 0;
+    streams = new Set(r.attended).size;
     return r;
   });
+  /*
+    Somebody's first words: the first time they talk during this stream, and
+    the first time they ever talk at all — what greetings and welcome sounds
+    hang off. Read from the record kept here rather than a list of its own,
+    so the two never disagree on who has been seen. A brand-new chatter during
+    a stream sets off both. The streamer saying hello to their own chat is not
+    somebody arriving.
+  */
+  if (!stream || !GREETING_CHATS.has(chat.platform) || chat.isBroadcaster) return;
+  const data = { message: chat.msg || '', userId: chat.userId, isSub: Boolean(chat.isSub), isMod: Boolean(chat.isMod), isVip: Boolean(chat.isVip), streak, streams };
+  if (firstThisStream) bus.emit(EVENTS.TRIGGER, normaliseEvent({ type: 'chat_first_of_stream', platform: chat.platform, user: chat.user, avatar: chat.avatar, data }));
+  if (firstEver) bus.emit(EVENTS.TRIGGER, normaliseEvent({ type: 'chat_first_ever', platform: chat.platform, user: chat.user, avatar: chat.avatar, data }));
 }
 
 function onEvent(e) {

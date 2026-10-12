@@ -70,11 +70,30 @@ function formatTimer(s) {
 /** Chat text onto one line, since what it lands on is a single line on stream. */
 const flat = (text) => String(text ?? '').replace(/\s+/g, ' ').trim();
 
+/*
+  What a failing step was reaching for, for the log line that says it failed.
+  OBS answers a wrong name with "No scene items were found in the specified
+  scene by that name or offset" and nothing else, so a log of fifteen of those
+  said that something was missing but not what. Three Show/Hide steps still
+  named "Player 2" to "Player 4" after the seats became "Player 1" to
+  "Player 4", and finding them meant reading every action. With the names in
+  the line, the line is the answer. A step that names no scene is looking in
+  the one on air, and saying so is the hint that it may be the wrong one.
+*/
+const NAMED = [['sceneName', 'scene'], ['sourceName', 'source'], ['filterName', 'filter']];
+
+export function stepTarget(step) {
+  const cfg = step?.config || {};
+  const parts = NAMED.filter(([key]) => cfg[key]).map(([key, word]) => `${word} "${cfg[key]}"`);
+  if (step?.type === 'obs_visibility' && !cfg.sceneName && cfg.sourceName) parts.unshift('the scene on air');
+  return parts.length ? ` (${parts.join(', ')})` : '';
+}
+
 /**
  * @param {Array} steps
  * @param {object} ctx      evaluation context from buildContext()
  * @param {object} services { twitch, obs, discord, spotify, actions }
- * @param {object} runState { depth, visited:Set }
+ * @param {object} runState { depth, visited:Set, actionId, stopped, onWait } — see runFor()
  */
 export async function runSteps(steps, ctx, services, runState = { depth: 0, visited: new Set() }) {
   if (!Array.isArray(steps)) return;
@@ -83,12 +102,58 @@ export async function runSteps(steps, ctx, services, runState = { depth: 0, visi
   if (ctx && ctx.plan === undefined && services?.plan?.vars) ctx.plan = services.plan.vars();
 
   for (const step of steps) {
+    // "Stop here" ends the action: the rest of this list, and every list it sits in.
+    if (runState.stopped) return;
     try {
       await runStep(step, ctx, services, runState);
     } catch (err) {
-      log.error(`step "${step?.type}" failed:`, err);
+      log.error(`step "${step?.type}"${stepTarget(step)} failed:`, err);
     }
   }
+}
+
+/**
+ * A fresh run of one action's steps.
+ *
+ * Which action it is travels with the run, because a Later step is kept by
+ * the action and the step within it, and reads its steps back from there when
+ * its time comes. `onWait` is told the first time the run waits: the dock
+ * answers its button then, since a Wait longer than the dock's patience would
+ * otherwise look like a button that failed.
+ */
+export const runFor = (action, extra = {}) => ({ depth: 0, visited: new Set(), actionId: action?.id || '', stopped: false, ...extra });
+
+/*
+  The Wait step's limits. Ten minutes is the longest a run is held open: past
+  that a restart is likely enough to lose it, and a Later step, which is kept
+  on disk, is the one to use.
+*/
+export const WAIT_MAX_S = 600;
+export const REPEAT_MAX = 50;
+
+const clampNumber = (v, lo, hi, fallback) => {
+  const x = Number(v);
+  return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : fallback;
+};
+
+/** A wait in a run, which tells whoever is waiting on the run (runFor's onWait) that it has begun. */
+function pause(seconds, runState) {
+  if (!(seconds > 0)) return Promise.resolve();
+  runState.onWait?.();
+  return new Promise((done) => { const t = setTimeout(done, seconds * 1000); t.unref?.(); });
+}
+
+/** One of a "Pick one at random" step's choices, each as likely as its weight says. */
+export function pickChoice(choices, roll = Math.random()) {
+  const weighted = (choices || []).map((c) => ({ c, w: clampNumber(c?.config?.weight, 0, 1000, 1) })).filter((x) => x.w > 0);
+  const total = weighted.reduce((sum, x) => sum + x.w, 0);
+  if (!total) return null;
+  let at = roll * total;
+  for (const x of weighted) {
+    at -= x.w;
+    if (at < 0) return x.c;
+  }
+  return weighted[weighted.length - 1].c;
 }
 
 /**
@@ -158,13 +223,71 @@ async function runStep(step, ctx, services, runState) {
         return;
       }
 
+      // A run of its own — a "Stop here" in it ends that action, not this one —
+      // but the same dock still waiting to hear the first wait.
       const nextState = {
         depth: runState.depth + 1,
         visited: new Set([...runState.visited, cfg.actionId]),
+        actionId: cfg.actionId,
+        stopped: false,
+        onWait: runState.onWait,
       };
       await runSteps(target.actions, ctx, services, nextState);
       return;
     }
+
+    /*
+      A pause, then the next step: show a source, wait ten seconds, hide it.
+      Held in the run itself, so a restart in the middle loses the rest; the
+      editor says so and points at Later for anything long.
+    */
+    case 'wait':
+      await pause(clampNumber(cfg.seconds, 0, WAIT_MAX_S, 1), runState);
+      return;
+
+    // The rest of the action does not run. Mostly inside a Condition: not a mod, say so and stop.
+    case 'stop':
+      runState.stopped = true;
+      return;
+
+    /*
+      Its steps, a number of times, with a wait between each if one is set:
+      a source flashed three times, a countdown said in chat. {repeat.count}
+      is which time it is, from 1.
+    */
+    case 'repeat': {
+      const times = Math.round(clampNumber(cfg.times, 1, REPEAT_MAX, 2));
+      const gap = clampNumber(cfg.waitSeconds, 0, WAIT_MAX_S, 0);
+      for (let i = 0; i < times && !runState.stopped; i++) {
+        if (i > 0) await pause(gap, runState);
+        if (runState.stopped) return;
+        ctx.repeat = { count: i + 1, times };
+        await runSteps(step.thenActions, ctx, services, runState);
+      }
+      return;
+    }
+
+    /*
+      One of its choices, at random: each choice is a step of its own
+      (random_choice) holding its weight and its steps, so every list in the
+      editor — dragging, adding, deleting — works on choices as it does on
+      anything else.
+    */
+    case 'random_pick': {
+      const choice = pickChoice((step.thenActions || []).filter((s) => s?.type === 'random_choice'));
+      if (choice) await runSteps(choice.thenActions, ctx, services, runState);
+      return;
+    }
+
+    // Only ever run through its pick; on its own it is its steps.
+    case 'random_choice':
+      await runSteps(step.thenActions, ctx, services, runState);
+      return;
+
+    // Written down to run on its own later (later.js); the action carries on now.
+    case 'later':
+      services.later?.schedule(step, ctx, runState);
+      return;
 
     // ---------- Twitch ----------
     /*

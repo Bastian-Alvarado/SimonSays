@@ -90,8 +90,6 @@ test('every list that can be put in order has the grip', () => {
     ['../../web/components/views/LayoutsView.tsx', 'layerOrder', 'overlay layers', 'order'],
     // A step draws itself, so its grip and row come from the list it is handed.
     ['../../web/components/views/ActionsView.tsx', 'stepOrder', 'action steps', 'order'],
-    ['../../web/components/views/ActionsView.tsx', 'thenOrder', 'steps under "then"', 'order'],
-    ['../../web/components/views/ActionsView.tsx', 'elseOrder', 'steps under "else"', 'order'],
     ['../../web/components/views/AlertsView.tsx', 'variationOrder', 'alert variations'],
     ['../../web/components/views/OmnibarView.tsx', 'itemOrder', 'omnibar slots'],
     ['../../web/components/views/VoiceView.tsx', 'pinOrder', 'pinned voice people'],
@@ -120,9 +118,22 @@ test('a dragged action step is moved by the editor, through the same state as ad
   const app = read('../../web/App.tsx');
   assert.ok(app.includes('moveInTree(prev.actions, stepId, gap)'), 'the step is moved some other way');
   assert.ok(app.includes('moveActionStep={moveActionStep}'), 'the editor is never handed the move');
+  /*
+    The lists inside a step — a condition's then and else, a repeat's, a
+    later's, a pick's choices and each choice's — are all drawn by one
+    helper, handed the drag order of the list it draws. Each step inside is
+    the same StepRenderer with the same props, the move among them.
+  */
   const view = read('../../web/components/views/ActionsView.tsx');
-  assert.ok(view.includes('order={thenOrder} moveActionStep={moveActionStep}'), 'steps under "then" cannot be dragged');
-  assert.ok(view.includes('order={elseOrder} moveActionStep={moveActionStep}'), 'steps under "else" cannot be dragged');
+  for (const name of ['thenOrder', 'elseOrder']) {
+    assert.ok(view.includes(`const ${name} = useDragOrder(({ id, gap }) => moveActionStep?.(id, gap));`), `${name}: no drag order`);
+  }
+  const helper = view.slice(view.indexOf('const innerList = ('), view.indexOf('const logicCard = ('));
+  assert.ok(helper.includes('ref={ord.listRef}') && helper.includes('{ord.line}'), 'a list inside a step shows nowhere to land');
+  assert.ok(helper.includes('<StepRenderer {...props} {...extra} key={subStep.id} step={subStep} index={i} order={ord} />'), 'the steps inside a step are not handed their list, or lose the move');
+  assert.ok(view.includes("innerList(step.thenActions, thenOrder, 'then')") && view.includes("innerList(step.elseActions, elseOrder, 'else')"), 'a condition\'s then or else is drawn some other way');
+  // The condition's then, a repeat, a later, a pick and a choice.
+  assert.equal(view.split('innerList(step.thenActions, thenOrder').length - 1, 5, 'not every step holding steps draws its list with the helper');
 });
 
 test('the omnibar grip is a grip now, not a picture of one', () => {
