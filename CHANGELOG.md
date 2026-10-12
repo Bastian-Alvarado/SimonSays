@@ -2,6 +2,11 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.2.1] — 2026-10-12
+
+- Custom CSS boxes hold 10,000 characters (layers had 2,500), count as you type, and won't save past the limit instead of cutting the end off.
+- The vertical canvas can show a mock of TikTok LIVE (name, follow button, comments, gift and share buttons) instead of the shaded areas, to see what it covers.
+
 ## [1.2.0] — 2026-10-11
 
 - Updates from the app: Settings → About checks GitHub once a day, and "Update now" backs up your data, installs the new version and restarts into it (and goes back if it won't start). Start the app with `npm run serve` or `npm start` for this.

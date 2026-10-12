@@ -14,7 +14,7 @@
  */
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { CommittedInput } from './CommittedInput';
+import { CssBox } from './CssBox';
 import { canScopeStyles } from './LayoutStyle';
 
 interface Props {
@@ -44,13 +44,12 @@ export const LayoutCssPanel = ({ css, setCss, t }: Props) => {
 
       {open && (
         <div className="space-y-2 mt-2">
-          <CommittedInput
-            as="textarea"
-            value={css || ''}
+          <CssBox
+            value={css}
             placeholder={EXAMPLE}
-            spellCheck={false}
             onCommit={setCss}
             className="w-full bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-2 text-[10px] font-mono text-zinc-200 outline-none focus:border-current-accent resize-y min-h-[120px] leading-relaxed"
+            t={t}
           />
 
           <div className="text-[9px] text-zinc-600 leading-relaxed space-y-1">

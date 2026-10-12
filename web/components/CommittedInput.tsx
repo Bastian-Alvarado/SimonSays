@@ -27,9 +27,14 @@ interface Props extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value
    * the field is the only way out — which is what a multi-line box should do.
    */
   as?: 'input' | 'textarea';
+  /**
+   * Told what is in the box as it changes, keystroke by keystroke, for
+   * anything that has to react before the commit — a character count.
+   */
+  onDraft?: (text: string) => void;
 }
 
-export const CommittedInput = ({ value, onCommit, as = 'input', ...rest }: Props) => {
+export const CommittedInput = ({ value, onCommit, as = 'input', onDraft, ...rest }: Props) => {
   const [local, setLocal] = useState(value ?? '');
   const editing = useRef(false);
 
@@ -41,6 +46,8 @@ export const CommittedInput = ({ value, onCommit, as = 'input', ...rest }: Props
   useEffect(() => {
     if (!editing.current) setLocal(value ?? '');
   }, [value]);
+
+  useEffect(() => { onDraft?.(local); }, [local]);
 
   const Tag: any = as;
 

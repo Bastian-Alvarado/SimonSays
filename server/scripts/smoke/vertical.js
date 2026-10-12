@@ -229,6 +229,29 @@ test('the editor: the two sides, every save taken apart, layers kept to one side
   }
 });
 
+test('the vertical canvas can show a mock of TikTok LIVE instead of the shaded areas', () => {
+  /*
+    One choice of three — shaded areas, the mock, or neither — so the two are
+    never drawn over each other. The mock is a guide in the editor: it lets
+    every click through to the layers under it and never reaches the stream.
+  */
+  const v = read('../../web/components/views/LayoutsView.tsx');
+  assert.ok(v.includes("useState<'zones' | 'tiktok' | 'off'>"), 'the shaded areas and the mock are two switches again');
+  assert.ok(v.includes("format === 'vertical' && phoneGuide === 'zones' && PHONE_SAFE_ZONES.map((z) => ("), 'the shaded areas show beside the mock');
+  assert.ok(v.includes("{format === 'vertical' && phoneGuide === 'tiktok' && <TikTokMock width={working.width} height={working.height} t={t} />}"), 'the mock is not drawn on the vertical canvas');
+  assert.ok(v.includes("onClick={() => setPhoneGuide(phoneGuide === 'tiktok' ? 'off' : 'tiktok')}"));
+  // Whoever had the shaded areas switched off keeps them off.
+  assert.ok(v.includes("return localStorage.getItem('layout_safe_zones') === 'off' ? 'off' : 'zones';"));
+  const mock = read('../../web/components/TikTokMock.tsx');
+  assert.ok(mock.includes('className="absolute inset-0 pointer-events-none overflow-hidden" data-phone-mock="tiktok"'), 'the mock takes clicks meant for the layers');
+  assert.ok(mock.includes("transform: `scale(${scale})`") && mock.includes('const scale = width / PHONE_WIDTH;'), 'the mock is not scaled to the canvas');
+  // Only the canvas editor draws it, never a stream page.
+  assert.ok(!read('../../web/components/CanvasStage.tsx').includes('TikTokMock'));
+  const keys = [...mock.matchAll(/\bt\.(tiktokMock[A-Za-z0-9]+)/g)].map((m) => m[1]);
+  assert.ok(keys.length >= 10, `only ${keys.length} words in the mock`);
+  for (const key of [...keys, 'layoutPhoneMock', 'layoutPhoneMockHint']) assert.ok(bothLanguages(key), `${key} is not in both languages`);
+});
+
 // Put everything back.
 doubles.obsCanvases = undefined;
 doubles.obsCanvasScenes = undefined;

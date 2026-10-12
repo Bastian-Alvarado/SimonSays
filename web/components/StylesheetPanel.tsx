@@ -16,7 +16,7 @@
  */
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { CommittedInput } from './CommittedInput';
+import { CssBox } from './CssBox';
 import { canScopeStyles } from './LayoutStyle';
 
 interface Props {
@@ -72,13 +72,12 @@ export const StylesheetPanel = ({ title, css, motionCss, scopeHint, travelsHint,
             <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">
               {t.cssLook || 'Look'}
             </span>
-            <CommittedInput
-              as="textarea"
-              value={css || ''}
+            <CssBox
+              value={css}
               placeholder={EXAMPLE}
-              spellCheck={false}
-              onCommit={(next: string) => patch({ css: next })}
+              onCommit={(next) => patch({ css: next })}
               className="w-full bg-zinc-950/60 border border-zinc-800 rounded-md px-2 py-2 text-[10px] font-mono text-zinc-200 outline-none focus:border-current-accent resize-y min-h-[100px] leading-relaxed"
+              t={t}
             />
           </label>
 
@@ -86,13 +85,12 @@ export const StylesheetPanel = ({ title, css, motionCss, scopeHint, travelsHint,
             <span className="text-[8px] font-black uppercase tracking-widest text-zinc-600">
               {t.cssMotion || 'Motion'}
             </span>
-            <CommittedInput
-              as="textarea"
-              value={motionCss || ''}
+            <CssBox
+              value={motionCss}
               placeholder={MOTION_EXAMPLE}
-              spellCheck={false}
-              onCommit={(next: string) => patch({ motionCss: next })}
+              onCommit={(next) => patch({ motionCss: next })}
               className="w-full bg-zinc-950/60 border border-zinc-800 rounded-md px-2 py-2 text-[10px] font-mono text-zinc-200 outline-none focus:border-current-accent resize-y min-h-[80px] leading-relaxed"
+              t={t}
             />
           </label>
 

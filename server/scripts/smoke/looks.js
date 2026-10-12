@@ -616,7 +616,9 @@ test('both switches start on, and are remembered', () => {
     'the names switch is not remembered, or does not default to on');
   // Private mode throws rather than returning nothing, so both sides catch.
   const reads = LAYOUTS_VIEW.split('catch { return true; }').length - 1;
-  assert.equal(reads, 3, 'a blocked localStorage would break the editor');
+  assert.equal(reads, 2, 'a blocked localStorage would break the editor');
+  // The phone apps' guide, a choice of three rather than a switch, catches the same way.
+  assert.ok(LAYOUTS_VIEW.includes("} catch { return 'zones'; }"), 'a blocked localStorage would break the phone guide');
   assert.ok(LAYOUTS_VIEW.includes('catch { /* private mode */ }'), 'writing the switch is unguarded');
 });
 

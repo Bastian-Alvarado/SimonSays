@@ -759,8 +759,9 @@ test('but it cannot stop being a stylesheet', () => {
 
 test('a stylesheet is capped, like everything else in the config', () => {
   // Every client receives the config in full on connect.
+  // 10000, the one limit every stylesheet box shares (stylesheets.js has why).
   const [l] = normaliseLayouts([{ id: 'a', css: 'a'.repeat(99999), layers: [] }]);
-  assert.ok(l.css.length <= 4000, String(l.css.length));
+  assert.ok(l.css.length <= 10000, String(l.css.length));
 });
 
 test('a layer can be named from a stylesheet without guessing at markup', () => {

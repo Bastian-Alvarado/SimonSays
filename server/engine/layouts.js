@@ -974,21 +974,11 @@ function normaliseLayer(incoming, type) {
 export const MAX_LAYERS = 40;
 
 /**
- * How much stylesheet one layout may carry.
- *
- * Enough for the kind of thing this is for — a few rules against the layer
- * hooks — and not enough to be a way to move a megabyte through the config
- * that every client receives in full on connect.
+ * How much stylesheet one layout, and each of its layers' two boxes, may
+ * carry. The same 10000 as every other box: shared/clean-css.js has the
+ * measurements that made the layer's old, tighter cap pointless.
  */
 const MAX_CUSTOM_CSS = MAX_CANVAS_CSS;
-
-/**
- * How much stylesheet one layer may carry.
- *
- * Smaller than the layout's, because a canvas can hold forty layers and all
- * of it travels in the config every client receives on connect. Generous for
- * what this is actually for — a handful of rules about one shape.
- */
 const MAX_LAYER_CSS = MAX_SCOPED_CSS;
 
 

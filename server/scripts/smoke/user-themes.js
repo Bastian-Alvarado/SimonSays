@@ -28,7 +28,7 @@ test('a theme of the streamer’s own is kept only as the Library can draw it', 
   assert.throws(() => ut.cleanUserTheme({ name: 'x' }), /needs an id/);
   assert.throws(() => ut.cleanUserTheme({ id: 'ut-abcd', objects: [{ layerType: 'nope', css: '' }] }), /nothing a theme dresses/);
   assert.throws(() => ut.cleanUserTheme({ id: 'ut-abcd', objects: Array.from({ length: ut.MAX_THEME_PIECES + 1 }, () => ({ layerType: 'text' })) }), /up to/);
-  const long = 'a'.repeat(9000);
+  const long = 'a'.repeat(12000);
   const th = ut.cleanUserTheme({
     id: 'ut-abcd', name: '  Neon   nights ', from: 'cyberpunky',
     objects: [

@@ -228,17 +228,17 @@ test('every preset fits in the box it will be stored in', () => {
 });
 
 
-test('an alert may say more than a layer, and a canvas more than a layer too', () => {
-  /*
-    A layout can hold forty layers and every one of their stylesheets travels
-    in the config each client receives on connect, which is why that one is
-    kept tight. An alert carries its own and they do not arrive forty at a
-    time, and an alert motion is a timeline rather than a restyle.
-  */
-  assert.ok(MAX_ALERT_CSS > MAX_SCOPED_CSS, 'an alert is held to the layer budget');
+test('an alert, the chat and a layer have the same room', () => {
+  // One limit for every box since layers stopped being held tighter (stylesheets.js says why).
+  assert.equal(MAX_ALERT_CSS, MAX_SCOPED_CSS);
+  assert.equal(MAX_CHAT_CSS, MAX_SCOPED_CSS);
+  const nearly = `${'a'.repeat(MAX_ALERT_CSS - 1)}}`;
+  const a = normaliseAlert({ type: 'twitch_follow', css: nearly, motionCss: nearly });
+  assert.equal(a.css, nearly, "an alert's look lost its end");
+  assert.equal(a.motionCss, nearly, "an alert's motion lost its end");
   const [l] = normaliseLayouts([{ id: 'a', layers: [{ type: 'shape', css: 'a'.repeat(99999) }] }]);
-  const a = normaliseAlert({ type: 'twitch_follow', css: 'a'.repeat(99999) });
-  assert.ok(a.css.length > l.layers[0].css.length, 'an alert is cut as short as a layer');
+  const cut = normaliseAlert({ type: 'twitch_follow', css: 'a'.repeat(99999) });
+  assert.equal(cut.css.length, l.layers[0].css.length, 'an alert and a layer are cut at different lengths');
 });
 
 // --------------------------------- the two halves of what an alert says

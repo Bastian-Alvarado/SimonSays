@@ -21,46 +21,31 @@
  */
 
 /**
- * A stylesheet for one layer.
+ * How long any one stylesheet box may be: a layer's look or its motion, an
+ * alert's, the chat's, or a whole canvas's.
  *
- * Tighter than the others on purpose: a layout can hold forty layers and
- * every one of their stylesheets travels in the config each client receives
- * on connect.
+ * These used to differ — 2500 for a layer, 4000 for the rest — on the grounds
+ * that a layout can hold forty layers and every layer's stylesheet travels in
+ * the config each page receives on connect and again on every save. Measured
+ * on a real streaming setup that reasoning had nothing left to protect: the
+ * biggest layer stylesheet across nine layouts was 1242 characters, and all
+ * the CSS in all of them came to 75 KB of a 271 KB file. A cap is a ceiling,
+ * not space set aside, so a higher one costs nothing until somebody actually
+ * writes that much, and then it costs it once, over the local network.
  *
- * 2000 until the looks started reading a layer's own settings before their
- * colours (the omnibar's, first), which is a fallback around each colour they
- * set: the tall bars came to just over 2100, and the richest of the rest sit
- * within fifty characters of the old cap. Forty layers at the extra five
- * hundred is twenty kilobytes, once, on a connection over the local network.
+ * What the low cap did cost was the end of a long stylesheet, cut off without
+ * a word — at 2000 the shipped alert motion lost the rule where the name
+ * arrives. The boxes now count as you type and refuse to save past this
+ * (web/components/CssBox.tsx), so this cut is only the server's last word on
+ * what somebody sent it by another route.
  */
-export const MAX_SCOPED_CSS = 2500;
+export const MAX_CSS = 10000;
 
-/**
- * A stylesheet for one alert.
- *
- * Roomier, because the reason layers are kept tight does not apply: an alert
- * carries its own and they do not arrive forty at a time. It also needs the
- * room — a layer stylesheet restyles one element, while an alert motion is a
- * timeline with a beat and a set of keyframes for each part of it, and the
- * one this ships came to just over three thousand characters.
- *
- * The cap does not refuse what is too long, it cuts the end off. At 2000 the
- * shipped motion lost its last rule and the alert played the whole sequence
- * except the part where the name arrives, with nothing anywhere to say why.
- */
-export const MAX_ALERT_CSS = 4000;
-
-/**
- * A stylesheet for the chat.
- *
- * One of them for the whole app rather than one per layer, so it is held to
- * the roomier budget for the same reason an alert is — and chat has four
- * themes and six named parts, which is a lot to have opinions about.
- */
-export const MAX_CHAT_CSS = 4000;
-
-/** A stylesheet for a whole canvas, which has more to say. */
-export const MAX_CANVAS_CSS = 4000;
+/** One limit for every box. The names stay because each is imported where its own box is cleaned. */
+export const MAX_SCOPED_CSS = MAX_CSS;
+export const MAX_ALERT_CSS = MAX_CSS;
+export const MAX_CHAT_CSS = MAX_CSS;
+export const MAX_CANVAS_CSS = MAX_CSS;
 
 export function cleanCss(v, max) {
   return String(v ?? '').replace(/<\/style/gi, '').slice(0, max);

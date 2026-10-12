@@ -40,6 +40,7 @@ import { LayerAppearancePanel } from '../LayerAppearancePanel';
 import { LayerConditionPanel } from '../LayerConditionPanel';
 import { LayerMotionPanel } from '../LayerMotionPanel';
 import { LayerCssPanel } from '../LayerCssPanel';
+import { TikTokMock } from '../TikTokMock';
 import { LayoutCssPanel } from '../LayoutCssPanel';
 import { FontUploadButton } from '../FontUploadButton';
 import { AccentSwatch } from '../AccentSwatch';
@@ -62,7 +63,7 @@ import { ThemeConfig } from '../../types';
 import {
   Check, Copy, ExternalLink, Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Lock, LockOpen, SquareDashed, Tag,
   MessageSquare, Bell, Radio, Clock, Users, BarChart3, Headphones, Music, MonitorPlay, Monitor, IdCard, Image as ImageIcon, Target, ListOrdered, MessageCircleQuestion, Type, Square, CopyPlus, Gamepad2, Smile, Mic, X,
-  TrainFront, Megaphone, Trophy, Gift, Folder, FolderPlus, FolderOutput, SquareCheck, Ungroup, Smartphone, RotateCcw,
+  TrainFront, Megaphone, Trophy, Gift, Folder, FolderPlus, FolderOutput, SquareCheck, Ungroup, Smartphone, Music2, RotateCcw,
 } from 'lucide-react';
 
 /**
@@ -329,10 +330,24 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   const storedRef = useRef<CanvasLayout | null>(null);
   const layoutsRef = useRef(layouts);
   layoutsRef.current = layouts;
-  // Where the phone apps draw over a vertical stream, shaded on the vertical canvas.
-  const [showSafeZones, setShowSafeZones] = useState(() => {
-    try { return localStorage.getItem('layout_safe_zones') !== 'off'; } catch { return true; }
+  /*
+    What the vertical canvas shows of the phone apps: where they draw, shaded;
+    a mock of TikTok LIVE in its place; or neither. One choice rather than two
+    switches, because the mock is the shaded areas filled in — both at once
+    would be the same warning drawn twice. Remembered in this browser; before
+    the mock it was a plain on/off, which is read once to start from.
+  */
+  const [phoneGuide, setPhoneGuideState] = useState<'zones' | 'tiktok' | 'off'>(() => {
+    try {
+      const saved = localStorage.getItem('layout_phone_guide');
+      if (saved === 'zones' || saved === 'tiktok' || saved === 'off') return saved;
+      return localStorage.getItem('layout_safe_zones') === 'off' ? 'off' : 'zones';
+    } catch { return 'zones'; }
   });
+  const setPhoneGuide = (next: 'zones' | 'tiktok' | 'off') => {
+    setPhoneGuideState(next);
+    try { localStorage.setItem('layout_phone_guide', next); } catch { /* private mode */ }
+  };
 
   /** A layout as it is saved: a vertical view taken apart onto the stored layout, anything else as it is. */
   const toStored = (l: CanvasLayout | null | undefined): CanvasLayout => (l && l._view === 'vertical'
@@ -1889,7 +1904,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                     comments over a vertical stream: shaded, so nothing that has
                     to be read goes there. A guide in the editor only.
                   */}
-                  {format === 'vertical' && showSafeZones && PHONE_SAFE_ZONES.map((z) => (
+                  {format === 'vertical' && phoneGuide === 'zones' && PHONE_SAFE_ZONES.map((z) => (
                     <div
                       key={z.id}
                       data-safe-zone={z.id}
@@ -1901,10 +1916,11 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                       }}
                     />
                   ))}
+                  {format === 'vertical' && phoneGuide === 'tiktok' && <TikTokMock width={working.width} height={working.height} t={t} />}
                 </CanvasStage>
               </div>
-              <div className="flex items-center gap-3 mt-3 px-1">
-                <p className="flex-1 min-w-0 text-[10px] text-zinc-500">
+              <div className="flex flex-wrap items-center gap-3 mt-3 px-1">
+                <p className="flex-1 min-w-[10rem] text-[10px] text-zinc-500">
                   {t.layoutDragHint || 'Drag to move. Pull a corner to resize, or a side to stretch one way. Arrow keys nudge. Hold Shift to ignore snapping, or with an arrow key to move 10px.'}
                 </p>
                 {/*
@@ -1934,15 +1950,28 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                 </button>
                 {format === 'vertical' && (
                   <button
-                    onClick={() => { setShowSafeZones((v) => { setChrome('layout_safe_zones', !v); return !v; }); }}
+                    onClick={() => setPhoneGuide(phoneGuide === 'zones' ? 'off' : 'zones')}
                     title={t.layoutSafeZonesHint || 'Shade where TikTok and Twitch draw their buttons, names and comments over a vertical stream (approximate)'}
                     className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
-                      showSafeZones ? 'bg-current-accent/10 border-current-accent text-current-accent' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                      phoneGuide === 'zones' ? 'bg-current-accent/10 border-current-accent text-current-accent' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
-                    data-layout-safe-zones={showSafeZones ? 'on' : 'off'}
+                    data-layout-safe-zones={phoneGuide === 'zones' ? 'on' : 'off'}
                   >
                     <Smartphone size={12} />
                     {t.layoutSafeZones || 'Phone apps'}
+                  </button>
+                )}
+                {format === 'vertical' && (
+                  <button
+                    onClick={() => setPhoneGuide(phoneGuide === 'tiktok' ? 'off' : 'tiktok')}
+                    title={t.layoutPhoneMockHint || 'Show a mock of TikTok LIVE over the vertical canvas instead of the shaded areas, to see what its buttons and comments cover (approximate)'}
+                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                      phoneGuide === 'tiktok' ? 'bg-current-accent/10 border-current-accent text-current-accent' : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
+                    data-layout-phone-mock={phoneGuide === 'tiktok' ? 'on' : 'off'}
+                  >
+                    <Music2 size={12} />
+                    {t.layoutPhoneMock || 'TikTok'}
                   </button>
                 )}
               </div>

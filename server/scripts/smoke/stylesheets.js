@@ -10,7 +10,6 @@
 
 import { ALERT_OVERLAY, CHAT_ROW, LAYER_STYLE, SCOPED, SCRIPT_URL, assert, fs, test } from './harness.js';
 import { LAYER_TYPES, normaliseLayouts } from './backup-and-layouts.js';
-import { MAX_SCOPED_CSS } from './images-and-alerts.js';
 import { OVERLAY_VARS, fillTemplate } from './layers.js';
 
 // -------------------------------------------- a stylesheet that belongs to one layer
@@ -68,13 +67,52 @@ test('a layer stylesheet cannot stop being one', () => {
   assert.ok(!l.layers[0].css.toLowerCase().includes('</style'), l.layers[0].css);
 });
 
-test('a layer stylesheet is capped tighter than the canvas one', () => {
-  // A canvas holds one stylesheet and forty layers, and all of it travels in
-  // the config every client receives on connect.
-  const [l] = normaliseLayouts([{ id: 'a', layers: [{ type: 'shape', css: 'a'.repeat(99999) }] }]);
-  assert.ok(l.layers[0].css.length <= MAX_SCOPED_CSS, String(l.layers[0].css.length));
-  const [big] = normaliseLayouts([{ id: 'a', css: 'b'.repeat(99999), layers: [] }]);
-  assert.ok(big.css.length > l.layers[0].css.length, 'the two caps are the same');
+const CLEAN_CSS = await import('../../../shared/clean-css.js');
+
+test('every stylesheet box holds ten thousand characters, and keeps them whole', () => {
+  /*
+    It was 2500 for a layer and 4000 for the rest, to keep small the config
+    every page receives on connect and on every save. Measured on a real setup
+    the biggest layer stylesheet was 1242 characters, and the only thing
+    anybody ever saw the low cap do was cut the end off a long one — so one
+    roomy limit replaced both.
+  */
+  const { MAX_CSS } = CLEAN_CSS;
+  assert.equal(MAX_CSS, 10000);
+  for (const name of ['MAX_SCOPED_CSS', 'MAX_ALERT_CSS', 'MAX_CHAT_CSS', 'MAX_CANVAS_CSS']) {
+    assert.equal(CLEAN_CSS[name], MAX_CSS, `${name} has a limit of its own again`);
+  }
+  const nearly = `${'a'.repeat(MAX_CSS - 1)}}`;
+  const [l] = normaliseLayouts([{ id: 'a', css: nearly, layers: [{ type: 'shape', css: nearly, motionCss: nearly }] }]);
+  assert.equal(l.css, nearly, 'the canvas stylesheet lost its end');
+  assert.equal(l.layers[0].css, nearly, "a layer's look lost its end");
+  assert.equal(l.layers[0].motionCss, nearly, "a layer's motion lost its end");
+  // Past it the server still has the last word, for anything sent by a route other than the box.
+  const [over] = normaliseLayouts([{ id: 'a', css: 'b'.repeat(99999), layers: [{ type: 'shape', css: 'a'.repeat(99999) }] }]);
+  assert.equal(over.css.length, MAX_CSS);
+  assert.equal(over.layers[0].css.length, MAX_CSS);
+});
+
+test('every stylesheet box counts as you type, and will not save past the limit', () => {
+  /*
+    Going over used to be invisible: the server cut the end off, usually the
+    rule being worked on, and nothing said so. The count turns amber near the
+    end and red past it, and the box keeps what was typed without saving it,
+    so nothing is lost and the reason is on screen.
+  */
+  const read = (name) => fs.readFileSync(new URL(`../../web/components/${name}`, SCRIPT_URL), 'utf8');
+  const box = read('CssBox.tsx');
+  assert.ok(box.includes("import { MAX_CSS } from '../../shared/clean-css.js';"), 'the box counts against a limit of its own');
+  assert.ok(box.includes('onCommit={(next) => { if (next.length <= max) onCommit(next); }}'), 'a stylesheet past the limit is saved, to be cut');
+  assert.ok(box.includes('onDraft={(text) => setLength(text.length)}'), 'the count waits for the commit');
+  assert.ok(box.includes('{length} / {max}') && box.includes('max * 0.95') && box.includes('t.cssTooLong'), 'the count, its warning or the red line is gone');
+  assert.ok(read('CommittedInput.tsx').includes('useEffect(() => { onDraft?.(local); }, [local]);'), 'the field no longer reports what is in it');
+  // Every box that takes a stylesheet: a layer's look and motion, an alert's and the chat's (one panel), a canvas's.
+  for (const name of ['StylesheetPanel.tsx', 'LayoutCssPanel.tsx']) {
+    const src = read(name);
+    assert.ok(src.includes('<CssBox') && !src.includes('<CommittedInput'), `${name} has a stylesheet box without a count`);
+  }
+  assert.equal(read('StylesheetPanel.tsx').split('<CssBox').length - 1, 2, 'the look or the motion lost its count');
 });
 
 test('every layer may carry one, not only the kinds that draw shapes', () => {
