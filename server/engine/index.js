@@ -41,6 +41,7 @@ import * as giveaway from './giveaway.js';
 import * as pngtuber from './pngtuber.js';
 import * as pixelAvatars from './pixel-avatars.js';
 import * as userThemes from './user-themes.js';
+import * as twitchMod from './twitch-mod.js';
 import * as twitchExtras from './twitch-extras.js';
 import * as streamPlan from './plan.js';
 import { getAnnounce } from './announce.js';
@@ -406,6 +407,8 @@ export function initEngine(platformServices) {
       dress: (what, words, minutes) => pngtuber.dressAvatar(what, words, minutes),
       act: (words) => pngtuber.playAvatarAction(words),
     },
+    // Moderating Twitch chat from an action: timeouts, bans, the message deleted, the chat's modes.
+    twitchMod: { step: (cfg, ctx) => twitchMod.step(cfg, ctx) },
     // Shoutouts, clips and stream markers, from any action.
     twitchExtras: {
       shoutout: (target) => twitchExtras.shoutout(target),
@@ -1576,14 +1579,17 @@ export const store = {
    * meaning the grid takes as many as it needs and keeps its cells square.
    */
   setDockGrid(next) {
-    const prev = db.dockGrid.get();
+    return db.dockGrid.set(store.cleanDockGrid(next, db.dockGrid.get()));
+  },
+  /** A dock grid checked, against the one it replaces: the streamer's, or a moderator's own (engine/mod-decks.js). */
+  cleanDockGrid(next, prev) {
     /*
       And how many pages, each a grid of that shape, with a name each. A
       dock is not capped at what one grid holds: scenes on one page, sounds
       on the next. See shared/dock-pages.js.
     */
     const pages = next?.pages !== undefined ? pageCount(next) : pageCount(prev);
-    return db.dockGrid.set({
+    return ({
       columns: bounded(next?.columns, 1, 8, prev.columns),
       rows: bounded(next?.rows, 0, 8, prev.rows),
       pages,
@@ -1880,10 +1886,12 @@ export const store = {
    * and no stylesheet of its own.
    */
   setChatDockSettings(incoming) {
-    const clean = { ...cleanChatSettings(incoming, db.chatDock.get()), chatTheme: 'custom', css: '', motionCss: '' };
+    const clean = store.cleanChatDock(incoming, db.chatDock.get());
     db.chatDock.set(clean);
     return clean;
   },
+  /** The dock's chat settings checked, against the ones they replace: the streamer's, or a moderator's own. */
+  cleanChatDock: (incoming, prev) => ({ ...cleanChatSettings(incoming, prev), chatTheme: 'custom', css: '', motionCss: '' }),
 
   getChatDockSettings: () => db.chatDock.get(),
   getLayouts: () => db.layouts.get(),
@@ -1898,6 +1906,8 @@ export const store = {
   profileDelete: (groupId, profileId) => profiles.deleteProfile(groupId, profileId),
   profileCapture: (groupId) => profiles.captureActive(groupId),
   profileRevert: (groupId) => profiles.revertActive(groupId),
+  // Looking, not switching: nothing changes.
+  profilePeek: (groupId, profileId) => profiles.peekProfile(groupId, profileId),
   profileSummary: () => profiles.summary(),
 
   getViewers: () => db.viewers.get(),
@@ -1986,6 +1996,10 @@ export const store = {
   },
 
   setDockButtons(next) {
+    return db.dockButtons.set(store.cleanDockButtons(next));
+  },
+  /** A deck's buttons checked: the streamer's, or a moderator's own (engine/mod-decks.js), against the actions there are now. */
+  cleanDockButtons(next) {
     const ids = new Set(db.actions.get().map((a) => a.id));
     /*
       A button points at an action you built, or at one of the built-in ones.
@@ -2036,7 +2050,7 @@ export const store = {
             .filter(([, url]) => /^\/media\/|^https?:\/\//.test(url || '')),
         ),
       }));
-    return db.dockButtons.set(clean);
+    return clean;
   },
   getDockButtons: () => db.dockButtons.get(),
   getRelayConfig: () => db.relay.get(),

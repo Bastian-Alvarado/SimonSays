@@ -17,6 +17,7 @@ import { Stopwatch } from '../Stopwatch';
 import { Play, Pause, Flag, Undo2, RotateCcw, Copy, Check, Minus, Plus } from 'lucide-react';
 import { copyText } from '../../utils';
 import { AutoColourRow } from '../AutoSwatch';
+import { pageLink } from '../../page-link';
 
 interface Props {
   state: StopwatchState | undefined;
@@ -40,7 +41,7 @@ export const TimerView: React.FC<Props> = ({ state, control, activeTheme, t }) =
   const mode = state?.mode || 'idle';
   const style = state?.style || ({} as StopwatchState['style']);
 
-  const overlayUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?mode=timer` : '';
+  const overlayUrl = typeof window !== 'undefined' ? pageLink(`${window.location.origin}${window.location.pathname}?mode=timer`) : '';
 
   const setTime = () => {
     const ms = readTime(timeDraft);

@@ -831,14 +831,8 @@ export function isRelayEcho(message, fromUs) {
  * refuses out loud instead, with a code the dock turns into words.
  */
 export async function sayFromDock(text, { useBot = false } = {}) {
-  const line = String(text ?? '').trim();
+  const line = dockLine(text);
   if (!line) return;
-
-  // Twitch stopped acting on /commands sent over chat in 2023: /ban, /timeout
-  // and the rest now vanish without a word. /me is the only one it still takes.
-  if (/^[/\\]/.test(line) && !/^\/me\s/.test(line)) throw refusal('twitch_command', 'Twitch no longer runs /commands sent from chat apps');
-  // Longer than this, Twitch drops it without saying so.
-  if (Array.from(line).length > 500) throw refusal('too_long', 'Twitch takes 500 characters at most');
 
   // No quiet fallback from the bot to the main account: that would post as
   // somebody the dock did not say.
@@ -847,6 +841,47 @@ export async function sayFromDock(text, { useBot = false } = {}) {
   if (!client || !up) throw refusal(useBot ? 'bot_offline' : 'twitch_offline', `${useBot ? 'the bot' : 'Twitch'} is not connected`);
 
   await client.say(creds.get().channel, line);
+}
+
+/** A typed line made ready for Twitch, or refused with the reason Twitch would not say. */
+function dockLine(text) {
+  const line = String(text ?? '').trim();
+  if (!line) return '';
+  // Twitch stopped acting on /commands sent over chat in 2023: /ban, /timeout
+  // and the rest now vanish without a word. /me is the only one it still takes.
+  if (/^[/\\]/.test(line) && !/^\/me\s/.test(line)) throw refusal('twitch_command', 'Twitch no longer runs /commands sent from chat apps');
+  // Longer than this, Twitch drops it without saying so.
+  if (Array.from(line).length > 500) throw refusal('too_long', 'Twitch takes 500 characters at most');
+  return line;
+}
+
+/**
+ * A line typed by a moderator, sent as that moderator (2.0.0): through
+ * Twitch's chat API with the token they signed in to the dashboard with,
+ * never through the streamer's account. The streamer's connection is not
+ * needed at all — only which channel it is.
+ */
+export async function sayAsUser(text, { token, userId } = {}) {
+  const line = dockLine(text);
+  if (!line) return;
+  if (!token || !userId) throw refusal('mod_chat_signin', 'sign in again to chat as yourself');
+  const channelId = creds.get().userId;
+  if (!channelId) throw refusal('twitch_offline', 'Twitch is not connected');
+  let answer;
+  try {
+    answer = await helix('/chat/messages', { method: 'POST', token, body: { broadcaster_id: channelId, sender_id: userId, message: line } });
+  } catch (err) {
+    // A sign-in run out or taken back, or one from before chatting was asked for.
+    if (err.status === 401 || err.status === 403) throw refusal('mod_chat_signin', 'sign in again to chat as yourself');
+    throw err;
+  }
+  // Twitch can take the message and not post it: AutoMod, a slow mode, a banned word.
+  const sent = answer?.data?.[0];
+  if (sent && sent.is_sent === false) {
+    const err = refusal('chat_dropped', `Twitch did not post it: ${sent.drop_reason?.message || 'no reason given'}`);
+    err.vars = { reason: sent.drop_reason?.message || '' };
+    throw err;
+  }
 }
 
 function refusal(code, message) {
@@ -974,6 +1009,14 @@ const EVENTSUB_TOPICS = [
   ['channel.hype_train.progress', ['2', '1'], null, (e) => hypeTrain('progress', e)],
   ['channel.hype_train.end', ['2', '1'], null, (e) => hypeTrain('end', e)],
   /*
+    What AutoMod holds back, and what became of it (let through, kept out,
+    run out), for the dock to decide on (engine/twitch-mod.js). Needs
+    moderator:manage:automod on the channel's login, and a moderator id in
+    the condition: the channel's own.
+  */
+  ['automod.message.hold', ['2', '1'], null, (e) => automodListener?.('hold', e)],
+  ['automod.message.update', ['2', '1'], null, (e) => automodListener?.('update', e)],
+  /*
     The stream starting and ending, the moment it does, rather than at the
     next minute's live check: TikTok and YouTube only look for a stream of
     their own while this one is live (server/core/twitch-live.js). Neither
@@ -984,6 +1027,10 @@ const EVENTSUB_TOPICS = [
 ];
 
 /** One Hype Train update, in the fields either version of the event carries. */
+/** Who hears AutoMod's held messages: one listener, set by engine/twitch-mod.js. */
+let automodListener = null;
+export const onAutomod = (fn) => { automodListener = fn; };
+
 function hypeTrain(phase, e) {
   bus.emit('twitch:hypetrain', {
     phase,
@@ -1170,8 +1217,8 @@ async function subscribeTopics(sessionId, broadcasterId) {
       ? { to_broadcaster_user_id: broadcasterId }
       : { broadcaster_user_id: broadcasterId };
 
-    // channel.follow v2 additionally requires a moderator id.
-    if (type === 'channel.follow') condition.moderator_user_id = broadcasterId;
+    // channel.follow v2 additionally requires a moderator id, and AutoMod's topics do too.
+    if (type === 'channel.follow' || type.startsWith('automod.')) condition.moderator_user_id = broadcasterId;
 
     try {
       // Newest version first; an older one only if Twitch refuses the version itself.
@@ -1256,17 +1303,109 @@ export async function sendShoutout(toBroadcasterId) {
  * moderator:manage:banned_users — a login from before it was asked for has to
  * connect again.
  */
-export async function banUser(userId, { seconds = 0, reason = '' } = {}) {
+export async function banUser(userId, { seconds = 0, reason = '', as = null } = {}) {
   const c = creds.get();
   if (!c.userId) throw refusal('twitch_offline', 'Twitch: not authenticated');
+  // A moderator's own sign-in, when they have one that may: Twitch's mod log then names them, not the channel.
+  const by = actor(as);
   try {
     await helix('/moderation/bans', {
       method: 'POST',
-      query: { broadcaster_id: c.userId, moderator_id: c.userId },
+      token: by.token,
+      query: { broadcaster_id: c.userId, moderator_id: by.moderatorId },
       body: { data: { user_id: String(userId), ...(seconds ? { duration: Math.min(1_209_600, Math.max(1, Math.round(seconds))) } : {}), ...(reason ? { reason: String(reason).slice(0, 500) } : {}) } },
     });
   } catch (err) {
     if (err.status === 401 || err.status === 403) throw refusal('twitch_ban_scope', 'Twitch: connect again on the Connections screen to allow banning (moderator:manage:banned_users)');
+    throw err;
+  }
+  return { ok: true };
+}
+
+/*
+  Moderating, as whoever is doing it: `as` is a moderator's own Twitch
+  sign-in ({ token, userId }, from api/auth.js), so Twitch's own mod log names
+  them; without it, the channel's login acts. Each needs its scope on the
+  token that acts — a login from before it was asked for has to sign in or
+  connect again, and is told so.
+*/
+function actor(as) {
+  const c = creds.get();
+  if (!c.userId) throw refusal('twitch_offline', 'Twitch: not authenticated');
+  return as?.token && as?.userId ? { token: as.token, moderatorId: String(as.userId) } : { token: undefined, moderatorId: c.userId };
+}
+async function moderating(endpoint, opts, as, scope) {
+  const by = actor(as);
+  try {
+    return await helix(endpoint, { ...opts, token: by.token, query: { broadcaster_id: creds.get().userId, moderator_id: by.moderatorId, ...(opts.query || {}) } });
+  } catch (err) {
+    if (err.status === 401 || err.status === 403) {
+      const e2 = refusal('twitch_mod_scope', `Twitch refused: sign in or connect again to allow ${scope}`);
+      e2.vars = { scope };
+      throw e2;
+    }
+    throw err;
+  }
+}
+
+/** End a ban or a timeout. */
+export async function unbanUser(userId, { as = null } = {}) {
+  await moderating('/moderation/bans', { method: 'DELETE', query: { user_id: String(userId) } }, as, 'moderator:manage:banned_users');
+  return { ok: true };
+}
+
+/** Delete one message (Twitch's id for it): under six hours old, and not the broadcaster's or another moderator's. */
+export async function deleteChatMessage(messageId, { as = null } = {}) {
+  if (!messageId) throw refusal('unknown_request', 'no message named');
+  await moderating('/moderation/chat', { method: 'DELETE', query: { message_id: String(messageId) } }, as, 'moderator:manage:chat_messages');
+  return { ok: true };
+}
+
+/** The chat's modes, in the app's words. */
+const chatModes = (d = {}) => ({
+  slow: Boolean(d.slow_mode),
+  slowSeconds: Number(d.slow_mode_wait_time) || 30,
+  emoteOnly: Boolean(d.emote_mode),
+  followersOnly: Boolean(d.follower_mode),
+  followersMinutes: Number(d.follower_mode_duration) || 0,
+  subscribersOnly: Boolean(d.subscriber_mode),
+});
+
+export async function getChatSettings() {
+  const c = creds.get();
+  if (!c.userId) throw refusal('twitch_offline', 'Twitch: not authenticated');
+  const data = await helix('/chat/settings', { query: { broadcaster_id: c.userId } });
+  return chatModes(data?.data?.[0]);
+}
+
+/** Switch chat modes: only what is named changes. Slow mode waits 3 to 120 seconds. */
+export async function updateChatSettings(patch = {}, { as = null } = {}) {
+  const body = {};
+  if ('slow' in patch) {
+    body.slow_mode = Boolean(patch.slow);
+    if (patch.slow) body.slow_mode_wait_time = Math.min(120, Math.max(3, Math.round(Number(patch.slowSeconds) || 30)));
+  }
+  if ('emoteOnly' in patch) body.emote_mode = Boolean(patch.emoteOnly);
+  if ('followersOnly' in patch) {
+    body.follower_mode = Boolean(patch.followersOnly);
+    if (patch.followersOnly && Number(patch.followersMinutes) > 0) body.follower_mode_duration = Math.min(129_600, Math.round(Number(patch.followersMinutes)));
+  }
+  if ('subscribersOnly' in patch) body.subscriber_mode = Boolean(patch.subscribersOnly);
+  const data = await moderating('/chat/settings', { method: 'PATCH', body }, as, 'moderator:manage:chat_settings');
+  return chatModes(data?.data?.[0]);
+}
+
+/** Let a message AutoMod held through, or keep it out. Done by the one deciding: their own user id, their own token. */
+export async function resolveAutomod(messageId, allow, { as = null } = {}) {
+  const by = actor(as);
+  try {
+    await helix('/moderation/automod/message', { method: 'POST', token: by.token, body: { user_id: by.moderatorId, msg_id: String(messageId), action: allow ? 'ALLOW' : 'DENY' } });
+  } catch (err) {
+    if (err.status === 401 || err.status === 403) {
+      const e2 = refusal('twitch_mod_scope', 'Twitch refused: sign in or connect again to allow moderator:manage:automod');
+      e2.vars = { scope: 'moderator:manage:automod' };
+      throw e2;
+    }
     throw err;
   }
   return { ok: true };

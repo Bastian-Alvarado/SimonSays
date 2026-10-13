@@ -221,7 +221,7 @@ test('the editor: the two sides, every save taken apart, layers kept to one side
   assert.ok(!/[^.]setLayouts\(layouts\.map\(\(l\) => \(l\.id === (next|w)\.id \? (next|w) :/.test(v), 'a save puts the view in the list as it is');
   assert.ok(v.includes('setLayouts(layouts.map((l) => (l.id === layout.id ? toStored(layout) : l)));'), 'committing stores the view');
   assert.ok(v.includes('layout={{ ...working, layers: working.layers.filter((l) => shownIn(l, format)) }}'), 'the canvas draws layers kept to the other side');
-  assert.ok(v.includes("const linkUrl = shownUrl && format === 'vertical' ? `${shownUrl}&format=vertical` : shownUrl;"));
+  assert.ok(v.includes("const linkUrl = pageLink(shownUrl && format === 'vertical' ? `${shownUrl}&format=vertical` : shownUrl);"));
   assert.ok(v.includes('PHONE_SAFE_ZONES.map((z) => ('));
   assert.ok(read('../../web/components/SourceLayerPanel.tsx').includes('<option value="fill">'));
   for (const key of ['layoutFormatHorizontal', 'layoutFormatVertical', 'layoutFormatVerticalHint', 'layoutShowOn', 'layoutShowBoth', 'layoutShowHorizontal', 'layoutShowVertical', 'layoutVerticalAuto', 'layoutVerticalAutoAll', 'layoutSafeZones', 'layoutSourceVertical', 'layoutSourceVerticalHint', 'omniVertical', 'omniVerticalHint', 'omniVerticalNone', 'omniVerticalUnsupported', 'omniProblemVerticalCanvas', 'omniProblemVerticalSource', 'sourceSlotFill', 'sourceSlotVerticalFit']) {

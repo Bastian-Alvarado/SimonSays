@@ -25,6 +25,7 @@ import {
   Check, Copy, EyeOff, Plus, Trash2, ArrowUp, ArrowDown, Radio, ExternalLink, Pause, Pin, PinOff,
 } from 'lucide-react';
 import { copyText } from '../../utils';
+import { pageLink } from '../../page-link';
 
 interface OmnibarViewProps {
   config: OmnibarConfig | undefined;
@@ -221,7 +222,7 @@ export const OmnibarView: React.FC<OmnibarViewProps> = ({
     : cfg;
 
   const overlayUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?mode=omnibar${barId ? `&bar=${encodeURIComponent(barId)}` : ''}`
+    ? pageLink(`${window.location.origin}${window.location.pathname}?mode=omnibar${barId ? `&bar=${encodeURIComponent(barId)}` : ''}`)
     : '';
 
   const copyUrl = () => {

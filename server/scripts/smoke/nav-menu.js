@@ -38,7 +38,7 @@ test('every screen is in the menu, once; the paired ones as one entry with tabs 
 });
 
 test('the search reaches every screen, the paired ones each by its own name too', () => {
-  assert.ok(searchable.includes('navSections.flatMap'), 'the search does not hold the menu\'s screens');
+  assert.ok(searchable.includes('shownSections.flatMap'), 'the search does not hold the menu\'s screens');
   for (const v of ['countdown', 'timer', 'reaction-roles', 'discord-buttons']) assert.ok(searchable.includes(`view: '${v}'`), `"${v}" cannot be searched for by its own name`);
   assert.ok(app.includes("(e.ctrlKey || e.metaKey)") && app.includes("e.key.toLowerCase() === 'k'"), 'Ctrl+K does not open the search');
   assert.ok(menu.includes("normalize('NFD')"), 'the search minds accents');

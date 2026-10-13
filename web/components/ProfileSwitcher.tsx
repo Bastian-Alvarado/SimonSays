@@ -29,6 +29,9 @@ export interface ProfileGroupState {
   /** Whether the live configuration differs from this profile's saved copy. */
   dirty: boolean;
   profiles: { id: string; name: string; items: number }[];
+  /** A moderator looking at another profile (hooks/useStreamSystem.ts peek): the live one's id. */
+  liveId?: string;
+  peeking?: boolean;
 }
 
 interface ProfileSwitcherProps {
@@ -44,6 +47,12 @@ interface ProfileSwitcherProps {
     profileRename: (group: string, id: string, name: string) => void;
     profileDelete: (group: string, id: string) => void;
   };
+  /**
+   * A moderator's bar (2.0.0): `browse` lists the profiles to look at — the
+   * stream stays on the live one — and `fixed` only says which is live.
+   * Neither saves, reverts, creates or deletes: the profiles are the streamer's.
+   */
+  looking?: 'browse' | 'fixed';
   t: any;
 }
 
@@ -54,7 +63,7 @@ const GROUP_KEYS: Record<string, string> = {
   overlays: 'profileGroupOverlays',
 };
 
-export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profiles, actions, t }) => {
+export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profiles, actions, looking, t }) => {
   const [open, setOpen] = useState(false);
   const state = profiles.find((g) => g.id === group);
   if (!state) return null;
@@ -62,6 +71,54 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profile
   const active = state.profiles.find((p) => p.id === state.active);
   const label = t[GROUP_KEYS[group]] || state.label;
   const atCapacity = state.profiles.length >= 12;
+
+  if (looking) {
+    const live = state.profiles.find((p) => p.id === (state.liveId || state.active));
+    return (
+      <div className="glass-panel rounded-2xl border border-zinc-800 px-4 py-3 flex flex-wrap items-center gap-3 relative z-50" data-profile-looking={looking}>
+        <div className="flex items-center gap-2 shrink-0">
+          <Layers size={13} className="text-current-accent" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</span>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => looking === 'browse' && setOpen((v) => !v)}
+            disabled={looking !== 'browse'}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 disabled:hover:border-zinc-800 transition-all"
+          >
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-200">{active?.name}</span>
+            {looking === 'browse' && <ChevronDown size={12} className="text-zinc-500" />}
+          </button>
+          {open && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+              <div className="absolute left-0 top-full mt-1 z-50 w-64 rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden">
+                {state.profiles.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setOpen(false); actions.profileSwitch(group, p.id); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-white/5 transition-colors ${p.id === state.active ? 'text-current-accent' : 'text-zinc-300'}`}
+                    data-profile-look={p.id}
+                  >
+                    <span className="w-3 shrink-0">{p.id === state.active && <Check size={11} />}</span>
+                    <span className="flex-1 text-[10px] font-bold truncate">{p.name}</span>
+                    {p.id === (state.liveId || state.active) && <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">{t.profileLive || 'Live'}</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <span className="ml-auto text-[9px] font-bold text-zinc-500" data-profile-looking-note>
+          {state.peeking
+            ? fill(t.profileJustLooking || 'Just looking: the stream stays on “{live}”.', { live: live?.name || '' })
+            : looking === 'browse'
+              ? (t.profileLookHint || 'Pick another to look at it. Only the streamer changes what is live.')
+              : (t.profileStreamerOnly || 'Only the streamer switches profiles.')}
+        </span>
+      </div>
+    );
+  }
 
   const switchTo = (id: string) => {
     setOpen(false);

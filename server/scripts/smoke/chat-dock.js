@@ -115,7 +115,7 @@ test('a message the dock cannot send says why, instead of vanishing', () => {
   assert.equal(outcome.main, 'twitch_offline');
   assert.equal(outcome.bot, 'bot_offline', 'the bot quietly falls back to the main account');
   const ws = read('../api/ws.js');
-  assert.ok(ws.includes('await twitch.sayFromDock(payload.text'), 'the dock still sends through the quiet say()');
+  assert.ok(ws.includes('twitch.sayFromDock(text, { useBot: payload.useBot })'), 'the dock still sends through the quiet say()');
   assert.ok(ws.includes('...(err.code ? { code: err.code } : {})'), 'the reason is lost on the way back');
   assert.ok(read('../../web/hooks/useBackend.ts').includes('if (msg.payload?.code) err.code = msg.payload.code;'));
   assert.ok(HOOK.includes('return request(C2S.SEND_CHAT'), 'the send is not awaited');

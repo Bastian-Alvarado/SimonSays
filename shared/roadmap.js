@@ -22,12 +22,14 @@ export const PLANS = [
   {
     version: '2.0.0',
     name: 'The moderators update',
-    summary: 'A dashboard of their own for your moderators, so they can help run the stream without access to everything.',
+    summary: 'A sign-in for the dashboard, and your moderators in it: they help run the stream with nearly everything you have, without changing what is yours.',
     goals: [
-      'Moderators sign in with their own Twitch account, and only moderators of your channel get in.',
-      'They can chat as themselves or as your bot.',
-      'Each moderator gets a stream deck of their own, set up the way they like.',
-      'Your overlays and pixel avatars stay yours: moderators can\'t open them.',
+      'You and your moderators sign in with Twitch, from home or from anywhere, and only moderators of your channel get in.',
+      'Moderators can do nearly everything you can: chat, the deck, commands, actions and alerts, Discord and the rest.',
+      'On Twitch they chat as themselves or as your bot, never as you. On YouTube they chat as your channel, on Discord as your bot.',
+      'They can look at your overlays and browse every profile and scene, without changing what is on your stream.',
+      'Each moderator has their own settings and their own stream deck.',
+      'Your connections, backups, updates, pixel avatars and PNGtubers stay yours.',
     ],
   },
   {

@@ -18,6 +18,7 @@ import React, { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { forgetCustomFonts } from '../hooks/useCustomFonts';
 import { refusalWords } from '../words';
+import { apiFetch } from '../hooks/useBackend';
 
 const EXTENSIONS = '.woff2,.woff,.ttf,.otf';
 
@@ -30,7 +31,7 @@ export const FontUploadButton = ({ onUploaded, t }: { onUploaded?: () => void; t
     setState('busy');
     setMessage('');
     try {
-      const res = await fetch(`/api/assets/${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      const res = await apiFetch(`/api/assets/${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error || `Upload failed (${res.status})`);
       forgetCustomFonts();

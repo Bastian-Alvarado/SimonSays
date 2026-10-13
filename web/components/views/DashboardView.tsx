@@ -17,6 +17,8 @@ interface DashboardViewProps {
   spotify: any;
   /** The setup checklist, once the server has said enough to work it out. */
   setup?: { left: number; needed: number } | null;
+  /** A moderator (2.0.0): the connections and the Guides are the streamer's, so neither is offered. */
+  isMod?: boolean;
 }
 
 const FloatingCard = ({ icon, label, color, delay, className }: { icon: React.ReactNode, label: string, color: string, delay: string, className?: string }) => (
@@ -28,7 +30,7 @@ const FloatingCard = ({ icon, label, color, delay, className }: { icon: React.Re
   </div>
 );
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ activeTheme, t, setView, spotify, setup }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ activeTheme, t, setView, spotify, setup, isMod = false }) => {
   return (
     <div className="animate-fade-in relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden">
       
@@ -85,16 +87,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ activeTheme, t, se
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up" style={{animationDelay: '200ms'}}>
-          <Button size="lg" onClick={() => setView('gallery')} icon={<ArrowRight size={20} />} className="w-full sm:w-auto h-14 text-sm shadow-xl shadow-rose-500/20">
-            {t.connectPlatforms}
-          </Button>
+          {!isMod && (
+            <Button size="lg" onClick={() => setView('gallery')} icon={<ArrowRight size={20} />} className="w-full sm:w-auto h-14 text-sm shadow-xl shadow-rose-500/20">
+              {t.connectPlatforms}
+            </Button>
+          )}
           <Button size="lg" variant="secondary" onClick={() => setView('assets')} icon={<Monitor size={20} />} className="w-full sm:w-auto h-14 text-sm bg-zinc-900/80 backdrop-blur-md">
             {t.openChatDock}
           </Button>
         </div>
 
         {/* Where somebody new starts: the checklist while it has steps left, the guides after. */}
-        <button
+        {!isMod && <button
           type="button"
           onClick={() => setView('guides')}
           className={`mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold transition-colors animate-slide-up ${setup && setup.left ? 'border-current-accent/50 text-current-accent bg-current-accent/10 hover:bg-current-accent/20' : 'border-zinc-800 text-zinc-500 hover:text-zinc-200'}`}
@@ -105,7 +109,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ activeTheme, t, se
           {setup && setup.left
             ? fill(t.guidesDashboardLeft || 'Setting up: {done} of {needed} done — carry on', { done: String(setup.needed - setup.left), needed: String(setup.needed) })
             : (t.guidesDashboard || 'Guides: how to do anything here')}
-        </button>
+        </button>}
       </div>
     </div>
   );

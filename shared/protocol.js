@@ -91,6 +91,14 @@ export const C2S = {
   REMOTE_PLAYERS: 'remote_players',
   /** Updates from GitHub: { op: 'check' | 'apply' } (server/engine/updater.js). */
   UPDATES: 'updates',
+  /** A saved profile, to look at without switching: { group, id } → { id, live, data: { layouts, omnibar, … } } (server/engine/profiles.js peekProfile). */
+  PROFILE_PEEK: 'profile_peek',
+  /** Sign-in, the streamer's only: { op: 'get' } | { op: 'enable', on } | { op: 'new-key', which: 'pageKey' | 'ownerKey' } (server/api/auth.js). */
+  AUTH: 'auth',
+  /** The Moderators screen, the streamer's only: { op: 'list' } | { op: 'block' | 'unblock' | 'signout' | 'reset-dock', userId } | { op: 'activity', userId? } (server/api/ws.js). */
+  MODERATORS: 'moderators',
+  /** Moderating Twitch chat: { op: 'timeout' | 'ban' | 'unban', userId, seconds? } | { op: 'delete', msgId } | { op: 'get-chat-settings' } | { op: 'chat-settings', settings } | { op: 'automod', msgId, allow } (server/engine/twitch-mod.js). */
+  TWITCH_MOD: 'twitch_mod',
   /** Questions from Discord: { settings } (server/engine/discord-questions.js). */
   DISCORD_QUESTIONS: 'discord_questions',
   /** Game requests: { op: 'settings' | 'read' | 'plan' | 'played' | 'dismiss' | 'reopen' | 'remove', … } (server/engine/game-requests.js). */
@@ -160,6 +168,8 @@ export const S2C = {
   SNAPSHOT: 'snapshot',
   CONFIG_PATCH: 'config_patch',
   STATUS: 'status',
+  /** Who this connection is signed in as: { role: 'owner' | 'mod' | 'page', login, name, via, signIn } (server/api/auth.js). */
+  ME: 'me',
 
   // Live stream
   CHAT: 'chat',

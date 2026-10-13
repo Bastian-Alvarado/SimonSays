@@ -69,6 +69,8 @@ export const MANIFEST = [
   { name: 'poll_settings' },
   // What the Events dock's "Thank" says in chat. The events and the stream's totals stay behind.
   { name: 'events_dock_settings' },
+  // Each moderator's own dock and deck, by their Twitch account: theirs to keep across a move (engine/mod-decks.js).
+  { name: 'mod_prefs' },
   // Whether alerts wait while nothing on stream shows them. Being paused is not kept, here or anywhere.
   { name: 'alert_settings' },
   // The named pixel avatars, which the layouts' avatar layers wear.
@@ -180,8 +182,11 @@ export const MANIFEST = [
  *                                 history, up to a dozen whole avatars each,
  *                                 where the avatars themselves (pixel_avatars)
  *                                 travel
+ *   auth_*                      — the sign-in: whether it is on, the owner and
+ *                                 page keys, who is signed in and moderators'
+ *                                 Twitch tokens; secrets, and this install's own
  */
-export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'later_steps', 'banner_text'];
+export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'later_steps', 'banner_text', 'auth_settings', 'auth_secrets', 'auth_sessions', 'auth_tokens', 'mod_activity'];
 
 /** Everything needed to stand this install up somewhere else. */
 export function buildBundle() {

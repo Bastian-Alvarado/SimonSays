@@ -54,6 +54,11 @@ import * as droidcam from './platforms/droidcam.js';
 
 import { createHttpServer } from './api/http.js';
 import { initWebSocket, closeWebSocket } from './api/ws.js';
+import { initAuth } from './api/auth.js';
+import { initModDecks } from './engine/mod-decks.js';
+import { initModActivity } from './engine/mod-activity.js';
+import { initTwitchMod } from './engine/twitch-mod.js';
+import { modActingToken } from './api/auth.js';
 import { VERSION } from '../shared/version.js';
 
 const log = createLogger('boot');
@@ -141,7 +146,14 @@ async function main() {
   tts.initTts();
   droidcam.initDroidcam();
 
-  // 6. Public surface. Serve the built UI when it exists.
+  // 6. Public surface: who may use it (api/auth.js), then the UI when it is built.
+  initAuth();
+  // Each moderator's own dock and deck (engine/mod-decks.js).
+  initModDecks();
+  // What they did, for the streamer's Moderators screen (engine/mod-activity.js).
+  initModActivity();
+  // Moderating Twitch chat from the docks and from actions, as whoever pressed (engine/twitch-mod.js).
+  initTwitchMod({ tokenFor: modActingToken });
   const webDist = path.join(__dirname, '..', 'web', 'dist');
   const webRoot = fs.existsSync(webDist) ? webDist : null;
   if (webRoot) log.info(`serving built UI from ${webDist}`);

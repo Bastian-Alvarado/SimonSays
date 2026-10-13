@@ -33,7 +33,11 @@ interface Props {
  * out in. `muted` dims it without hiding it — a background under Transparent
  * is still there and comes back.
  */
-export const AutoColourRow = ({ label, value, fallback, onChange, onClear, t, name, muted }: Props & { muted?: boolean }) => {
+/**
+ * `autoLabel` and `clearTitle` say what automatic means where it means
+ * something particular: the viewer counter's accent follows the layout.
+ */
+export const AutoColourRow = ({ label, value, fallback, onChange, onClear, t, name, muted, autoLabel, clearTitle }: Props & { muted?: boolean; autoLabel?: string; clearTitle?: string }) => {
   const set = Boolean(value);
   return (
     <div
@@ -45,13 +49,13 @@ export const AutoColourRow = ({ label, value, fallback, onChange, onClear, t, na
         {set ? (
           <button
             onClick={() => onClear()}
-            title={t?.colourBackToAutomaticLayer || 'Back to automatic — the look\'s colour, or the layer\'s own without one'}
+            title={clearTitle || t?.colourBackToAutomaticLayer || 'Back to automatic — the look\'s colour, or the layer\'s own without one'}
             className="px-1 text-[13px] leading-none text-zinc-500 hover:text-white" data-auto-colour-clear
           >
             ×
           </button>
         ) : (
-          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{t?.colourAutomatic || 'automatic'}</span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">{autoLabel || t?.colourAutomatic || 'automatic'}</span>
         )}
         <span
           className="relative w-10 h-8 rounded-lg border border-zinc-700 overflow-hidden shrink-0"

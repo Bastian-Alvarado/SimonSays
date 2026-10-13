@@ -32,7 +32,7 @@ import { CHAT_STYLE_KEYS } from '../../shared/chat-style.js';
 import { DOCK_CHAT_CSS } from '../../shared/dock-chat-css.js';
 import { ASSET_KINDS, assetKindOf } from '../../shared/asset-kinds.js';
 import { safeJSONParse, spotifyRedirectUri, youtubeRedirectUri } from '../utils';
-import { useBackend, httpBase, C2S, S2C } from './useBackend';
+import { useBackend, httpBase, apiFetch, C2S, S2C } from './useBackend';
 import { rememberDiscordNames, rememberDiscordLists } from '../discordEmoji';
 
 const CHAT_BUFFER = 200;
@@ -680,6 +680,39 @@ export const useStreamSystem = () => {
     return () => { off(); };
   }, [on]);
 
+  // ------------------------------------------------------- sign-in
+
+  // The streamer's sign-in settings (server/api/auth.js): whether it is on, and the two keys. Asked for by the streamer only.
+  const [authState, setAuthState] = useState<{ enabled: boolean; ownerKey: string; pageKey: string } | null>(null);
+  const isOwner = backend.me?.role === 'owner';
+  useEffect(() => {
+    if (!backend.connected || !isOwner) { setAuthState(null); return; }
+    request(C2S.AUTH, { op: 'get' }).then(setAuthState).catch(() => setAuthState(null));
+  }, [backend.connected, isOwner, request]);
+  // A sign-in in use is renewed on the server; asking who this is renews the browser's cookie with it, once a page load.
+  const renewed = useRef(false);
+  useEffect(() => {
+    if (renewed.current || backend.me?.via !== 'session') return;
+    renewed.current = true;
+    apiFetch('/auth/me').catch(() => {});
+  }, [backend.me?.via]);
+
+  /*
+    A moderator browsing the overlay profiles (2.0.0): picking one shows its
+    layouts here, on this page only, while the stream — and the streamer —
+    stay on the live one. Back on the live profile, the page shows what is
+    live again. The streamer switches for real, as before.
+  */
+  const isMod = backend.me?.role === 'mod';
+  const [peek, setPeek] = useState<{ group: string; id: string; name: string; data: Record<string, any> } | null>(null);
+  useEffect(() => { if (!isMod) setPeek(null); }, [isMod]);
+  const peekProfile = useCallback(async (group: string, id: string) => {
+    const out: any = await request(C2S.PROFILE_PEEK, { group, id });
+    setPeek(out?.live ? null : { group, id: out.id, name: out.name, data: out.data || {} });
+  }, [request]);
+  /** What a page shows for a profiled part of the configuration: the profile being looked at, or what is live. */
+  const peeked = <T,>(key: string, live: T): T => (peek && key in peek.data ? peek.data[key] : live);
+
   // ------------------------------------------------------- OAuth callbacks
 
   useEffect(() => {
@@ -688,6 +721,8 @@ export const useStreamSystem = () => {
     const hash = new URLSearchParams(window.location.hash.slice(1));
     const token = hash.get('access_token');
     if (!token) return;
+    // A token for signing in to the dashboard is the sign-in page's (web/components/SignInPage.tsx), not a connection.
+    if ((hash.get('state') || '').startsWith('signin')) return;
 
     (async () => {
       try {
@@ -930,9 +965,12 @@ export const useStreamSystem = () => {
     /** Regulars, crews and the Discord call, for the Who's on screen. Awaited, so the screen can say why not. */
     people: (payload: Record<string, any>) => request(C2S.PEOPLE, payload),
     setLayouts: (layouts: any[]) => send(C2S.SET_LAYOUTS, layouts),
+    /** Moderating Twitch chat, as whoever is signed in here (server/engine/twitch-mod.js). Answers, or refuses. */
+    twitchMod: (payload: any) => request(C2S.TWITCH_MOD, payload),
     // Profiles. Switching and reverting replace whole collections, so the
     // server answers those with a full snapshot rather than a patch.
-    profileSwitch: (group: string, id: string) => send(C2S.PROFILE_SWITCH, { group, id }),
+    // A moderator looks at an overlay profile instead (peekProfile): only the streamer changes what is live.
+    profileSwitch: (group: string, id: string) => (isMod ? (group === 'overlays' ? peekProfile(group, id).catch(() => {}) : undefined) : send(C2S.PROFILE_SWITCH, { group, id })),
     profileSave: (group: string) => send(C2S.PROFILE_CAPTURE, { group }),
     profileRevert: (group: string) => send(C2S.PROFILE_REVERT, { group }),
     profileCreate: (group: string, name: string) => send(C2S.PROFILE_CREATE, { group, name }),
@@ -959,7 +997,7 @@ export const useStreamSystem = () => {
     // Assets go over HTTP rather than the socket: the body is the file, and
     // pushing binary through the JSON protocol would mean base64 on a channel
     // shared with live chat.
-    listAssets: () => fetch(`${httpBase()}/api/assets`).then((r) => r.json()),
+    listAssets: () => apiFetch(`/api/assets`).then((r) => r.json()),
     uploadAsset: async (file: File) => {
       // Said at once rather than after sending a file the server would only turn away.
       const kind = assetKindOf(file.name);
@@ -970,7 +1008,7 @@ export const useStreamSystem = () => {
         err.vars = { mb };
         throw err;
       }
-      const res = await fetch(`${httpBase()}/api/assets/${encodeURIComponent(file.name)}`, {
+      const res = await apiFetch(`/api/assets/${encodeURIComponent(file.name)}`, {
         method: 'POST',
         body: file,
       });
@@ -1022,6 +1060,8 @@ export const useStreamSystem = () => {
         'channel:read:hype_train', 'moderator:manage:shoutouts', 'clips:edit',
         // Banning and timing out, from the mod log and Role Management.
         'moderator:manage:banned_users',
+        // Moderating from the dock: deleting messages, the chat's modes, what AutoMod holds back.
+        'moderator:manage:chat_messages', 'moderator:manage:chat_settings', 'moderator:manage:automod',
       ].join(' ');
 
       const redirectUri = window.location.origin + window.location.pathname;
@@ -1665,12 +1705,12 @@ export const useStreamSystem = () => {
       commands: snapshot.commands as Command[],
       streamActions: snapshot.streamActions as StreamAction[],
       streamTags: snapshot.streamTags,
-      omnibar: (snapshot as any).omnibar as OmnibarConfig | undefined,
-      omnibars: ((snapshot as any).omnibars || []) as any[],
+      omnibar: peeked('omnibar', (snapshot as any).omnibar) as OmnibarConfig | undefined,
+      omnibars: peeked('omnibars', ((snapshot as any).omnibars || []) as any[]),
       countdown: (snapshot as any).countdown as CountdownState | undefined,
       omnilayer: (snapshot as any).omnilayer,
       // Named pixel avatars: an avatar layer naming one draws with its settings (CanvasStage).
-      avatarSources: ((snapshot as any).avatarSources || []) as { id: string; name: string; config: any }[],
+      avatarSources: peeked('avatarSources', ((snapshot as any).avatarSources || []) as { id: string; name: string; config: any }[]),
       stopwatch: (snapshot as any).stopwatch as any,
       // Counts kept by hand: { deaths }.
       counters: ((snapshot as any).counters || { deaths: 0 }) as { deaths: number },
@@ -1687,10 +1727,15 @@ export const useStreamSystem = () => {
       eventTotals: (snapshot as any).eventTotals,
       // Later steps waiting their turn, for the Actions screen (server/engine/later.js).
       laterSteps: ((snapshot as any).laterSteps || []) as any[],
+      // What AutoMod is holding back, for the docks to decide on (server/engine/twitch-mod.js).
+      automodHeld: ((snapshot as any).automodHeld || []) as any[],
       eventsDockSettings: (snapshot as any).eventsDockSettings,
-      viewers: (snapshot as any).viewers,
-      layouts: (snapshot as any).layouts ?? [],
-      profiles: (snapshot as any).profiles ?? [],
+      viewers: peeked('viewers', (snapshot as any).viewers),
+      layouts: peeked('layouts', (snapshot as any).layouts ?? []),
+      // A moderator looking at another profile sees it marked as the one shown; it is still not live.
+      profiles: ((snapshot as any).profiles ?? []).map((g: any) => (peek && g.id === peek.group ? { ...g, active: peek.id, liveId: g.active, dirty: false, peeking: true } : g)),
+      /** The profile a moderator is looking at instead of the live one, if any. */
+      peek: peek ? { group: peek.group, id: peek.id, name: peek.name } : null,
       stats: (snapshot as any).stats,
       linkedUsers: (snapshot as any).linkedUsers ?? {},
       // The same links as people: everybody with more than one account, each account listed (server/engine/role-sync.js).
@@ -1846,5 +1891,23 @@ export const useStreamSystem = () => {
     },
     /** Not part of the V2 contract; handy for a connection indicator. */
     _backendConnected: backend.connected,
+    /** Who this page is signed in as, whether the server wants a sign-in first, and connecting again once there is one. */
+    auth: {
+      me: backend.me,
+      /** A moderator: the streamer's own things are hidden or shown read-only (2.0.0). */
+      isMod,
+      signIn: backend.signIn,
+      reconnect: backend.reconnect,
+      /** The Moderators screen: { op: 'list' | 'block' | 'unblock' | 'signout' | 'reset-dock' | 'activity', userId? } (server/api/ws.js). */
+      moderators: (payload: any) => request(C2S.MODERATORS, payload),
+      /** The streamer's sign-in settings, once asked for: { enabled, ownerKey, pageKey }. */
+      state: authState,
+      /** Change them: { op: 'enable', on } | { op: 'new-key', which } | { op: 'signout' } (server/api/auth.js). Answers the settings as they are now. */
+      control: async (payload: any) => {
+        const out: any = await request(C2S.AUTH, payload);
+        if (out && typeof out.enabled === 'boolean') setAuthState(out);
+        return out;
+      },
+    },
   };
 };

@@ -646,6 +646,20 @@ async function runStep(step, ctx, services, runState) {
       return;
     }
 
+    /*
+      Moderating from an action, through the channel's login
+      (engine/twitch-mod.js): time out, ban or unban somebody by name —
+      "{user}" is whoever set it off, "{input}" whoever they named — delete
+      the message that set it off, or switch one of the chat's modes.
+    */
+    case 'twitch_moderate':
+      await services.twitchMod?.step?.({ ...cfg, what: cfg.what || 'timeout', targetName: flat(interpolate(cfg.target ?? '{user}', ctx)) }, ctx);
+      return;
+
+    case 'twitch_chat_mode':
+      await services.twitchMod?.step?.({ ...cfg, what: 'chat_mode' }, ctx);
+      return;
+
     case 'twitch_clip': {
       const made = await services.twitchExtras?.clip?.();
       ctx.clip = made?.ok ? { url: made.url, id: made.id } : { url: '', id: '', error: made?.error || '' };

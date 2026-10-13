@@ -179,9 +179,16 @@ A few things worth knowing:
   to look different.
 - **Firewall:** Windows will likely prompt the first time something connects
   from another machine. Allow it on private networks.
-- **Do not expose this to the internet as-is** — there is no authentication.
-  It is built for a trusted LAN. Set `HOST=127.0.0.1` to restrict it to the
+- **Switch sign-in on before it can be reached from outside your home**
+  (Settings → Sign-in). Until then there is no authentication: anybody who can
+  reach the port has all of it. With it on, only you and the moderators of your
+  Twitch channel can open the dashboard and the docks, and pages in OBS show
+  with a page key in their links. Set `HOST=127.0.0.1` to restrict it to the
   host machine only.
+- **Signing in with Twitch comes back to the address it was opened at**, so
+  every address you or your moderators use — `http://192.168.1.50:8081`, a
+  public address in front of the app — has to be added to your Twitch app's
+  OAuth Redirect URLs (dev.twitch.tv → Your Console → Applications).
 
 To point a dev-mode UI at a server on another machine, append
 `?server=ws://<host-ip>:8081` to the URL.

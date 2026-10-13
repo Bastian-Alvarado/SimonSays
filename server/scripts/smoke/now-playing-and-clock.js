@@ -70,7 +70,7 @@ test('the layer editor sits under the canvas, not inside the list', () => {
     Below that breakpoint the page is one column and the row is the only place
     it can be, which is what a phone has always done.
   */
-  assert.ok(view.includes('<div className="mt-3 xl:hidden">{layerEditor(layer)}</div>'),
+  assert.ok(view.includes('<div className="mt-3 xl:hidden"><Locked on={readOnly}>{layerEditor(layer)}</Locked></div>'),
     'the row either never opens on a phone, or opens on a desktop as well as the panel');
   assert.ok(view.includes('hidden xl:block glass-panel'),
     'the panel under the canvas shows on a phone too, where it would be a second copy');

@@ -17,6 +17,7 @@ import { SavedTimers, MAX_TIMERS } from '../SavedTimers';
 import { Play, Pause, RotateCcw, Copy, ExternalLink, Check, Minus, Plus } from 'lucide-react';
 import { copyText } from '../../utils';
 import { AutoColourRow } from '../AutoSwatch';
+import { pageLink } from '../../page-link';
 
 interface CountdownViewProps {
   state: CountdownState | undefined;
@@ -84,7 +85,7 @@ export const CountdownView: React.FC<CountdownViewProps> = ({ state, control, ac
   const paused = state?.mode === 'paused';
 
   const overlayUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?mode=countdown`
+    ? pageLink(`${window.location.origin}${window.location.pathname}?mode=countdown`)
     : '';
 
   const copyUrl = () => {

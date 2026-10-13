@@ -9,6 +9,7 @@ import { Button } from '../Button';
 import { SpotifyPlayer, SpotifyIcon } from '../SpotifyPlayer';
 import { Check, Copy, Eye, EyeOff, Layers, ExternalLink, Activity } from 'lucide-react';
 import { copyText } from '../../utils';
+import { pageLink } from '../../page-link';
 
 interface SpotifyOverlayViewProps {
   activeTheme: ThemeConfig;
@@ -33,8 +34,8 @@ export const SpotifyOverlayView: React.FC<SpotifyOverlayViewProps> = ({ activeTh
       url.searchParams.set('showBlur', String(showBlur));
       url.searchParams.set('transparentCard', String(transparentCard));
       url.searchParams.set('enableAnimation', String(enableAnimation));
-      // Re-add required auth params if present in current URL context logic, usually handled by localStorage in standalone
-      return url.toString();
+      // With the page key, for OBS once sign-in is on (page-link.ts).
+      return pageLink(url.toString());
   };
 
   const overlayUrl = getOverlayUrl();

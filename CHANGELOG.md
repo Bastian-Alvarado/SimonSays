@@ -2,6 +2,19 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.0.0] — 2026-10-13
+
+- **After updating:** connect Twitch again once on the Connections screen, as it asks for new permissions (moderating, the chat’s modes, AutoMod). Copy your OBS links again from their screens, so they carry the page key. Then switch sign-in on in Settings → Sign-in, and add every address you and your moderators open the app at to your Twitch app’s OAuth Redirect URLs (dev.twitch.tv), since signing in with Twitch comes back to it. Sign-in stays off until you switch it on, so nothing changes until then.
+- Sign-in for the dashboard (Settings → Sign-in), off until you switch it on: you and your Twitch moderators sign in with Twitch, and an owner key is your way in when Twitch is not. Switching it on needs a sign-in of your own first, so it cannot lock you out.
+- Pages OBS shows carry a page key in their links, which lets them draw the stream and nothing else. Links copied from now on have it already; copy older ones again before switching sign-in on.
+- With sign-in on, the docks and the dashboard ask who you are, other websites cannot use your sign-in, and moderators cannot touch your connections, backups, updates or pixel avatars.
+- Moderators see the overlays and the looks without changing them, and browse every overlay profile without switching yours: picking one shows it to them only, while your stream stays on the live one.
+- On Twitch a moderator chats as themselves or as your bot, never as you. Your connections, the Guides, the PNGtuber and the pixel avatar editors are not in their menu.
+- Each moderator has their own dock: how it shows the chat, its tabs, and their own stream deck. It starts as a copy of yours; what they change is theirs only, and yours stays as it is.
+- A Moderators screen for you alone: who has signed in and who is here now, what each of them did from the dashboard, and buttons to sign one out, turn one away (and let them back in) or put their dock back to yours.
+- The viewer counter follows each layout’s accent, as the other layers do, while its accent is left automatic on the Viewer count screen (it says “follows the layout”); a colour picked there is the same on every layout.
+- Moderating Twitch chat from the dock: a menu on each message to delete it, time its sender out, ban or unban them; the chat’s modes (slow, emotes only, followers only, subscribers only); and what AutoMod holds back, to let through or keep out. Moderators do it as themselves, so Twitch’s own mod log names them. Two new steps in Actions do the same from a command or a trigger. Connect Twitch again on the Connections screen once, to allow it.
+
 ## [1.2.3] — 2026-10-13
 
 - Tidier inside before 2.0.0: unused words and code removed, and security updates to the build tools and the server's packages.

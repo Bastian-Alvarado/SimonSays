@@ -14,6 +14,7 @@
  */
 import { useEffect, useState } from 'react';
 import { fontFamilyName } from '../../shared/chat-style.js';
+import { apiFetch } from './useBackend';
 
 /** Shared across every caller, so opening four panels is still one request. */
 let cache: string[] | null = null;
@@ -22,7 +23,7 @@ let inFlight: Promise<string[]> | null = null;
 const load = (): Promise<string[]> => {
   if (cache) return Promise.resolve(cache);
   if (inFlight) return inFlight;
-  inFlight = fetch('/api/assets')
+  inFlight = apiFetch('/api/assets')
     .then((r) => (r.ok ? r.json() : []))
     .then((list: any[]) => {
       const names = (Array.isArray(list) ? list : [])

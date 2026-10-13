@@ -37,6 +37,11 @@ records) and `assets/` (the pictures, sounds and fonts you upload) — and in
   - from Discord, members' ids, names and roles, where role menus, role
     sync, welcome messages or the call overlay need them.
 - **Your streams:** when each one ran, and its chapters and highlights.
+- **Who signs in to the dashboard**, once you switch sign-in on: you and your
+  moderators — their Twitch name and id, when each was last seen, and the
+  token Twitch gave them, kept on the server and never in a backup — and a
+  record of what each moderator changed from the dashboard (the last 500
+  changes, also never in a backup).
 
 ## What leaves your computer
 
@@ -62,15 +67,22 @@ Each service handles what it receives under its own privacy policy.
 
 ## Cookies
 
-None. The dashboard keeps a few preferences in the browser — the colour
-theme, which server to talk to — and they stay on that device. There are no
+One, and only once somebody signs in: `ss_session`, which says which
+sign-in a browser is. No script can read it, and it goes only to your own
+copy of the app. Otherwise the dashboard keeps a few preferences in the
+browser — the colour theme, which server to talk to — and they stay on that
+device. There are no
 ads, no analytics and no outside scripts, and the fonts ship with the app.
 
 ## Keeping it private
 
-- The dashboard has no sign-in. Keep it on your own network, and never open
-  its port to the internet. It asks search engines not to index it, but that
-  is a request, not a lock.
+- Until you switch sign-in on (Settings → Sign-in), anybody who can reach the
+  dashboard has all of it. Keep it on your own network until then, and switch
+  sign-in on before it can be reached from anywhere else. It also asks search
+  engines not to index it, but that is a request, not a lock.
+- The links you put in OBS carry a page key, which shows your stream without
+  signing in. Keep them as privately as a password, and make a new key in
+  Settings → Sign-in if one gets out.
 - A backup is a file you download, with the sign-ins left out on purpose.
   It still holds your viewers' data, so keep it as privately as the app.
 

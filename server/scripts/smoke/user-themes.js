@@ -336,7 +336,7 @@ test('the Library saves any theme as a file and adds one from a file, uploading 
   assert.ok(lib.includes('data="theme-export"') && lib.includes('data-library="theme-import"'));
   assert.ok(lib.includes('if (!used.has(fontFamilyName(asset.name))) continue;'), 'fonts the theme does not use go into its file');
   assert.ok(lib.includes('if (have.has(f.file)) continue;'), 'a font already here is uploaded again');
-  assert.ok(lib.includes('`${httpBase()}/api/assets/${encodeURIComponent(f.file)}`'), 'fonts are not uploaded to the server the page talks to');
+  assert.ok(lib.includes('apiFetch(`/api/assets/${encodeURIComponent(f.file)}`'), 'fonts are not uploaded to the server the page talks to');
   const constants = read('../../web/constants.ts');
   for (const key of ['libraryExport', 'libraryExported', 'libraryImport', 'libraryImported', 'libraryImportedFonts', 'libraryImportFailed']) {
     assert.equal(constants.split(`    ${key}: `).length - 1, 2, `${key} is not in both languages`);

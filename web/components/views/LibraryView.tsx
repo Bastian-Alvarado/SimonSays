@@ -27,7 +27,7 @@ import { liveLayout } from '../../../shared/live-layout.js';
 import { lookWords, themeWords } from '../../../shared/looks-es.js';
 import { userThemeCss, newPieceId, THEME_PIECE_TYPES, themeFromLayout, themeFonts, themeFile, readThemeFile } from '../../../shared/user-themes.js';
 import { fontFamilyName } from '../../../shared/chat-style.js';
-import { httpBase } from '../../hooks/useBackend';
+import { httpBase, apiFetch } from '../../hooks/useBackend';
 import { forgetCustomFonts } from '../../hooks/useCustomFonts';
 import { ThemePieceEditor } from '../ThemePieceEditor';
 import { ThemeStylePanel } from '../ThemeStylePanel';
@@ -79,6 +79,12 @@ interface Props {
   layouts: CanvasLayout[];
   setLayouts: (next: CanvasLayout[]) => void;
   system: any;
+  /**
+   * A moderator's view (2.0.0): every look can be browsed, and an alert's
+   * applied — moderators edit the alerts — but nothing goes onto a layout,
+   * and the streamer's own themes are theirs.
+   */
+  readOnly?: boolean;
   t: any;
 }
 
@@ -415,7 +421,7 @@ const ToolButton = ({ onClick, icon: Icon, label, data, danger = false, disabled
 
 const field = 'w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-[11px] text-zinc-200 outline-none focus:border-current-accent';
 
-export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
+export const LibraryView = ({ layouts, setLayouts, system, readOnly = false, t }: Props) => {
   const [filter, setFilter] = useState<string>('all');
   /*
     Which theme is open, and what is being looked for.
@@ -550,7 +556,7 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
   const [shared, setShared] = useState<{ ok: boolean; words: string } | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const uploadedFonts = async () => {
-    const res = await fetch(`${httpBase()}/api/assets`);
+    const res = await apiFetch(`/api/assets`);
     const list = res.ok ? await res.json() : [];
     return (Array.isArray(list) ? list : []).filter((a: any) => a?.kind === 'font');
   };
@@ -591,7 +597,7 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
       for (const f of fonts) {
         if (have.has(f.file)) continue;
         const bytes = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0));
-        const res = await fetch(`${httpBase()}/api/assets/${encodeURIComponent(f.file)}`, { method: 'POST', body: bytes });
+        const res = await apiFetch(`/api/assets/${encodeURIComponent(f.file)}`, { method: 'POST', body: bytes });
         if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error || `${f.file}: ${res.status}`);
         added += 1;
       }
@@ -795,6 +801,8 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
       flashApplied(object.id);
       return;
     }
+    // A moderator's look at a layout is only a look.
+    if (readOnly) return;
     if (!layout || !canApplyInBulk(object.layerType)) return;
     // Into the box this preset belongs in, so applying a look cannot take a layer's motion with it, or the other way round.
     const changes = piecePlan(object, layout, omnibars) as Change[];
@@ -963,7 +971,7 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
   }, [open, layout, omnibars, themeOpts.motion, alerts, known]);
 
   const applyTheme = () => {
-    if (!open || !layout || !plan) return;
+    if (readOnly || !open || !layout || !plan) return;
     const record: UndoRecord = { label: `${themeWords(open, t.lang).name} → ${layout.name}` };
     const changes = plan.layers.changes as Change[];
     if (changes.length) {
@@ -1136,6 +1144,12 @@ export const LibraryView = ({ layouts, setLayouts, system, t }: Props) => {
           </button>
           <button onClick={() => setUndo(null)} title={t.libraryUndoDismiss || 'Keep it'} className="p-1 text-zinc-500 hover:text-white"><X size={13} /></button>
         </div>
+      )}
+
+      {readOnly && (
+        <p className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[11px] text-amber-200 leading-relaxed" data-library-read-only>
+          {t.libraryReadOnly || 'Look through every theme and piece. You can apply looks to the alerts; only the streamer changes the overlays and their own themes.'}
+        </p>
       )}
 
       <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-4">

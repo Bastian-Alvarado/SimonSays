@@ -16,7 +16,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen, Check, Circle, ChevronDown, ChevronRight, ArrowRight, Copy, Search, ListChecks, BookMarked, Braces,
-  Plug, Monitor, Layers, MonitorPlay, Bell, Terminal, LayoutGrid, Palette, Cast, MessageSquare, Trophy, Smartphone, Save, Copy as CopyIcon,
+  Plug, Monitor, Layers, MonitorPlay, Bell, Terminal, LayoutGrid, Palette, Cast, MessageSquare, Trophy, Smartphone, Save, ShieldCheck, Copy as CopyIcon,
   KeyRound, Lock, AlertTriangle, ExternalLink, Clock,
 } from 'lucide-react';
 import type { AppView } from '../../types';
@@ -24,16 +24,17 @@ import { GUIDES, GUIDE_GROUPS, GLOSSARY, BUILTIN_WORDS, GUIDE_TOKEN, PLATFORM_SE
 import { VARIABLE_GROUPS } from '../VariablePicker';
 import { copyText } from '../../utils';
 import { fill } from '../../words';
+import { pageLink } from '../../page-link';
 
 export type GuidesTab = 'start' | 'guides' | 'reference' | 'glossary';
 
 const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   plug: Plug, monitor: Monitor, layers: Layers, 'monitor-play': MonitorPlay, bell: Bell, terminal: Terminal,
-  grid: LayoutGrid, palette: Palette, copy: CopyIcon, cast: Cast, discord: MessageSquare, trophy: Trophy, phone: Smartphone, save: Save,
+  grid: LayoutGrid, palette: Palette, copy: CopyIcon, cast: Cast, discord: MessageSquare, trophy: Trophy, phone: Smartphone, save: Save, shield: ShieldCheck,
 };
 
 /** The address of a page for OBS: this page's own, with its mode. */
-export const pageUrl = (mode: string) => `${window.location.origin}${window.location.pathname}?mode=${mode}`;
+export const pageUrl = (mode: string) => pageLink(`${window.location.origin}${window.location.pathname}?mode=${mode}`);
 
 /**
  * Where to sign in to the platforms, and the addresses each one comes back

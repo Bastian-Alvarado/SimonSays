@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ActionStep, ActionStepType, Command, StreamAction, ThemeConfig, TriggerCategory, TriggerType, SingleCondition } from '../../types';
 import { Button } from '../Button';
-import { GlassWater, Hourglass, MonitorPlay, Target, Activity, Plus, Zap, ArrowRight, Play, Edit2, Trash2, X, RefreshCcw, ToggleRight, ToggleLeft, Monitor, Terminal, GitBranch, Split, Workflow, Smile, Search, Gamepad2, Type, GitMerge, Check, ArrowDown, ChevronDown, Eye, Type as TypeIcon, Heart, Star, Coins, Users, Share2, Gift, Ticket, Radio, Disc, Square, AlertTriangle, Music, SkipForward, SkipBack, Pause, ListPlus, Volume2, VolumeX, Save, Globe, Move, Mic, Sliders, Layers, LayoutGrid, List, ArrowDownAZ, History, Clock, Braces, Camera, Cpu, CalendarDays, Tag, Timer, User, Megaphone, Eraser, Undo2, MessageCircleQuestion, BarChart3, Shirt, Skull, Repeat, Trophy, Headphones, OctagonX, Dices, AlarmClock, CornerDownRight, MessageSquare, TrainFront, Sparkles, Upload, MessageSquareText } from 'lucide-react';
+import { GlassWater, Hourglass, MonitorPlay, Target, Activity, Plus, Zap, ArrowRight, Play, Edit2, Trash2, X, RefreshCcw, ToggleRight, ToggleLeft, Monitor, Terminal, GitBranch, Split, Workflow, Smile, Search, Gamepad2, Type, GitMerge, Check, ArrowDown, ChevronDown, Eye, Type as TypeIcon, Heart, Star, Coins, Users, Share2, Gift, Ticket, Radio, Disc, Square, AlertTriangle, Music, SkipForward, SkipBack, Pause, ListPlus, Volume2, VolumeX, Save, Globe, Move, Mic, Sliders, Layers, LayoutGrid, List, ArrowDownAZ, History, Clock, Braces, Camera, Cpu, CalendarDays, Tag, Timer, User, Megaphone, Eraser, Undo2, MessageCircleQuestion, BarChart3, Shirt, Skull, Repeat, Trophy, Headphones, OctagonX, Dices, AlarmClock, CornerDownRight, MessageSquare, TrainFront, Sparkles, Upload, MessageSquareText, Shield } from 'lucide-react';
 import { EmojiPicker } from '../EmojiPicker';
 import { VariablePicker } from '../VariablePicker';
 import { SpotifyIcon } from '../SpotifyPlayer';
@@ -943,7 +943,7 @@ const StepRenderer: React.FC<StepRendererProps> = (props) => {
                     {RunIcon ? <RunIcon size={14} /> : step.type === 'omnibar_set' ? <Radio size={14} /> : step.type === 'trigger_action' ? <Workflow size={14} /> : step.type.startsWith('discord_') ? <DiscordIcon size={14} /> : step.type.startsWith('youtube_') ? <YouTubeIcon size={12} /> : step.type === 'spotify_control' ? <SpotifyIcon size={14} /> : step.type === 'browser_tts' ? <Mic size={14} /> : step.type.startsWith('obs_') ? <Monitor size={14} /> : (index + 1)} 
                 </div> 
                 <span className="text-xs font-black uppercase tracking-wider text-zinc-300"> 
-                    {run ? (t[run.key] || run.label) : step.type === 'omnibar_set' ? (t.omnibarStepMenu || 'Omnibar slot') : step.type === 'trigger_action' ? t.triggerAction : step.type === 'spotify_control' ? t.spotifyControl : step.type === 'browser_tts' ? t.ttsTitle || 'Text to Speech' : step.type === 'twitch_shoutout' ? (t.twitchStepShoutoutTitle || 'Twitch: shout out') : step.type === 'twitch_clip' ? (t.twitchStepClipTitle || 'Twitch: clip') : step.type === 'twitch_marker' ? (t.twitchStepMarkerTitle || 'Twitch: stream marker') : step.type === 'youtube_set_title' ? (t.youtubeStepTitle || 'YouTube: set title') : step.type === 'youtube_set_description' ? (t.youtubeStepDescription || 'YouTube: set description') : step.type === 'youtube_toggle_category' ? (t.youtubeStepCategory || 'YouTube: toggle category') : step.type === 'obs_stop_stream' ? (t.obsStopStreamTitle || 'OBS: stop streaming') : step.type.replace('_', ' ')} 
+                    {run ? (t[run.key] || run.label) : step.type === 'omnibar_set' ? (t.omnibarStepMenu || 'Omnibar slot') : step.type === 'trigger_action' ? t.triggerAction : step.type === 'spotify_control' ? t.spotifyControl : step.type === 'browser_tts' ? t.ttsTitle || 'Text to Speech' : step.type === 'twitch_shoutout' ? (t.twitchStepShoutoutTitle || 'Twitch: shout out') : step.type === 'twitch_clip' ? (t.twitchStepClipTitle || 'Twitch: clip') : step.type === 'twitch_marker' ? (t.twitchStepMarkerTitle || 'Twitch: stream marker') : step.type === 'twitch_moderate' ? (t.twitchStepModerateTitle || 'Twitch: moderate') : step.type === 'twitch_chat_mode' ? (t.twitchStepChatModeTitle || 'Twitch: chat mode') : step.type === 'youtube_set_title' ? (t.youtubeStepTitle || 'YouTube: set title') : step.type === 'youtube_set_description' ? (t.youtubeStepDescription || 'YouTube: set description') : step.type === 'youtube_toggle_category' ? (t.youtubeStepCategory || 'YouTube: toggle category') : step.type === 'obs_stop_stream' ? (t.obsStopStreamTitle || 'OBS: stop streaming') : step.type.replace('_', ' ')} 
                 </span> 
             </div>
             <div className="pl-9">
@@ -1074,6 +1074,63 @@ const StepRenderer: React.FC<StepRendererProps> = (props) => {
                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.twitchStepMarkerNote || 'Note'}</label>
                     <input type="text" value={step.config.description ?? '{input}'} onChange={(e) => updateActionStepConfig(step.id, 'description', e.target.value)} placeholder="{input}" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-medium focus:border-current-accent outline-none text-white" />
                     <p className="text-[9px] text-zinc-500 font-medium ml-1">{t.twitchStepMarkerHint || 'A marker in the VOD at this moment, to find it later (the stream has to be live). The note is optional.'}</p>
+                </div>
+            )}
+
+            {/* Moderating, through the channel's login (server/engine/twitch-mod.js step). */}
+            {step.type === 'twitch_moderate' && (
+                <div className="space-y-2" data-step-moderate>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.twitchStepModerateWhat || 'Do'}</label>
+                        <select value={step.config.what ?? 'timeout'} onChange={(e) => updateActionStepConfig(step.id, 'what', e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent" data-step-moderate-what>
+                            <option value="timeout">{t.twitchStepModerateTimeout || 'Time out'}</option>
+                            <option value="ban">{t.twitchStepModerateBan || 'Ban'}</option>
+                            <option value="unban">{t.twitchStepModerateUnban || 'Unban, or end a timeout'}</option>
+                            <option value="delete">{t.twitchStepModerateDelete || 'Delete the message that set this off'}</option>
+                        </select>
+                    </div>
+                    {(step.config.what ?? 'timeout') !== 'delete' && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.twitchStepShoutoutWho || 'Who'}</label>
+                            <input type="text" value={step.config.target ?? '{user}'} onChange={(e) => updateActionStepConfig(step.id, 'target', e.target.value)} placeholder="{user}" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent" />
+                        </div>
+                    )}
+                    {(step.config.what ?? 'timeout') === 'timeout' && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.twitchStepModerateSeconds || 'For how long (seconds)'}</label>
+                            <input type="number" min={1} max={1209600} value={step.config.seconds ?? 600} onChange={(e) => updateActionStepConfig(step.id, 'seconds', Number(e.target.value) || 600)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent" />
+                        </div>
+                    )}
+                    {['timeout', 'ban'].includes(step.config.what ?? 'timeout') && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.twitchStepModerateReason || 'Reason (optional)'}</label>
+                            <input type="text" value={step.config.reason ?? ''} onChange={(e) => updateActionStepConfig(step.id, 'reason', e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent" />
+                        </div>
+                    )}
+                    <p className="text-[9px] text-zinc-500 font-medium ml-1">{t.twitchStepModerateHint || '{user} is whoever set the action off, {input} whoever they named. Done as your channel, and never to you.'}</p>
+                </div>
+            )}
+
+            {step.type === 'twitch_chat_mode' && (
+                <div className="space-y-2" data-step-chat-mode>
+                    <div className="grid grid-cols-2 gap-2">
+                        <select value={step.config.mode ?? 'slow'} onChange={(e) => updateActionStepConfig(step.id, 'mode', e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent" data-step-chat-mode-which>
+                            <option value="slow">{t.chatModeSlowName || 'Slow mode'}</option>
+                            <option value="emote">{t.chatModeEmote || 'Emotes only'}</option>
+                            <option value="followers">{t.chatModeFollowers || 'Followers only'}</option>
+                            <option value="subscribers">{t.chatModeSubs || 'Subscribers only'}</option>
+                        </select>
+                        <select value={step.config.on === false ? 'off' : 'on'} onChange={(e) => updateActionStepConfig(step.id, 'on', e.target.value === 'on')} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent">
+                            <option value="on">{t.twitchStepChatModeOn || 'Switch on'}</option>
+                            <option value="off">{t.twitchStepChatModeOff || 'Switch off'}</option>
+                        </select>
+                    </div>
+                    {(step.config.mode ?? 'slow') === 'slow' && step.config.on !== false && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.twitchStepChatModeSeconds || 'Seconds between messages (3 to 120)'}</label>
+                            <input type="number" min={3} max={120} value={step.config.seconds ?? 30} onChange={(e) => updateActionStepConfig(step.id, 'seconds', Number(e.target.value) || 30)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs font-bold text-zinc-300 outline-none focus:border-current-accent" />
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -2712,6 +2769,8 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                     { label: t.twitchStepShoutout || 'Shout out', onClick: () => addStep('twitch_shoutout'), icon: Megaphone },
                                     { label: t.twitchStepClip || 'Clip', onClick: () => addStep('twitch_clip'), icon: Camera },
                                     { label: t.twitchStepMarker || 'Stream marker', onClick: () => addStep('twitch_marker'), icon: Tag },
+                                    { label: t.twitchStepModerate || 'Moderate', onClick: () => addStep('twitch_moderate'), icon: Shield },
+                                    { label: t.twitchStepChatMode || 'Chat mode', onClick: () => addStep('twitch_chat_mode'), icon: Shield },
                                 ]}
                              />
                              <ActionCategoryDropdown

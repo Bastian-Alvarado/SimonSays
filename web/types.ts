@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 
-export type AppView = 'twitch' | 'dashboard' | 'assets' | 'plan' | 'run' | 'people' | 'questions' | 'players' | 'remote-players' | 'polls' | 'giveaway' | 'points' | 'streams' | 'requests' | 'voice' | 'go-live' | 'pngtuber' | 'pixel-avatars' | 'events' | 'studio' | 'actions' | 'gallery' | 'settings' | 'tags' | 'role-management' | 'reaction-roles' | 'discord-buttons' | 'welcome-goodbye' | 'discord-pages' | 'spotify-overlay' | 'levels' | 'dock-actions' | 'omnibar' | 'countdown' | 'timer' | 'viewers' | 'layouts' | 'library' | 'alerts' | 'guides' | 'roadmap';
+export type AppView = 'twitch' | 'dashboard' | 'assets' | 'plan' | 'run' | 'people' | 'questions' | 'players' | 'remote-players' | 'polls' | 'giveaway' | 'points' | 'streams' | 'requests' | 'voice' | 'go-live' | 'pngtuber' | 'pixel-avatars' | 'events' | 'studio' | 'actions' | 'gallery' | 'settings' | 'tags' | 'role-management' | 'reaction-roles' | 'discord-buttons' | 'welcome-goodbye' | 'discord-pages' | 'spotify-overlay' | 'levels' | 'dock-actions' | 'omnibar' | 'countdown' | 'timer' | 'viewers' | 'layouts' | 'library' | 'alerts' | 'guides' | 'roadmap' | 'moderators';
 
 /** One button on the Dock Actions surface. */
 export interface DockButton {
@@ -680,6 +680,9 @@ export type ActionStepType =
   | 'avatar_dress'
   | 'avatar_action'
   | 'twitch_shoutout'
+  // Moderating from an action (server/engine/twitch-mod.js): time out, ban, unban, delete the message; the chat's modes.
+  | 'twitch_moderate'
+  | 'twitch_chat_mode'
   | 'twitch_clip'
   | 'twitch_marker'
   | 'youtube_set_title'
@@ -742,7 +745,11 @@ export interface ActionStep {
     /** Avatar: do something — which thing (drink), or {input}. */
     action?: string;
     /** Avatar: dress up — an outfit or a hat, and for how many minutes. */
-    what?: 'outfit' | 'hat';
+    // An avatar_dress step's outfit or hat; a twitch_moderate step's timeout, ban, unban or delete.
+    what?: 'outfit' | 'hat' | 'timeout' | 'ban' | 'unban' | 'delete';
+    // A twitch_moderate step's reason, and whether a twitch_chat_mode step switches its mode on.
+    reason?: string;
+    on?: boolean;
     /** Twitch: who to shout out (a marker's note is description). */
     target?: string;
     minutes?: number;
@@ -827,7 +834,7 @@ export interface ActionStep {
     /** random_choice: how likely, against the other choices (1 each by default). */
     weight?: number;
     /** later: after a length of time, or when the stream ends; the length as a number and a unit. */
-    mode?: 'after' | 'streamEnd';
+    mode?: 'after' | 'streamEnd' | 'slow' | 'emote' | 'followers' | 'subscribers';
     amount?: number;
     unit?: 'seconds' | 'minutes' | 'hours' | 'days';
     /** play_sound: the file, and how loud (0-1). */

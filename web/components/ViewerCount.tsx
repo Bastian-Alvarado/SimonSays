@@ -118,6 +118,8 @@ export const ViewerCount: React.FC<ViewerCountProps> = ({ config, stats, status,
   const size = (style?.fontSize ?? 28) * scale;
   const rows = viewerRows(config, stats, status);
   const total = rows.reduce((sum, r) => sum + r.count, 0);
+  // The icon's colour: the one picked here, or else the layout's accent, as the other layers do (CanvasStage sets --overlay-accent); on a page of its own, the counter's pink.
+  const accent = style?.accentColor || 'var(--overlay-accent, #f43f5e)';
 
   const shell: React.CSSProperties = {
     /*
@@ -147,7 +149,7 @@ export const ViewerCount: React.FC<ViewerCountProps> = ({ config, stats, status,
       <div className="inline-flex items-center gap-5 font-black tabular-nums leading-none" data-viewers="box" style={shell}>
         {rows.map((r) => (
           <span key={r.key} className="inline-flex items-center gap-2" data-viewers="row">
-            <span data-viewers="icon" style={{ color: style?.accentColor || '#f43f5e', display: 'inline-flex' }}>
+            <span data-viewers="icon" style={{ color: accent, display: 'inline-flex' }}>
               {r.key === 'twitch' ? <TwitchIcon size={size * 0.85} /> : r.key === 'youtube' ? <YouTubeIcon size={size * 0.85} /> : <TikTokIcon size={size * 0.85} />}
             </span>
             <span data-viewers="count">{formatCount(r.count)}</span>
@@ -160,7 +162,7 @@ export const ViewerCount: React.FC<ViewerCountProps> = ({ config, stats, status,
   return (
     <div className="inline-flex items-center gap-2 font-black tabular-nums leading-none" data-viewers="box" style={shell}>
       {config?.showIcon !== false && (
-        <span data-viewers="icon" style={{ color: style?.accentColor || '#f43f5e', display: 'inline-flex' }}>
+        <span data-viewers="icon" style={{ color: accent, display: 'inline-flex' }}>
           <Eye size={size * 0.9} />
         </span>
       )}

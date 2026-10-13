@@ -11,6 +11,7 @@ import { Button } from '../Button';
 import { VERSION } from '../../../shared/version.js';
 import { fill, refusalWords } from '../../words';
 import { UpdatesPanel, type UpdatesState } from '../UpdatesPanel';
+import { SignInPanel } from '../SignInPanel';
 
 interface SettingsViewProps {
   activeTheme: ThemeConfig;
@@ -27,6 +28,8 @@ interface SettingsViewProps {
   updatesAct?: (op: 'check' | 'apply') => Promise<any>;
   /** To the Roadmap screen: every release, and the ones planned. */
   openRoadmap?: () => void;
+  /** Who this is, and the sign-in settings (hooks/useStreamSystem.ts auth). */
+  auth?: any;
   t: any;
 }
 
@@ -42,8 +45,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   updates,
   updatesAct,
   openRoadmap,
+  auth,
   t
 }) => {
+  // Backups and updates are the streamer's; the rest of a moderator's Settings is their own screen's.
+  const owner = !auth?.me || auth.me.role === 'owner';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [busy, setBusy] = React.useState<'export' | 'import' | null>(null);
@@ -182,8 +188,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </section>
 
+      {auth && <SignInPanel auth={auth} light={activeTheme.id === 'light'} panelClass={`${activeTheme.borderClass} ${activeTheme.panelClass}`} t={t} />}
+
       {/* NEW: Data Management Section */}
-      <section className={`glass-panel p-6 sm:p-8 rounded-[40px] border ${activeTheme.borderClass} ${activeTheme.panelClass}`}>
+      {owner && <section className={`glass-panel p-6 sm:p-8 rounded-[40px] border ${activeTheme.borderClass} ${activeTheme.panelClass}`}>
         <div className="flex items-center gap-3 mb-8">
           <Database className="text-current-accent" />
           <h3 className="text-xl font-extrabold uppercase tracking-tight">{t.dataManagement || 'Data Management'}</h3>
@@ -231,7 +239,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         <p className="mt-4 text-[10px] text-zinc-600 leading-relaxed">{t.backupScopeNote}</p>
-      </section>
+      </section>}
 
       {/*
         Which version this is. The page and the server are one version
@@ -259,7 +267,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <GitBranch size={14} /> {t.roadmapAboutLink || 'See the roadmap: every update, and what is next'}
           </button>
         )}
-        {updates?.enabled && updatesAct && (
+        {owner && updates?.enabled && updatesAct && (
           <UpdatesPanel updates={updates} act={updatesAct} language={language} light={activeTheme.id === 'light'} t={t} />
         )}
       </section>

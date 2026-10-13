@@ -414,7 +414,7 @@ test('wired: started by the launcher it says when it is up, it stops with the la
 
 test('Settings shows updates only on a copy that updates itself, the menu marks one that is out, and the page reloads into it', () => {
   const settings = read('../../web/components/views/SettingsView.tsx');
-  assert.ok(settings.includes('{updates?.enabled && updatesAct && ('));
+  assert.ok(settings.includes('{owner && updates?.enabled && updatesAct && ('));
   const app = read('../../web/App.tsx');
   assert.ok(app.includes("dot: updateOut ? 'news' : undefined"));
   assert.ok(app.includes("useReloadAfterUpdate((system.data as any).serverVersion || '', (system.data as any).updates || null);"));

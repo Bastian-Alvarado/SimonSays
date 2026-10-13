@@ -17,6 +17,16 @@ import { withViewerEvent } from '../../shared/viewer-events.js';
 
 type Handler = (payload: any) => void;
 
+/** Who this page is signed in as (S2C.ME). With sign-in off, everyone is the owner. */
+export interface Me {
+  role: 'owner' | 'mod' | 'page';
+  login: string;
+  name: string;
+  via: 'open' | 'session' | 'owner-key' | 'page-key';
+  /** Whether sign-in is switched on at all. */
+  signIn: boolean;
+}
+
 export interface BackendSnapshot {
   commands: any[];
   streamActions: any[];
@@ -77,7 +87,23 @@ function serverUrl(): string {
     apiPort: (import.meta as any).env?.VITE_API_PORT ?? undefined,
   });
   if (remember) { try { localStorage.setItem(REMEMBERED, remember); } catch { /* a browser may refuse */ } }
-  return url;
+  return withPageKey(url);
+}
+
+/*
+  A page OBS shows cannot sign in, so its link carries the page key
+  (server/api/auth.js), and the page passes it on to the server with
+  everything it asks for. Nothing else ever puts a key in an address.
+*/
+const pageKey = () => new URLSearchParams(window.location.search).get('key') || '';
+function withPageKey(url: string): string {
+  const key = pageKey();
+  if (!key) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('key', key);
+    return u.toString();
+  } catch { return url; }
 }
 
 /**
@@ -89,11 +115,32 @@ function serverUrl(): string {
  * to the server it is actually talking to.
  */
 export function httpBase(): string {
-  return serverUrl().replace(/^ws:/, 'http:').replace(/^wss:/, 'https:');
+  // Without the page key: the address is for joining a path to.
+  const u = serverUrl().replace(/^ws:/, 'http:').replace(/^wss:/, 'https:');
+  try {
+    const parsed = new URL(u);
+    parsed.searchParams.delete('key');
+    return parsed.toString().replace(/\/$/, '');
+  } catch { return u; }
+}
+
+/**
+ * A request to the server's HTTP API, with this page's sign-in: the cookie
+ * (sent along even to the development server's other port), or an OBS
+ * page's key.
+ */
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const key = pageKey();
+  const target = key ? `${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(key)}` : path;
+  return fetch(`${httpBase()}${target}`, { credentials: 'include', ...init });
 }
 
 export function useBackend() {
   const [connected, setConnected] = useState(false);
+  // Who the server says this is, and whether it wants a sign-in first (server/api/auth.js).
+  const [me, setMe] = useState<Me | null>(null);
+  const [signIn, setSignIn] = useState<'needed' | 'refused' | null>(null);
+  const reconnectRef = useRef<() => void>(() => {});
   const [snapshot, setSnapshot] = useState<BackendSnapshot>(EMPTY_SNAPSHOT);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -190,6 +237,11 @@ export function useBackend() {
           // the server sending the whole list again on every follow.
           viewerEvents: withViewerEvent(prev.viewerEvents, p),
         }));
+        return;
+
+      case S2C.ME:
+        setMe(p);
+        setSignIn(null);
         return;
 
       case S2C.XP_DATA:
@@ -321,7 +373,7 @@ export function useBackend() {
         emit(msg.type, msg.payload);
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         // Only the socket currently in use may clear the ref or reconnect; a
         // late close from a superseded socket must stay silent.
         if (cancelled || wsRef.current !== ws) return;
@@ -329,14 +381,38 @@ export function useBackend() {
         wsRef.current = null;
         setConnected(false);
 
+        /*
+          The server's reasons (server/api/ws.js). 4401: nobody it knows —
+          the dashboard asks to sign in and waits for it; an OBS page, whose
+          key may have been changed, tries again now and then. 4403: opened
+          from somewhere it does not take connections from, which trying
+          again will not change. 4001: sign-in was switched on or off, so
+          straight back, to be asked again who this is.
+        */
+        if (event.code === 4401) {
+          setSignIn('needed');
+          if (pageKey()) retryTimer = setTimeout(connect, 30_000);
+          return;
+        }
+        if (event.code === 4403) { setSignIn('refused'); return; }
+        if (event.code === 4001) retryRef.current = 0;
+
         // Exponential backoff, capped, so a server restart is picked up
         // quickly but a long outage doesn't hammer the socket.
-        const delay = Math.min(1000 * 2 ** retryRef.current, 15_000);
+        const delay = event.code === 4001 ? 300 : Math.min(1000 * 2 ** retryRef.current, 15_000);
         retryRef.current += 1;
         retryTimer = setTimeout(connect, delay);
       };
 
       ws.onerror = () => ws.close();
+    };
+
+    // Once signed in, at once rather than at the next try.
+    reconnectRef.current = () => {
+      clearTimeout(retryTimer);
+      retryRef.current = 0;
+      if (wsRef.current) return;
+      connect();
     };
 
     connect();
@@ -356,7 +432,9 @@ export function useBackend() {
     };
   }, [emit, flushOutbox, applyToSnapshot]);
 
-  return { connected, snapshot, setSnapshot, send, request, on };
+  const reconnect = useCallback(() => reconnectRef.current(), []);
+
+  return { connected, snapshot, setSnapshot, send, request, on, me, signIn, reconnect };
 }
 
 export { C2S, S2C };

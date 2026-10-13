@@ -113,6 +113,8 @@ test('the setup steps tick themselves from what the app can see, remember what t
       alertConfigs: [{ id: 'f', enabled: true }],
       streamActions: [{ id: 'x', trigger: { category: 'command', type: 'command_trigger', config: { commandId: 'c' } } }],
     },
+    // Sign-in switched on (Settings → Sign-in).
+    auth: { me: { signIn: true } },
   };
   const full = g.setupState(all);
   assert.equal(full.left, 0, 'all the needed steps are done');

@@ -14,6 +14,7 @@ import { ViewerCount, ViewerConfig } from '../ViewerCount';
 import { Copy, ExternalLink, Check, Eye, LayoutGrid, Minus } from 'lucide-react';
 import { copyText } from '../../utils';
 import { AutoColourRow } from '../AutoSwatch';
+import { pageLink } from '../../page-link';
 
 interface ViewersViewProps {
   config: ViewerConfig | undefined;
@@ -49,7 +50,7 @@ export const ViewersView: React.FC<ViewersViewProps> = ({ config, setViewers, st
   const patchStyle = (next: Partial<ViewerConfig['style']>) => patch({ style: { ...cfg.style, ...next } });
 
   const overlayUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?mode=viewers`
+    ? pageLink(`${window.location.origin}${window.location.pathname}?mode=viewers`)
     : '';
 
   const copyUrl = () => {
@@ -180,6 +181,9 @@ export const ViewersView: React.FC<ViewersViewProps> = ({ config, setViewers, st
                 onChange={(v) => patchStyle({ [key]: v } as any)}
                 onClear={() => patchStyle({ [key]: '' } as any)}
                 muted={key === 'background' && cfg.style.transparent}
+                // Left automatic, the accent is each layout's own (components/ViewerCount.tsx): said so, as picking one puts that colour on every layout.
+                autoLabel={key === 'accentColor' ? (t.colourFollowsLayout || 'follows the layout') : undefined}
+                clearTitle={key === 'accentColor' ? (t.colourBackToLayout || 'Back to each layout’s own accent') : undefined}
                 t={t}
               />
             ))}

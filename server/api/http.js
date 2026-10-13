@@ -29,6 +29,7 @@ import * as obs from '../platforms/obs.js';
 import * as spotify from '../platforms/spotify.js';
 import * as youtube from '../platforms/youtube.js';
 import { VERSION } from '../../shared/version.js';
+import * as auth from './auth.js';
 
 const log = createLogger('http');
 
@@ -61,9 +62,15 @@ const startedAt = Date.now();
 
 export function createHttpServer({ webRoot } = {}) {
   return http.createServer(async (req, res) => {
-    // The UI may be served by Vite on another origin during development.
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // The UI may be served by Vite on another origin during development: that one may send its sign-in along.
+    if (req.headers.origin && auth.originAllowed(req)) {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Vary', 'Origin');
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
     // Nothing here is for a search engine: the dashboard has no sign-in, so it must never be found by one.
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -78,8 +85,39 @@ export function createHttpServer({ webRoot } = {}) {
       return;
     }
 
+    // Signing in and out (api/auth.js), before anything that needs it.
+    if (url.pathname.startsWith('/auth/')) {
+      try {
+        await handleAuth(req, res, url);
+      } catch (err) {
+        const status = err.statusCode ?? (err.code ? 400 : 500);
+        if (status >= 500) log.error(`${req.method} ${url.pathname}:`, err);
+        json(res, status, { error: err.message, ...(err.code ? { code: err.code } : {}), ...(err.vars ? { vars: err.vars } : {}) });
+      }
+      return;
+    }
+
     if (url.pathname.startsWith('/api/')) {
       try {
+        // With sign-in on, only somebody the server knows reaches the API — the health check aside.
+        if (!(url.pathname === '/api/health' && req.method === 'GET')) {
+          const me = auth.identify(req);
+          if (!me) return json(res, 401, { error: 'sign in first', code: 'signin_needed' });
+          const route = `${req.method} ${url.pathname.startsWith('/api/assets/') ? '/api/assets/*' : url.pathname}`;
+          if ((me.role === 'page' && !PAGE_API.has(route)) || (me.role === 'mod' && !MOD_API.has(route))) {
+            return json(res, 403, { error: 'not for this sign-in', code: 'signin_not_allowed' });
+          }
+          if (me.role === 'mod') {
+            // Asked about again when due, as their live connection is (auth.recheckMod).
+            if (!(await auth.recheckMod(me))) return json(res, 401, { error: 'sign in first', code: 'signin_needed' });
+            // A new upload, never one replacing the streamer's: the overlays drawing it are not a moderator's to change.
+            // By the name it would be saved under (safeAssetName), not as sent: "my logo.png" is saved as my_logo.png.
+            const name = safeAssetName(decodeURIComponent(url.pathname.slice('/api/assets/'.length)));
+            if (route === 'POST /api/assets/*' && name && fs.existsSync(path.join(config.assetsDir, name))) {
+              return json(res, 403, { error: 'a file by that name is already here', code: 'signin_not_allowed' });
+            }
+          }
+        }
         await handleApi(req, res, url);
       } catch (err) {
         const status = err.statusCode ?? 500;
@@ -101,6 +139,14 @@ export function createHttpServer({ webRoot } = {}) {
     }
 
     if (url.pathname.startsWith('/media/')) {
+      /*
+        An upload is a picture, a sound, a font — never a page. Opened on its
+        own (an SVG can carry a script), it runs nothing and reaches nothing,
+        so a file somebody uploaded cannot act with the streamer's sign-in.
+        Drawn in a page, as it always is, these change nothing.
+      */
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; font-src 'self'; media-src 'self'");
       serveFile(res, path.join(config.assetsDir, url.pathname.slice('/media/'.length)), config.assetsDir, { req, freshFor: 30 });
       return;
     }
@@ -121,6 +167,66 @@ export function createHttpServer({ webRoot } = {}) {
 
     json(res, 404, { error: 'Not found' });
   });
+}
+
+// ------------------------------------------------------------------- sign-in
+
+/*
+  What a moderator's sign-in may ask of the API: the uploads the screens they
+  use make. Everything else here — the whole configuration, the logs, the
+  test endpoints — is the streamer's.
+*/
+const MOD_API = new Set(['GET /api/assets', 'POST /api/assets/*']);
+/** And an OBS page's: the list of uploads, for the fonts it draws with. */
+const PAGE_API = new Set(['GET /api/assets']);
+
+async function handleAuth(req, res, url) {
+  const route = `${req.method} ${url.pathname}`;
+  // Signing in or out only from a page on this address: another site cannot sign somebody out, or in as itself.
+  if (req.method === 'POST' && !auth.originAllowed(req)) return json(res, 403, { error: 'not from this address', code: 'signin_origin' });
+  switch (route) {
+    // What the sign-in page needs before anyone is signed in: whether it is on, and which Twitch app to ask.
+    case 'GET /auth/config':
+      return json(res, 200, { enabled: auth.isEnabled(), clientId: twitch.getCredentials().clientId || '', scopes: auth.SIGN_IN_SCOPES, channel: twitch.getCredentials().login || '' });
+
+    case 'GET /auth/me': {
+      const me = auth.identify(req);
+      // The browser's cookie lasts as long as the sign-in: renewed here, as the server renews the sign-in on use.
+      if (me?.sessionId) res.setHeader('Set-Cookie', auth.sessionCookie(req, me.sessionId, auth.SESSION_DAYS[me.role] || 7));
+      return json(res, 200, me ? { role: me.role, login: me.login, name: me.name, via: me.via } : { role: null });
+    }
+
+    // Sign this browser in as the owner while sign-in is off (auth.claimOwner): what everybody is then anyway.
+    case 'POST /auth/claim': {
+      const s = auth.claimOwner(auth.identify(req));
+      res.setHeader('Set-Cookie', auth.sessionCookie(req, s.id, s.days));
+      return json(res, 200, { ok: true, role: s.role });
+    }
+
+    case 'POST /auth/twitch': {
+      const { token } = await readJson(req);
+      const s = await auth.signInWithTwitch(token);
+      res.setHeader('Set-Cookie', auth.sessionCookie(req, s.id, s.days));
+      return json(res, 200, { ok: true, role: s.role, login: s.login });
+    }
+
+    case 'POST /auth/owner-key': {
+      const { key } = await readJson(req);
+      const s = auth.signInWithOwnerKey(key);
+      res.setHeader('Set-Cookie', auth.sessionCookie(req, s.id, s.days));
+      return json(res, 200, { ok: true, role: s.role });
+    }
+
+    case 'POST /auth/signout': {
+      const me = auth.identify(req);
+      if (me?.sessionId) auth.signOut(me.sessionId);
+      res.setHeader('Set-Cookie', auth.clearCookie(req));
+      return json(res, 200, { ok: true });
+    }
+
+    default:
+      return json(res, 404, { error: `No route for ${route}` });
+  }
 }
 
 // --------------------------------------------------------------------- API

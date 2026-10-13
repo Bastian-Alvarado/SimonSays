@@ -200,6 +200,30 @@ export function savedData(groupId, name) {
   return (state?.profiles || []).filter((p) => p.data && name in p.data).map((p) => p.data[name]);
 }
 
+/** A collection's name in the snapshot the pages are sent, where it differs. */
+const SNAPSHOT_KEY = { actions: 'streamActions', dock_buttons: 'dockButtons', alerts: 'alertConfigs', avatar_sources: 'avatarSources' };
+
+/**
+ * A profile's contents, to look at without switching to it: a moderator
+ * browsing another overlay profile sees its layouts, while the stream — and
+ * the streamer — stay on the live one (2.0.0). Keyed as the snapshot keys
+ * them, so a page can lay them over what it has. The live profile answers
+ * `live: true` and no data: what is live is what the page already has.
+ */
+export function peekProfile(groupId, profileId) {
+  const group = groupById(groupId);
+  if (!group) throw new Error(`no such profile group: ${groupId}`);
+  const state = db.get()[groupId];
+  const target = state.profiles.find((p) => p.id === profileId);
+  if (!target) throw new Error(`no such profile: ${profileId}`);
+  if (target.id === state.active) return { id: target.id, name: target.name, live: true, data: {} };
+  const data = {};
+  for (const name of group.collections) {
+    if (target.data && name in target.data) data[SNAPSHOT_KEY[name] || name] = structuredClone(target.data[name]);
+  }
+  return { id: target.id, name: target.name, live: false, data };
+}
+
 /** Read every collection in a group as it stands right now. */
 function snapshotLive(group) {
   const data = {};

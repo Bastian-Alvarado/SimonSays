@@ -15,6 +15,11 @@ import { isSameMachine } from '../core/net.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import { refusal } from '../core/refusal.js';
+import * as auth from './auth.js';
+import * as modDecks from '../engine/mod-decks.js';
+import * as modActivity from '../engine/mod-activity.js';
+import * as twitchMod from '../engine/twitch-mod.js';
+import { getCollection } from '../core/store.js';
 import { C2S, S2C } from '../../shared/protocol.js';
 import { VERSION } from '../../shared/version.js';
 import { liveLayout } from '../../shared/live-layout.js';
@@ -205,6 +210,22 @@ export function initWebSocket(httpServer) {
   wss.on('error', (err) => log.error('websocket server error:', err.message));
 
   wss.on('connection', (ws, req) => {
+    // Who it is (api/auth.js), before anything is said: another website's page cannot borrow a sign-in, and nobody is let in unknown.
+    let who = null;
+    try {
+      if (!auth.originAllowed(req)) { ws.close(4403, 'not from this address'); return; }
+      who = auth.identify(req);
+    } catch (err) {
+      // Never left open and unknown: a connection the server could not place is closed.
+      log.warn('could not tell who a connection was:', err.message);
+      ws.close(1011, 'try again');
+      return;
+    }
+    if (!who) { ws.close(4401, 'sign in first'); return; }
+    ws.who = who;
+    // A moderator back after a while is asked about again first; until that is answered, what they send waits.
+    ws.ready = who.role === 'mod' ? auth.recheckMod(who) : Promise.resolve(true);
+
     const addr = req.socket.remoteAddress || '';
     // Loopback *or* this machine's own LAN address: the dashboard is normally
     // opened at the latter, since that is the URL the docks and the deck use.
@@ -214,14 +235,21 @@ export function initWebSocket(httpServer) {
     // Replaced by the real value when HELLO arrives a moment later.
     ws.mode = 'dashboard';
 
-    clients.add(ws);
     ws.isAlive = true;
-    log.info(`client connected (${clients.size} total) from ${addr}`);
 
-    send(ws, S2C.SNAPSHOT, buildSnapshot());
+    // Told the stream only once it is known who it is.
+    ws.ready.then((ok) => {
+      if (!ok) { ws.close(4401, 'sign in again'); return; }
+      if (ws.readyState !== WebSocket.OPEN) return;
+      clients.add(ws);
+      log.info(`client connected (${clients.size} total) from ${addr}${who.via === 'open' ? '' : ` as ${who.login || who.role}`}`);
+      send(ws, S2C.ME, meOf(ws));
+      send(ws, S2C.SNAPSHOT, buildSnapshot());
+    });
 
     ws.on('pong', () => { ws.isAlive = true; });
-    ws.on('message', (raw) => handleMessage(ws, raw));
+    // Nothing more from a connection whose sign-in ended, in the moment before it is gone (ws.revoked, below).
+    ws.on('message', (raw) => { ws.ready.then((ok) => ok && !ws.revoked && ws.readyState === WebSocket.OPEN && handleMessage(ws, raw)); });
     ws.on('close', () => {
       clients.delete(ws);
       // Re-elected lazily on the next device action.
@@ -238,9 +266,16 @@ export function initWebSocket(httpServer) {
       if (!ws.isAlive) { ws.terminate(); clients.delete(ws); continue; }
       ws.isAlive = false;
       try { ws.ping(); } catch { /* terminated below on next sweep */ }
+      // A moderator connected for hours is asked about again too, when theirs is due (auth.recheckMod says when).
+      if (ws.who?.role === 'mod') auth.recheckMod(ws.who).then((ok) => { if (!ok) letGo(ws, 'sign in again'); }).catch(() => {});
     }
   }, 30_000);
   wss.on('close', () => clearInterval(heartbeat));
+
+  // A sign-in ended — signed out, a moderator let go, the owner key changed, sign-in switched on: its connections go now.
+  auth.onSessionsEnded((ids) => {
+    for (const c of clients) if (c.who?.sessionId && ids.includes(c.who.sessionId)) letGo(c);
+  });
 
   wireBusToClients();
   log.info('hub ready');
@@ -250,7 +285,88 @@ export function initWebSocket(httpServer) {
 
 function send(ws, type, payload, meta = {}) {
   if (ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({ type, payload, ...meta }));
+  ws.send(JSON.stringify({ type, payload: forViewer(ws, type, payload), ...meta }));
+}
+
+/**
+ * What one connection is sent of a snapshot or a change: a page OBS shows
+ * without what is not for it (forPage), a moderator with their own dock and
+ * deck in place of the streamer's (engine/mod-decks.js), anybody else as it is.
+ */
+function forViewer(ws, type, payload) {
+  if (ws.who?.role === 'page') return forPage(type, payload);
+  if (ws.who?.role === 'mod') return forMod(ws.who.userId, type, payload);
+  return payload;
+}
+function forMod(userId, type, payload) {
+  if (![S2C.SNAPSHOT, S2C.CONFIG_PATCH, S2C.REPLY].includes(type) || !payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  // The deck goes with the actions: a change to them can take a button with it, so the moderator's deck is read again.
+  const touches = modDecks.MOD_OWN.some((k) => k in payload) || (type !== S2C.REPLY && 'streamActions' in payload);
+  if (!touches) return payload;
+  const own = modDecks.dockFor(userId);
+  const out = { ...payload };
+  for (const k of modDecks.MOD_OWN) if (k in payload || type === S2C.SNAPSHOT || (k === 'dockButtons' && 'streamActions' in payload)) out[k] = own[k];
+  return out;
+}
+
+/** A Twitch chatter's name by their id, from the chat the server has seen. */
+function chatterName(userId) {
+  const hit = (getCollection('recent_chat')?.get() || []).find((m) => m?.platform === 'twitch' && String(m.userId) === String(userId));
+  return hit ? String(hit.user || '') : '';
+}
+
+/** An action's or a command's name, by its id, for the record of what a moderator did. */
+function nameOf(id) {
+  const all = [...(getCollection('actions')?.get() || []), ...(getCollection('commands')?.get() || [])];
+  const hit = all.find((x) => x?.id === id);
+  return hit ? String(hit.name || hit.trigger || '') : '';
+}
+
+/**
+ * The Moderators screen's list: everybody who has signed in as a moderator,
+ * whether they are here now (an open connection), whether they made the dock
+ * their own, and who is turned away.
+ */
+function moderatorsNow() {
+  const { signedIn, blocked } = auth.moderators();
+  const online = new Map();
+  for (const c of clients) if (c.who?.role === 'mod' && c.who.userId) online.set(c.who.userId, (online.get(c.who.userId) || 0) + 1);
+  return {
+    enabled: auth.isEnabled(),
+    moderators: signedIn.map((m) => ({ ...m, online: online.get(m.userId) || 0, ownDock: modDecks.hasOwn(m.userId) })),
+    blocked,
+  };
+}
+
+/** A connection whose sign-in has ended: refused from now on (the message handler checks), and closed. */
+function letGo(c, reason = 'signed out') {
+  c.revoked = true;
+  try { c.close(4401, reason); } catch { /* already closing */ }
+}
+
+/** Something only one moderator's connections are to hear: a change to their own dock. */
+function sendToUser(userId, type, payload) {
+  for (const ws of clients) if (ws.who?.userId === userId && ws.who?.role === 'mod') send(ws, type, payload);
+}
+
+/*
+  What a page OBS shows is not sent: it draws the stream, and its key sits in
+  every link pasted into OBS — and from there into a screenshot or a help
+  chat. Not the actions' steps (a web request's headers, a webhook's
+  address), the dock's buttons, the relays, the Discord settings and logs,
+  the moderation log, the private go-live list or the updates.
+*/
+const PAGE_HIDDEN = [
+  'streamActions', 'laterSteps', 'dockButtons', 'dockGrid', 'relayConfig', 'twitchScopes',
+  'reactionRoleConfigs', 'discordButtonConfigs', 'welcomeGoodbyeConfig', 'roleMappings', 'roleActivityLog',
+  'roleSyncLog', 'pendingLinks', 'liveDms', 'announce', 'updates', 'moderation', 'moderationLog', 'automodHeld',
+];
+function forPage(type, payload) {
+  if (![S2C.SNAPSHOT, S2C.CONFIG_PATCH, S2C.REPLY].includes(type) || !payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  if (!PAGE_HIDDEN.some((k) => k in payload)) return payload;
+  const out = { ...payload };
+  for (const k of PAGE_HIDDEN) delete out[k];
+  return out;
 }
 
 /**
@@ -274,8 +390,24 @@ export function broadcast(type, payload) {
     try { body = { ...payload, profiles: engine.store.profileSummary() }; } catch { /* keep the patch */ }
   }
   const frame = JSON.stringify({ type, payload: body });
+  // The pages OBS shows get theirs without what is not for them (forPage), made once for all of them.
+  let pageFrame = null;
+  // And each moderator theirs, with their own dock (forMod), made once for each of them.
+  const modFrames = new Map();
   for (const ws of clients) {
-    if (ws.readyState === WebSocket.OPEN) ws.send(frame);
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    if (ws.who?.role === 'page') {
+      const trimmed = forPage(type, body);
+      pageFrame ??= trimmed === body ? frame : JSON.stringify({ type, payload: trimmed });
+      ws.send(pageFrame);
+    } else if (ws.who?.role === 'mod') {
+      const uid = ws.who.userId;
+      if (!modFrames.has(uid)) {
+        const own = forMod(uid, type, body);
+        modFrames.set(uid, own === body ? frame : JSON.stringify({ type, payload: own }));
+      }
+      ws.send(modFrames.get(uid));
+    } else ws.send(frame);
   }
 }
 
@@ -404,6 +536,8 @@ function buildConnections() {
 function buildSnapshot() {
   return {
     ...engine.snapshot(),
+    // What AutoMod is holding back, for the docks to decide on.
+    automodHeld: twitchMod.heldNow(),
     // Paused, how many wait, and whether alerts nothing shows are held.
     alertGate: alertGateState(),
     ...discordRoles.snapshot(),
@@ -443,6 +577,53 @@ function buildSnapshot() {
 
 // ------------------------------------------------------------------ inbound
 
+/** Who this connection is, for its own page: the role it has and whether sign-in is on at all. */
+const meOf = (ws) => ({ role: ws.who?.role || 'owner', login: ws.who?.login || '', name: ws.who?.name || '', via: ws.who?.via || 'open', signIn: auth.isEnabled() });
+
+/*
+  What each sign-in may send. A page OBS shows only draws the stream, so it
+  only says what it is and asks for the state. A moderator may do nearly
+  everything (the 2.0.0 plan); these stay the streamer's:
+    - their connections and accounts, the sign-in itself, backups and updates;
+    - the overlays: a moderator sees every layout and look, and can put a
+      layout live, but changes none of them (what runs in them during a
+      stream — the omnibar's bars, the viewer counter, the alerts — is
+      theirs to run, as the 2.0.0 plan has it) — nor the named pixel avatars
+      the layouts wear, the PNGtuber's settings, or Omnilayer's;
+    - the profiles: a moderator looks at another one (PROFILE_PEEK) without
+      switching, saving, or changing which is live for the streamer.
+  Some messages are both: an Omnilayer "go" or a PNGtuber face is running
+  the stream, its settings are not. Those are told apart by their op.
+*/
+const PAGE_MAY = new Set([C2S.HELLO, C2S.GET_SNAPSHOT]);
+const OWNER_ONLY = new Set([
+  C2S.SET_CREDENTIALS, C2S.PLATFORM_CONNECT, C2S.PLATFORM_DISCONNECT,
+  C2S.SPOTIFY_EXCHANGE_CODE, C2S.YOUTUBE_EXCHANGE_CODE, C2S.YOUTUBE_SET_SETTINGS, C2S.YOUTUBE_LOGOUT,
+  C2S.CONFIG_EXPORT, C2S.CONFIG_IMPORT, C2S.UPDATES, C2S.PIXEL_AVATARS,
+  C2S.SET_LAYOUTS, C2S.USER_THEMES, C2S.AVATAR_SOURCES, C2S.MODERATORS, C2S.DROIDCAM_SETTINGS,
+  C2S.PROFILE_SWITCH, C2S.PROFILE_CREATE, C2S.PROFILE_DUPLICATE, C2S.PROFILE_RENAME, C2S.PROFILE_DELETE, C2S.PROFILE_CAPTURE, C2S.PROFILE_REVERT,
+]);
+/** And the ops a moderator may not send in one that is otherwise theirs: signing the app in to Discord is the streamer's, like the other accounts. */
+const MOD_NOT_OPS = {
+  [C2S.DISCORD]: ['exchange_code'],
+};
+/** The ops a moderator may send in a message that is otherwise the streamer's settings. */
+const MOD_OPS = {
+  [C2S.OMNILAYER]: ['go', 'inspect', 'canvases'],
+  [C2S.MIC]: ['meter', 'face', 'dress', 'undress', 'action'],
+};
+export function mayAsk(who, type, payload) {
+  if (!who) return false;
+  if (who.role === 'owner') return true;
+  if (who.role === 'page') return PAGE_MAY.has(type);
+  if (who.role === 'mod') {
+    if (MOD_OPS[type]) return MOD_OPS[type].includes(payload?.op);
+    if (MOD_NOT_OPS[type]?.includes(payload?.op)) return false;
+    return type === C2S.AUTH || !OWNER_ONLY.has(type);
+  }
+  return false;
+}
+
 async function handleMessage(ws, raw) {
   let msg;
   try {
@@ -453,7 +634,17 @@ async function handleMessage(ws, raw) {
   }
 
   const { type, payload = {}, id } = msg;
-  const reply = (result) => id && send(ws, S2C.REPLY, result, { id });
+  const reply = (result) => {
+    // Carried out: on the record, if it was a moderator's and it changed something (engine/mod-activity.js).
+    if (ws.who?.role === 'mod') {
+      try {
+        // Who it was done to, for moderating: as the chat the server saw names them, by the id acted on.
+        const target = type === C2S.TWITCH_MOD && payload?.userId ? (chatterName(payload.userId) || `#${payload.userId}`) : '';
+        modActivity.record(ws.who, type, payload, { names: nameOf, target });
+      } catch (err) { log.warn('could not keep what a moderator did:', err.message); }
+    }
+    if (id) send(ws, S2C.REPLY, result, { id });
+  };
   const fail = (err) => {
     log.warn(`"${type}" failed: ${err.message}`);
     // A code, where there is one, lets the screen say it in its own language.
@@ -461,7 +652,58 @@ async function handleMessage(ws, raw) {
   };
 
   try {
+    if (!mayAsk(ws.who, type, payload)) throw refusal('signin_not_allowed', `"${type}" is not for this sign-in`);
     switch (type) {
+      // -------- sign-in (api/auth.js), the streamer's own
+      case C2S.AUTH: {
+        const op = payload?.op;
+        if (op === 'get') {
+          // The owner key only to a sign-in of the owner's own (authState): never to somebody who is the owner only because sign-in is off.
+          if (ws.who?.role !== 'owner') throw refusal('signin_owner_only', 'only the streamer can change sign-in');
+          return reply(auth.authState(ws.who));
+        }
+        if (op === 'enable') {
+          const state = auth.setEnabled(payload.on === true, ws.who);
+          reply(state);
+          // Everybody asked again who they are: with it on, somebody not signed in is let go; with it off, everyone is the owner again.
+          setTimeout(() => { for (const c of clients) if (c !== ws) c.close(4001, 'sign-in changed'); }, 200);
+          return;
+        }
+        if (op === 'new-key') {
+          const state = auth.newSecret(payload.which, ws.who);
+          reply(state);
+          // A new page key: the OBS pages on the old one are let go, and the links have to be pasted again.
+          if (payload.which === 'pageKey') for (const c of clients) if (c.who?.role === 'page') letGo(c, 'page key changed');
+          return;
+        }
+        if (op === 'signout') {
+          reply({ ok: true });
+          // Its connections are let go by the sign-in itself ending (onSessionsEnded, below).
+          if (ws.who?.sessionId) auth.signOut(ws.who.sessionId);
+          return;
+        }
+        throw refusal('unknown_request', `no sign-in op "${op}"`);
+      }
+
+      // -------- moderating Twitch chat, as whoever pressed (engine/twitch-mod.js)
+      case C2S.TWITCH_MOD:
+        return reply(await twitchMod.control(ws.who, payload));
+
+      // -------- the Moderators screen, the streamer's own
+      case C2S.MODERATORS: {
+        const op = payload?.op;
+        const userId = String(payload?.userId || '');
+        if (op === 'block' || op === 'unblock') auth.setBlocked(userId, op === 'block', ws.who, payload?.login);
+        else if (op === 'signout') auth.signOutUser(userId, ws.who);
+        else if (op === 'reset-dock') {
+          modDecks.resetFor(userId);
+          // Their open docks show the streamer's again at once.
+          sendToUser(userId, S2C.CONFIG_PATCH, modDecks.dockFor(userId));
+        } else if (op === 'activity') return reply({ entries: modActivity.list({ userId, limit: Number(payload?.limit) || 200 }) });
+        else if (op !== 'list') throw refusal('unknown_request', `no moderators op "${op}"`);
+        return reply(moderatorsNow());
+      }
+
       // -------- sync
       case C2S.HELLO:
         // Which surface this is — decides where audio and speech are sent.
@@ -521,6 +763,7 @@ async function handleMessage(ws, raw) {
         return reply(await tags.publishAll());
 
       case C2S.SET_DOCK_GRID:
+        if (ws.who?.role === 'mod') { sendToUser(ws.who.userId, S2C.CONFIG_PATCH, { dockGrid: modDecks.setFor(ws.who, 'dockGrid', payload) }); return reply({ ok: true }); }
         broadcast(S2C.CONFIG_PATCH, { dockGrid: engine.store.setDockGrid(payload) });
         return reply({ ok: true });
 
@@ -747,6 +990,8 @@ async function handleMessage(ws, raw) {
         return reply({ ok: true });
 
       case C2S.SET_CHAT_DOCK_SETTINGS:
+        // A moderator's dock is their own (engine/mod-decks.js): kept for them, told to them.
+        if (ws.who?.role === 'mod') { sendToUser(ws.who.userId, S2C.CONFIG_PATCH, { chatDockSettings: modDecks.setFor(ws.who, 'chatDockSettings', payload) }); return reply({ ok: true }); }
         // Not in PROFILED_KEYS: the dock is deliberately outside profiles, so
         // changing it must never mark a profile unsaved.
         broadcast(S2C.CONFIG_PATCH, { chatDockSettings: engine.store.setChatDockSettings(payload) });
@@ -769,6 +1014,10 @@ async function handleMessage(ws, raw) {
         engine.store.profileSwitch(payload?.group, payload?.id);
         broadcast(S2C.SNAPSHOT, buildSnapshot());
         return reply({ ok: true });
+
+      // A saved profile's contents, to look at without switching to it: a moderator browsing the overlays.
+      case C2S.PROFILE_PEEK:
+        return reply(engine.store.profilePeek(payload?.group, payload?.id));
 
       case C2S.PROFILE_CREATE:
         broadcast(S2C.CONFIG_PATCH, { profiles: engine.store.profileCreate(payload?.group, payload?.name) });
@@ -796,6 +1045,8 @@ async function handleMessage(ws, raw) {
         return reply({ ok: true });
 
       case C2S.SET_DOCK_BUTTONS:
+        // A moderator's deck is theirs: it never moves the streamer's buttons, nor marks their profile unsaved.
+        if (ws.who?.role === 'mod') { sendToUser(ws.who.userId, S2C.CONFIG_PATCH, { dockButtons: modDecks.setFor(ws.who, 'dockButtons', payload) }); return reply({ ok: true }); }
         broadcast(S2C.CONFIG_PATCH, { dockButtons: engine.store.setDockButtons(payload) });
         return reply({ ok: true });
 
@@ -869,10 +1120,14 @@ async function handleMessage(ws, raw) {
       */
       case C2S.SEND_CHAT: {
         const to = ['youtube', 'both'].includes(payload?.to) ? payload.to : 'twitch';
-        if (to === 'twitch') { await twitch.sayFromDock(payload.text, { useBot: payload.useBot }); return reply({ ok: true }); }
+        // A moderator, on Twitch, as themselves or as the bot — never as the streamer. YouTube has no bot, so there it is the channel.
+        const sayOnTwitch = (text) => (ws.who?.role === 'mod' && !payload.useBot
+          ? twitch.sayAsUser(text, auth.modChatToken(ws.who))
+          : twitch.sayFromDock(text, { useBot: payload.useBot }));
+        if (to === 'twitch') { await sayOnTwitch(payload.text); return reply({ ok: true }); }
         if (to === 'youtube') { await youtube.say(payload.text); return reply({ ok: true }); }
         const [tw, yt] = await Promise.allSettled([
-          twitch.sayFromDock(payload.text, { useBot: payload.useBot }),
+          sayOnTwitch(payload.text),
           youtube.say(payload.text, { sentToBoth: true }),
         ]);
         if (tw.status === 'rejected' && yt.status === 'rejected') throw tw.reason;

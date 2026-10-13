@@ -567,7 +567,7 @@ test('a locked layer is not offered to the pointer at all', () => {
     layer sitting over the canvas, so leaving it there would keep catching
     drags meant for whatever is on top of it.
   */
-  assert.ok(LAYOUTS_VIEW.includes('.filter((l) => l.visible && !l.locked && shownIn(l, format))'),
+  assert.ok(LAYOUTS_VIEW.includes('.filter((l) => !readOnly && l.visible && !l.locked && shownIn(l, format))'),
     'a locked layer still has a handle over it');
 });
 
@@ -730,3 +730,11 @@ test('and the library cannot write one onto it either', () => {
   }
 });
 
+
+test('the viewer counter\'s accent, left automatic, is each layout\'s own, as the other layers\' is — and the screen says so', () => {
+  const counter = fs.readFileSync(new URL('../../web/components/ViewerCount.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(counter.includes("const accent = style?.accentColor || 'var(--overlay-accent, #f43f5e)';"));
+  assert.ok(!counter.includes("style?.accentColor || '#f43f5e'"), 'no fixed pink in place of the layout\'s colour');
+  const screen = fs.readFileSync(new URL('../../web/components/views/ViewersView.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(screen.includes("autoLabel={key === 'accentColor' ? (t.colourFollowsLayout || 'follows the layout') : undefined}"));
+});

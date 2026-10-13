@@ -60,6 +60,7 @@ import { CHAT_FONTS } from '../../../shared/chat-style.js';
 import { talkChoices } from '../../../shared/talk-people.js';
 import { copyText } from '../../utils';
 import { ThemeConfig } from '../../types';
+import { pageLink } from '../../page-link';
 import {
   Check, Copy, ExternalLink, Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Lock, LockOpen, SquareDashed, Tag,
   MessageSquare, Bell, Radio, Clock, Users, BarChart3, Headphones, Music, MonitorPlay, Monitor, IdCard, Image as ImageIcon, Target, ListOrdered, MessageCircleQuestion, Type, Square, CopyPlus, Gamepad2, Smile, Mic, X,
@@ -182,7 +183,18 @@ const layerDetail = (layer: CanvasLayer): string => {
   return '';
 };
 
+/** Settings that are the streamer's to change, greyed out and unchangeable for a moderator (2.0.0). */
+const Locked = ({ on, children }: { on: boolean; children: React.ReactNode }) => (on
+  ? <fieldset disabled className="min-w-0 m-0 p-0 border-0" data-read-only>{children}</fieldset>
+  : <>{children}</>);
+
 interface LayoutsViewProps {
+  /**
+   * A moderator's view (2.0.0): every layout, layer and setting can be looked
+   * at, none changed. The server refuses the saves too; this is so nothing
+   * looks changed that is not.
+   */
+  readOnly?: boolean;
   layouts: CanvasLayout[];
   /* The uploaded pictures, for the image layer to choose from. */
   listAssets: () => Promise<any[]>;
@@ -258,7 +270,7 @@ const SaveAsTheme = ({ layout, system, t }: { layout: CanvasLayout; system: any;
 
 export const LayoutsView: React.FC<LayoutsViewProps> = ({
   layouts, setLayouts, system, obsScenes = [], obsCurrentScene = '', obsConnected = false, activeTheme, t,
-  listAssets, uploadAsset,
+  listAssets, uploadAsset, readOnly = false,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
@@ -355,6 +367,11 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
     : l) as CanvasLayout;
   /** Every save of the whole list goes through here, so no view is ever stored as a layout. */
   const saveLayouts = (list: CanvasLayout[]) => setLayouts(list.map(toStored));
+  // A moderator's edit, had one got past a greyed-out control (a drag, a key): put back what is saved, and save nothing.
+  if (readOnly) setLayouts = () => {
+    const stored = layoutsRef.current.find((l) => l.id === workingRef.current?.id);
+    if (stored) applyWorking(viewOf(JSON.parse(JSON.stringify(stored)), formatRef.current));
+  };
 
   const saved = layouts.find((l) => l.id === selectedId) || layouts[0] || null;
 
@@ -927,7 +944,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   const usingBindings = layouts.some((l) => l.scenes?.length) || Boolean(omni?.enabled);
   const shownUrl = usingBindings ? autoUrl : canvasUrl;
   // On the vertical side, the one for OBS's vertical canvas: the same source, drawing the vertical side.
-  const linkUrl = shownUrl && format === 'vertical' ? `${shownUrl}&format=vertical` : shownUrl;
+  const linkUrl = pageLink(shownUrl && format === 'vertical' ? `${shownUrl}&format=vertical` : shownUrl);
 
   const copyUrl = () => {
     copyText(linkUrl);
@@ -1660,7 +1677,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
         </div>
 
         {active && (
-          <div className="mt-3 xl:hidden">{layerEditor(layer)}</div>
+          <div className="mt-3 xl:hidden"><Locked on={readOnly}>{layerEditor(layer)}</Locked></div>
         )}
       </div>
     );
@@ -1691,7 +1708,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
             </button>
           ))}
         </div>
-        <Button icon={<Plus size={16} />} onClick={newLayout} disabled={atCapacity}>{t.layoutNew || 'New layout'}</Button>
+        {!readOnly && <Button icon={<Plus size={16} />} onClick={newLayout} disabled={atCapacity}>{t.layoutNew || 'New layout'}</Button>}
       </div>
 
       {!working ? (
@@ -1703,7 +1720,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
           <p className="text-xs text-zinc-500 max-w-sm mb-8">
             {t.layoutNoneHint || 'A layout holds your overlays in one place, so OBS only needs one browser source instead of one per overlay.'}
           </p>
-          <Button icon={<Plus size={16} />} onClick={newLayout} disabled={atCapacity}>{t.layoutNew || 'New layout'}</Button>
+          {!readOnly && <Button icon={<Plus size={16} />} onClick={newLayout} disabled={atCapacity}>{t.layoutNew || 'New layout'}</Button>}
         </div>
       ) : (
         <div className={EDITOR_GRID}>
@@ -1800,7 +1817,8 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                     // A locked layer is not offered to the pointer at all, so
                     // there is nothing over it to catch a drag meant for
                     // whatever sits on top.
-                    .filter((l) => l.visible && !l.locked && shownIn(l, format))
+                    // A moderator moves nothing, so there is nothing to grab: layers are picked from the list.
+                    .filter((l) => !readOnly && l.visible && !l.locked && shownIn(l, format))
                     // The selected layer’s handle goes last, so it is on top and
                     // can always be grabbed. Without this an alerts layer — which
                     // covers the whole canvas by design — sits over everything
@@ -1996,7 +2014,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                       <span className="min-w-0 truncate text-[10px] text-zinc-500">{layerDetail(chosen)}</span>
                     )}
                   </div>
-                  {layerEditor(chosen)}
+                  <Locked on={readOnly}>{layerEditor(chosen)}</Locked>
                 </>
               ) : chosenGroup ? (
                 <>
@@ -2005,7 +2023,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                     <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-zinc-200">{chosenGroup.name}</span>
                     <span className="text-[10px] text-zinc-500">{fill(t.layoutGroupCount || '{n} layers', { n: String(groupMembers.length) })}</span>
                   </div>
-                  {groupPanel}
+                  <Locked on={readOnly}>{groupPanel}</Locked>
                 </>
               ) : (
                 <p className="text-[10px] text-zinc-600 leading-relaxed">
@@ -2017,6 +2035,12 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
 
           {/* -------------------------------------------------- the panel */}
           <div className="space-y-4">
+            {readOnly && (
+              <p className="glass-panel rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[11px] text-amber-200 leading-relaxed" data-layouts-read-only>
+                {t.layoutsReadOnly || 'You can look at every layout, layer and setting here. Only the streamer changes them.'}
+              </p>
+            )}
+            <Locked on={readOnly}>
             <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-4">
               <label className="block">
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.layoutName || 'Name'}</span>
@@ -2159,6 +2183,8 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               />
             </div>
 
+            </Locked>
+
             {/* layers, front of the stack at the top of the list */}
             <div ref={layerOrder.listRef} className={`relative glass-panel rounded-3xl border border-zinc-800 p-5 space-y-3 ${layerOrder.held ? 'select-none' : ''}`}>
               {layerOrder.line}
@@ -2226,7 +2252,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   onShow={(visible) => patchGroup(unit.group, { visible })}
                   onDropMember={(uid, gap) => dropMember(unit.group, uid, gap)}
                   renderMember={layerRow}
-                  editor={groupPanel}
+                  editor={<Locked on={readOnly}>{groupPanel}</Locked>}
                   t={t}
                 />
               ) : layerRow(unit.layer as CanvasLayer, layerOrder)))}
@@ -2250,6 +2276,8 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               )}
             </div>
 
+            <Locked on={readOnly}>
+            <div className="space-y-4">
             {/* Omnilayer: this layout on stream, and the mode's settings */}
             <OmnilayerPanel
               omni={omni}
@@ -2330,6 +2358,9 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               )}
             </div>
 
+            </div>
+            </Locked>
+
             {/* the whole point: one URL for OBS */}
             <div className="glass-panel rounded-3xl border border-zinc-800 p-5">
               <div className="flex items-center gap-2 mb-2">
@@ -2364,14 +2395,14 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               own: styled here, a layer at a time, and then theirs to apply
               to any other layout from the Library.
             */}
-            <SaveAsTheme layout={working} system={system} t={t} />
+            {!readOnly && <SaveAsTheme layout={working} system={system} t={t} />}
 
-            <button
+            {!readOnly && (<button
               onClick={() => deleteLayout(working.id)}
               className="w-full py-2.5 rounded-xl border border-zinc-800 text-[9px] font-black uppercase tracking-widest text-zinc-600 hover:text-rose-500 hover:border-rose-900 transition-all"
             >
               {t.layoutDelete || 'Delete this layout'}
-            </button>
+            </button>)}
           </div>
         </div>
       )}
