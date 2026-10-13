@@ -563,7 +563,8 @@ export const PlanView = ({ plan, setPlan, planGoto, saved, savedControl, searchC
             </div>
             <div className="space-y-1">
               <div className={label}>{t.planAnswerText || 'Reply'}</div>
-              <CommittedInput type="text" value={answer.text} onCommit={(next) => save({ answer: { ...answer, text: next } })} className={field} />
+              <CommittedInput as="textarea" value={answer.text} onCommit={(next) => save({ answer: { ...answer, text: next } })} className={`${field} resize-y min-h-[52px]`} data-random-lines="plan-answer" />
+              <p className="text-[10px] text-zinc-600">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</p>
             </div>
           </div>
         )}

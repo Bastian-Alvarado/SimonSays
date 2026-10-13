@@ -61,10 +61,11 @@ test('a file from another application is refused', () => {
   assert.throws(() => engine.importConfig({ meta: { app: 'SomethingElse' }, collections: {} }), /not a SimonSays/i);
 });
 
-test('an old settings-only export says so rather than silently doing nothing', () => {
+test('a file with nothing to restore says so rather than silently doing nothing', () => {
+  // V1's settings-only export among them: 2.0.0 no longer names it, it is a file with no collections.
   assert.throws(
     () => engine.importConfig({ meta: { app: 'SimonSays', version: 1 }, data: { app_theme: 'light' } }),
-    /settings-only/i,
+    (err) => err.code === 'backup_empty',
   );
 });
 
@@ -126,8 +127,8 @@ test('a custom emoji written as markup matches what Discord sends', () => {
   assert.equal(emojiKey('<a:Minecraft:1199000000000000004>'), emojiKey(gatewayAnimated));
 });
 
-test('the older name:id spelling still matches', () => {
-  assert.equal(emojiKey('thinking:1199000000000000007'), emojiKey(gatewayCustom));
+test('the bare name:id an earlier key produced is no longer read as a custom emoji (2.0.0)', () => {
+  assert.notEqual(emojiKey('thinking:1199000000000000007'), emojiKey(gatewayCustom));
 });
 
 test('a renamed custom emoji still matches', () => {

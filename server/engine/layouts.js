@@ -179,19 +179,14 @@ const TEXT_VALIGN = ['top', 'middle', 'bottom'];
   layer's own default without one — and a value picked in it always shows,
   look or no look.
 
-  Layers saved before this stored the default in full (white, for a text
-  colour), which cannot be told apart from somebody choosing white. They are
-  read once as automatic wherever they hold that default — which is what they
-  showed under a look all along — and marked, so a white chosen after that
-  stays chosen.
+  Everything saved carries the mark of the settings it was saved under. Up to
+  2.0.0 a layer saved before this, with the default stored in full, was read
+  once as automatic; every install has long been through that, so the mark is
+  now only a record, for whatever change comes next.
 */
 export const SETTINGS_VERSION = 2;
-export const readSettings = (c) => (Number(c?.settingsVersion) || 1) >= SETTINGS_VERSION;
-/** A colour a look can decide: empty is automatic; before the mark, the old default was automatic too. */
-export const lookColour = (c, key, oldDefault) => {
-  const v = colour(c?.[key], '');
-  return !readSettings(c) && (v === '' || v.toLowerCase() === oldDefault) ? '' : v;
-};
+/** A colour a look can decide: empty is automatic. */
+export const lookColour = (c, key) => colour(c?.[key], '');
 
 function normaliseTextLayer(c) {
   return {
@@ -200,7 +195,7 @@ function normaliseTextLayer(c) {
     fontSize: bounded(c?.fontSize, 8, 400, 48),
     fontWeight: bounded(c?.fontWeight, 100, 900, 800),
     // Automatic when empty: the look's colour, or white.
-    color: lookColour(c, 'color', '#ffffff'),
+    color: lookColour(c, 'color'),
     settingsVersion: SETTINGS_VERSION,
     align: TEXT_ALIGN.includes(c?.align) ? c.align : 'left',
     verticalAlign: TEXT_VALIGN.includes(c?.verticalAlign) ? c.verticalAlign : 'middle',
@@ -280,8 +275,8 @@ function normalisePlayersLayer(c) {
     showState: c?.showState !== false,
     title: String(c?.title ?? '').trim().slice(0, 40),
     // Automatic when empty: the look's, or white on see-through black.
-    textColor: lookColour(c, 'textColor', '#ffffff'),
-    background: lookColour(c, 'background', '#09090bcc'),
+    textColor: lookColour(c, 'textColor'),
+    background: lookColour(c, 'background'),
     settingsVersion: SETTINGS_VERSION,
     radius: bounded(c?.radius, 0, 40, 10),
   };
@@ -305,8 +300,8 @@ function normalisePollLayer(c) {
     hint: String(c?.hint ?? '').trim().slice(0, 80),
     // Automatic when empty: the look's, or white on see-through black, and
     // the bars in the canvas accent.
-    textColor: lookColour(c, 'textColor', '#ffffff'),
-    background: lookColour(c, 'background', '#09090bcc'),
+    textColor: lookColour(c, 'textColor'),
+    background: lookColour(c, 'background'),
     barColor: colour(c?.barColor, ''),
     settingsVersion: SETTINGS_VERSION,
     radius: bounded(c?.radius, 0, 40, 12),
@@ -339,7 +334,7 @@ function normaliseVoiceLayer(c) {
       .map((h) => ({ id: String(h.id), name: String(h.name ?? '').trim().slice(0, 40) })),
     // Automatic when empty: the look's talking colour, or Discord green.
     // No look colours the names, so the text colour stays a plain colour.
-    glowColor: lookColour(c, 'glowColor', '#23a55a'),
+    glowColor: lookColour(c, 'glowColor'),
     textColor: colour(c?.textColor, '#ffffff'),
     settingsVersion: SETTINGS_VERSION,
   };
@@ -611,8 +606,8 @@ function normaliseGoal(c) {
     // Automatic when empty: the look's, or zinc-800 at 80% — so the empty
     // part of the bar reads as a track rather than as a black box on a
     // transparent overlay — and white for the text.
-    trackColor: lookColour(c, 'trackColor', '#27272acc'),
-    textColor: lookColour(c, 'textColor', '#ffffff'),
+    trackColor: lookColour(c, 'trackColor'),
+    textColor: lookColour(c, 'textColor'),
     settingsVersion: SETTINGS_VERSION,
     showNumbers: c?.showNumbers !== false,
     showPercent: c?.showPercent === true,
@@ -697,8 +692,8 @@ function normaliseNameplate(c) {
     accentColor: colour(c?.accentColor, ''),
     // Automatic when empty: the look's, or white words on a see-through black
     // plate (eight-digit hex is allowed, which is how that is see-through).
-    textColor: lookColour(c, 'textColor', '#ffffff'),
-    backgroundColor: lookColour(c, 'backgroundColor', '#09090bd9'),
+    textColor: lookColour(c, 'textColor'),
+    backgroundColor: lookColour(c, 'backgroundColor'),
     settingsVersion: SETTINGS_VERSION,
     align: NAMEPLATE_ALIGNMENTS.includes(c?.align) ? c.align : 'left',
     nameSize: bounded(c?.nameSize, 10, 160, 40),
@@ -1067,20 +1062,15 @@ const vertical = (incoming, layers) => {
  */
 export const DEFAULT_LAYOUTS = [];
 
-/** The kinds of layer whose settings carry the mark (see SETTINGS_VERSION). */
-const MARKED_KINDS = new Set(['text', 'goal', 'voice', 'nameplate', 'players', 'poll']);
-
 /**
- * How many layers were stored before their settings could be left automatic,
- * and so still hold an old default as though it had been chosen. Only saving
- * them fixes that, and layouts are read from disk as they are.
+ * How many layers wear an old copy of a Library look, which saving them
+ * brings up to the look's current text. Layouts are read from disk as they
+ * are, so only a save fixes them.
  */
-export function settingsBehind(layouts) {
+export function looksBehind(layouts) {
   if (!Array.isArray(layouts)) return 0;
   return layouts.reduce((n, l) => n + (l?.layers || [])
-    .filter((y) => (MARKED_KINDS.has(y?.type) && !readSettings(y.config))
-      // Or wearing an old copy of a look, which does not read the settings.
-      || supersededLook(y?.css) || supersededLook(y?.motionCss)).length, 0);
+    .filter((y) => supersededLook(y?.css) || supersededLook(y?.motionCss)).length, 0);
 }
 
 /** Validate a whole list, dropping anything malformed. */

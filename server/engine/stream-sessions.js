@@ -322,15 +322,5 @@ export function initStreamSessions() {
   }
 }
 
-export function stopStreamSessions() {
-  bus.off(EVENTS.EVENT, onEvent);
-  bus.off(EVENTS.CHAT, onChat);
-  bus.off(EVENTS.CHANNEL, onChannel);
-  bus.off('stream:moment', onMoment);
-  bus.off('people:merged', onMerged);
-  clearInterval(saveTimer);
-  clearTimeout(endTimer);
-}
-
 /** For tests: what a moment in time does, now. */
 export const _test = { onChat, onEvent, onChannel, onMoment, finish: () => finish(session()) };

@@ -633,7 +633,3 @@ export async function control(payload) {
   if (op === 'canvases') return listCanvases();
   throw refusal('bad_request', `omnilayer: unknown operation "${op}"`);
 }
-
-export function stopOmnilayer() {
-  clearTimeout(placeTimer);
-}

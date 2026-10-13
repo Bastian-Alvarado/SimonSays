@@ -91,12 +91,6 @@ export function historyOf(uid) {
   };
 }
 
-/** The same, for a platform account: whoever it belongs to. */
-export function historyOfAccount(platform, id) {
-  const uid = leveling.getAccounts()[`${platform}:${id}`];
-  return uid ? historyOf(uid) : null;
-}
-
 // ------------------------------------------------------------ what feeds it
 
 /** The stream's own chats, where a first message sets an action off. A Discord channel is taking part, not saying hello on stream. */

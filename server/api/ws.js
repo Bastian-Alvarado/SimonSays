@@ -279,8 +279,6 @@ export function broadcast(type, payload) {
   }
 }
 
-export const clientCount = () => clients.size;
-
 /**
  * Every page let go, for a shutdown: an open socket keeps the HTTP server
  * from closing, so without this every stop waited out its timer. The pages
@@ -370,7 +368,8 @@ function wireBusToClients() {
       log.warn(`device action "${d.kind}" requested but no client is connected to perform it`);
       return;
     }
-    send(sink, d.kind === 'play_audio' ? S2C.PLAY_AUDIO : S2C.PLAY_TTS, d);
+    // A Play sound step's file goes the same way: to the one surface that speaks, as alert sounds do.
+    send(sink, d.kind === 'play_audio' ? S2C.PLAY_AUDIO : d.kind === 'play_sound' ? S2C.PLAY_SOUND : S2C.PLAY_TTS, d);
   });
 }
 

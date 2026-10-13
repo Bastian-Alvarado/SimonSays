@@ -339,7 +339,9 @@ export const LevelsView: React.FC<LevelsViewProps> = ({ activeTheme, t, system }
                                     onChange={(e) => handleConfigChange('levelUpMessage', e.target.value)} 
                                     className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-xs text-white focus:border-current-accent outline-none resize-none"
                                     placeholder="Congrats {user} on level {level}!"
+                                    data-random-lines="level-up"
                                 />
+                                <p className="text-[10px] text-zinc-600">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</p>
                                 <div className="flex gap-2">
                                     {['{user}', '{level}'].map(v => (
                                         <button key={v} onClick={() => handleConfigChange('levelUpMessage', configForm.levelUpMessage + v)} className="text-[9px] bg-zinc-800 px-2 py-1 rounded text-zinc-400 hover:text-white">{v}</button>

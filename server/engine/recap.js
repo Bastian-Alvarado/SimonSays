@@ -59,12 +59,6 @@ export function initRecap() {
   bus.on(EVENTS.STAT, onStat);
 }
 
-export function stopRecap() {
-  bus.off(EVENTS.EVENT, onEvent);
-  bus.off(EVENTS.CHAT, onChat);
-  bus.off(EVENTS.STAT, onStat);
-}
-
 export const getTally = () => tally?.get() ?? emptyTally();
 
 function onEvent(e, now = Date.now()) {

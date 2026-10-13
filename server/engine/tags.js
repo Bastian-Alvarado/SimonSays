@@ -218,12 +218,6 @@ function writeFiles() {
   publishAll().catch((err) => log.warn('publishing tags failed:', err.message));
 }
 
-export function resetTags() {
-  tags.set(structuredClone(EMPTY));
-  writeFiles();
-  bus.emit(EVENTS.TAGS, tags.get());
-}
-
 // ------------------------------------------------------------------- stats
 
 /**

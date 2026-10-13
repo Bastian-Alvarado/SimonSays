@@ -52,9 +52,8 @@ The part that used to live in the browser.
   shadowed by `!top`) and permissions.
 - **`cooldowns.js`** — global and per-user, with role-based bypass. In-memory
   by design; cooldowns should reset on restart.
-- **`conditions.js`** — condition evaluation. Normalises V2's legacy
-  single-condition shape on *read*, so old saved actions keep working without a
-  destructive migration.
+- **`conditions.js`** — condition evaluation: a list of checks, every one or
+  any of them.
 - **`variables.js`** — `{user}` interpolation and `user.isSub` / `random.1-100`
   resolution. Unknown paths are left intact so typos are visible rather than
   silently becoming `undefined`.

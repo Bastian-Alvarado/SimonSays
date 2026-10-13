@@ -237,30 +237,11 @@ test('a plan note can be shown, and does not cost the line it annotates', () => 
   assert.equal(normaliseLayouts([{ id: 'q', layers: [{ type: 'plan' }] }])[0].layers[0].config.notesOwnLine, false);
 });
 
-test('a plan layer that never chose a mode is moved to the new default once', () => {
-  /*
-    Every save writes a mode, so a layer made before there was a screen to
-    pick one on holds the default of its day as though it had been asked for.
-    Changing the default could therefore never reach a plan that already
-    existed. This moves those, once, and records that it happened — from here
-    "upcoming" is an answer somebody gave, and answers are left alone.
-  */
+test('a plan layer\'s mode is read as stored: the one-time move from "upcoming" is gone with 2.0.0', () => {
+  // Every install was moved long since, and "upcoming" is now only ever an answer somebody gave.
   const src = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
-  const at = src.indexOf('doneAlready');
-  assert.ok(at > 0, 'the one-time move is gone');
-  const move = src.slice(at, src.indexOf('profiles.initProfiles'));
-  assert.ok(move.includes('db.upgrades.get()') && move.includes('db.upgrades.set('),
-    'nothing records that the move ran, so it would run again over a chosen value');
-  assert.ok(move.includes("mode !== " + "'upcoming'"),
-    'the move no longer leaves every other answer alone');
-  assert.ok(move.includes("mode: " + "'recap'"),
-    'the move no longer lands on the new default');
-  assert.ok(src.indexOf('doneAlready') < src.indexOf('profiles.initProfiles'),
-    'the move runs after the profiles have already rewritten the collections');
-
-  /* And it travels, so a restore elsewhere does not redo it. */
-  assert.ok(MANIFEST.some((e) => e.name === 'upgrades'),
-    'the record of what has been done is left out of a backup');
+  assert.ok(!src.includes('doneAlready') && !src.includes("collection('upgrades'"), 'the one-time move, or its record, is back');
+  assert.ok(!MANIFEST.some((e) => e.name === 'upgrades'), 'a backup still carries the record of a move that no longer exists');
 });
 
 test('the plan line being replaced is given time to leave', () => {

@@ -479,10 +479,4 @@ export function useReelForTests(ms) {
   deps = { ...deps, reelMs: ms };
 }
 
-export function stopGiveaway() {
-  if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
-  if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
-  if (tellTimer) { clearTimeout(tellTimer); tellTimer = null; }
-}
-
 export const snapshot = () => ({ giveaway: getState(), giveawaySettings: getSettings() });

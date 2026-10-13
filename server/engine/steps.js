@@ -19,6 +19,7 @@ import { evaluate } from './conditions.js';
 import { interpolate, nowPlayingVars } from './variables.js';
 import { createLogger } from '../core/logger.js';
 import { bus, EVENTS } from '../core/bus.js';
+import { pickLine } from '../../shared/pick-line.js';
 import { OVERLAY_VARS } from '../../shared/overlay-vars.js';
 import { youtubeCategoryName } from '../../shared/youtube-categories.js';
 
@@ -100,6 +101,9 @@ export async function runSteps(steps, ctx, services, runState = { depth: 0, visi
   // `{plan.current}` and the rest, present in every action the way the Spotify
   // ones are, so a message can say where the plan is without moving it.
   if (ctx && ctx.plan === undefined && services?.plan?.vars) ctx.plan = services.plan.vars();
+  // {random.user}: somebody who has been talking lately, picked once for the whole run (chatters.js).
+  // Kept beside the {random.1-100} numbers, which are read fresh each time and never land here.
+  if (ctx && ctx.random === undefined && services?.chatters?.pick) ctx.random = { user: services.chatters.pick(ctx.user?.name || '') };
 
   for (const step of steps) {
     // "Stop here" ends the action: the rest of this list, and every list it sits in.
@@ -156,25 +160,14 @@ export function pickChoice(choices, roll = Math.random()) {
   return weighted[weighted.length - 1].c;
 }
 
-/**
- * One line at random from a message box holding several alternatives.
- *
- * Applied to every step whose editor gives a textarea rather than a
- * single-line input, since a textarea is the thing that lets you type
- * alternatives in the first place: twitch_chat, discord_webhook and
- * browser_tts. The remaining text fields — stream title, OBS scene and text
- * source, browser URL, Spotify URI — are single-line inputs holding one
- * specific value, and are deliberately left alone.
- *
- * A box with one line (or none) is returned untouched, whitespace and all, so
- * every existing single-line message behaves exactly as before.
- */
-function pickLine(raw) {
-  if (typeof raw !== 'string' || !raw.includes('\n')) return raw;
-  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (lines.length <= 1) return lines[0] ?? raw;
-  return lines[Math.floor(Math.random() * lines.length)];
-}
+/*
+  pickLine (shared/pick-line.js): one line at random from a box of
+  alternatives. Applied to every step whose editor gives a textarea rather
+  than a single-line input, since a textarea is the thing that lets you type
+  alternatives in the first place. The remaining text fields — stream title,
+  OBS scene and text source, browser URL, Spotify URI — are single-line inputs
+  holding one specific value, and are deliberately left alone.
+*/
 
 /**
  * Where a chat step's message goes: 'twitch' (also anything older or unknown,
@@ -288,6 +281,41 @@ async function runStep(step, ctx, services, runState) {
     case 'later':
       services.later?.schedule(step, ctx, runState);
       return;
+
+    /*
+      A sound file, played where the alerts' sounds are: the overlay page in
+      OBS that shows them, so the stream hears it, or the dock when none is
+      open (api/ws.js picks). No alert, no queue: "!airhorn" goes off at once.
+    */
+    case 'play_sound': {
+      const url = String(cfg.soundUrl || '').trim();
+      if (!url) return;
+      bus.emit(EVENTS.DEVICE, { kind: 'play_sound', url, volume: clampNumber(cfg.soundVolume, 0, 1, 1) });
+      return;
+    }
+
+    /*
+      Ask a web address, and keep the answer for the steps after it as
+      {response}, {response.status}, {response.json.…} (web-fetch.js). Values
+      put into the address are made safe for one, so {input} can be typed by
+      a viewer; the body and the headers are put in as they are.
+    */
+    case 'web_request': {
+      const fetchFor = services.webFetch || ((req) => import('./web-fetch.js').then((m) => m.fetchForStep(req)));
+      const url = interpolate(String(cfg.url || ''), ctx, encodeURIComponent);
+      const res = await fetchFor({
+        url,
+        method: cfg.method === 'POST' ? 'POST' : 'GET',
+        body: interpolate(String(cfg.body || ''), ctx),
+        headers: interpolate(String(cfg.headers || ''), ctx),
+      });
+      ctx.response = res;
+      // Only the host in the log: an address often carries its API key.
+      let host = '';
+      try { host = new URL(url).host; } catch { /* not an address: the error says so */ }
+      if (!res.ok) log.warn(`web request to ${host || 'an unreadable address'} failed: ${res.error || res.status}`);
+      return;
+    }
 
     // ---------- Twitch ----------
     /*

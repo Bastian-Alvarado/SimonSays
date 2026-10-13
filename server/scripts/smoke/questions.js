@@ -109,10 +109,11 @@ test('adding one by hand puts it in Waiting, credited as typed, and says why whe
 });
 
 test('the settings refuse what cannot work', () => {
-  const clean = questions.cleanSettings({ ask: { trigger: 'pregunta sin signo', cooldownSeconds: -5, replyText: 'x'.repeat(500) }, atStreamEnd: 'sometimes' });
+  const clean = questions.cleanSettings({ ask: { trigger: 'pregunta sin signo', cooldownSeconds: -5, replyText: 'x'.repeat(1500) }, atStreamEnd: 'sometimes' });
   assert.equal(clean.ask.trigger, '!pregunta', 'a trigger that is not a !word was kept');
   assert.equal(clean.ask.cooldownSeconds, 0);
-  assert.equal(clean.ask.replyText.length, 200);
+  // Room for a few replies, one per line: one is picked each time (random-lines.js).
+  assert.equal(clean.ask.replyText.length, 1000);
   assert.equal(clean.atStreamEnd, 'keep');
   assert.equal(questions.cleanSettings({ ask: { trigger: '!Ask', cooldownSeconds: 99999 } }).ask.cooldownSeconds, 3600);
   assert.equal(questions.cleanSettings({ ask: { trigger: '!Ask' } }).ask.trigger, '!ask');

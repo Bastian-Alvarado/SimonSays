@@ -17,6 +17,7 @@ import { collection } from '../core/store.js';
 import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import * as twitch from '../platforms/twitch.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('twitch-extras');
 
@@ -86,12 +87,13 @@ export function cleanExtras(incoming, before = DEFAULT_TWITCH_EXTRAS) {
       minViewers: bounded(s.minViewers, 0, 100000, 1),
       native: s.native !== false,
       chat: s.chat !== false,
-      message: String(s.message ?? '').slice(0, 450),
+      // Room for a few alternatives, one per line.
+      message: String(s.message ?? '').slice(0, 2000),
       cardSeconds: bounded(s.cardSeconds, 0, 60, 12),
     },
     clip: {
       chat: c.chat !== false,
-      message: String(c.message ?? '').slice(0, 300),
+      message: String(c.message ?? '').slice(0, 1000),
     },
   };
 }
@@ -220,8 +222,11 @@ export async function shoutout(target, { viewers = null, auto = false } = {}) {
   }
   if (cfg.chat && cfg.message) {
     try {
-      // With no game to name, the part of the line that names it goes: "… — estaba jugando {game}".
-      const line = vars.game ? cfg.message : cfg.message.replace(/\s*[—,-]?\s*[^—.!?,]*\{game\}[^—.!?,]*/, '');
+      // One of the lines written, when there are several (shared/pick-line.js), picked first so the
+      // game is taken out of the one that is said. With no game to name, the part of the line that
+      // names it goes: "… — estaba jugando {game}".
+      const picked = pickLine(cfg.message);
+      const line = vars.game ? picked : picked.replace(/\s*[—,-]?\s*[^—.!?,]*\{game\}[^—.!?,]*/, '');
       await api.say(fill(line, vars));
     } catch (err) {
       errors.push(`chat: ${err.message}`);
@@ -272,7 +277,7 @@ export async function clip({ post = false } = {}) {
   const cfg = getExtras().clip;
   if (post && cfg.chat && cfg.message) {
     try {
-      await api.say(fill(cfg.message, { url: made.url }));
+      await api.say(fill(pickLine(cfg.message), { url: made.url }));
     } catch (err) {
       log.warn(`could not post the clip: ${err.message}`);
     }

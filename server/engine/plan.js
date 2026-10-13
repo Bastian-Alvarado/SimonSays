@@ -37,6 +37,7 @@ import { formatLength, liveLength } from '../../shared/plan-format.js';
 import { sameGame } from '../../shared/run.js';
 import * as commands from './commands.js';
 import { refusal } from '../core/refusal.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('plan');
 
@@ -207,7 +208,8 @@ export function cleanPlan(incoming, before = DEFAULT_PLAN) {
     answer: {
       enabled: answer.enabled !== false,
       trigger: cleanTrigger(answer.trigger),
-      text: clip(answer.text, 300) || DEFAULT_ANSWER.text,
+      // Room for a few alternatives, one per line (answerFor picks one).
+      text: clip(answer.text, 1000) || DEFAULT_ANSWER.text,
     },
     recapToDiscord: (incoming?.recapToDiscord ?? before.recapToDiscord) === true,
     recap: before.recap ?? null,
@@ -499,7 +501,8 @@ export function answerFor(plan = getPlan()) {
   if (!plan.items?.length) return 'Todavía no hay un plan para hoy.';
   const vars = planVars(plan);
   if (!vars.current && !vars.next) return '¡Ya terminamos todo lo del plan de hoy!';
-  const text = withDefaults(plan).answer.text;
+  // One of the answers written, when there are several (shared/pick-line.js).
+  const text = pickLine(withDefaults(plan).answer.text);
   const parts = text.split(/\s*[·|]\s*/).filter((part) => {
     const named = part.match(/\{plan\.(current|next|previous)\}/g) || [];
     return !named.length || named.some((n) => vars[n.slice(6, -1)]);

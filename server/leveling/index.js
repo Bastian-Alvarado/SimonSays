@@ -18,6 +18,7 @@ import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import * as discord from '../platforms/discord.js';
 import * as twitch from '../platforms/twitch.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('leveling');
 
@@ -78,8 +79,6 @@ export function initLeveling() {
   accounts = collection('accounts', {});
   cfg = collection('xp_config', DEFAULT_CONFIG);
 
-  migrateLegacy();
-
   const onMessage = (chat) => {
     if (!cfg.get().enabled) return;
     // Discord channels can be excluded from XP; other platforms have no
@@ -95,34 +94,6 @@ export function initLeveling() {
   bus.on('discord:message_elsewhere', onMessage);
 
   log.info(`ready — ${Object.keys(users.get()).length} users tracked`);
-}
-
-/** One-time import of the V2 `xp_data.json` shape. */
-function migrateLegacy() {
-  const legacy = collection('xp_data', null).get();
-  if (!legacy || Object.keys(users.get()).length > 0) return;
-
-  log.info('migrating legacy xp_data into the unified identity store');
-  const u = {};
-  const a = {};
-
-  for (const [key, profile] of Object.entries(legacy)) {
-    const uid = newUid();
-    u[uid] = {
-      id: uid,
-      username: profile.username,
-      avatar: profile.avatar,
-      xp: profile.xp || 0,
-      level: profile.level || 0,
-      lastXpTime: profile.lastXpTime || 0,
-      createdAt: Date.now(),
-    };
-    a[key] = uid;
-  }
-
-  users.set(u);
-  accounts.set(a);
-  log.info(`migrated ${Object.keys(u).length} users`);
 }
 
 const newUid = () => `u_${Math.random().toString(36).slice(2, 11)}`;
@@ -223,7 +194,8 @@ async function grantRewards(uid, level, chat) {
 
   // A Discord mention is safe verbatim; a raw username is not.
   const who = discordId ? `<@${discordId}>` : discord.sanitise(chat.user);
-  const text = String(c.levelUpMessage || '')
+  // One of the messages written, when there are several (shared/pick-line.js).
+  const text = String(pickLine(c.levelUpMessage || ''))
     .replace(/\{user\}/g, who)
     .replace(/\{level\}/g, String(level));
 

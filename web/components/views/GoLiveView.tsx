@@ -163,8 +163,8 @@ const LiveDmsPanel = ({ state, control, channels, botConnected, t }: { state?: a
       </div>
       <p className="text-[11px] text-zinc-500 leading-relaxed">{t.liveDmsHint || 'Viewers press a button on a sign-up post in Discord, choosing where they watch, and get a direct message with that link when you go live — no ping for the whole server. Each message has a button to stop.'}</p>
       <label className="space-y-1 block"><span className={tag}>{t.liveDmsMessage || 'The message'}</span>
-        <input value={message} onChange={(e) => setMessage(e.target.value)} onBlur={() => message !== s.message && save({ message })} className={box} />
-        <span className="block text-[10px] text-zinc-600">{t.liveDmsVars || '{streamer}, {title}, {game} and {platform} — the link is a button under it.'}</span></label>
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} onBlur={() => message !== s.message && save({ message })} className={`${box} resize-y min-h-[52px]`} data-random-lines="live-dm" />
+        <span className="block text-[10px] text-zinc-600">{t.liveDmsVars || '{streamer}, {title}, {game} and {platform} — the link is a button under it.'} {t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</span></label>
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2"><span className="text-[10px] text-zinc-500">{t.liveDmsDelay || 'Wait after OBS starts (s)'}</span>
           <input type="number" min={0} max={600} value={s.delaySec} onChange={(e) => save({ delaySec: Number(e.target.value) })} className="w-20 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-[11px] text-zinc-200" /></label>
@@ -337,7 +337,10 @@ export const GoLiveView = ({ settings, channels, roles, save, test, testRecap, s
             ))}
           </div>
           {s.whenOver === 'edit' && (
-            <input value={draft.overMessage} onChange={(e) => setDraft({ ...draft, overMessage: e.target.value })} onBlur={() => commit('overMessage')} placeholder={t.goLiveOverPlaceholder || 'The stream is over — thanks for watching!'} className={box} />
+            <>
+              <textarea value={draft.overMessage} onChange={(e) => setDraft({ ...draft, overMessage: e.target.value })} onBlur={() => commit('overMessage')} placeholder={t.goLiveOverPlaceholder || 'The stream is over — thanks for watching!'} className={`${box} resize-y min-h-[52px]`} data-random-lines="go-live-over" />
+              <p className="text-[10px] text-zinc-600">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</p>
+            </>
           )}
         </div>
 

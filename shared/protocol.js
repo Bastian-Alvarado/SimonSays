@@ -178,6 +178,8 @@ export const S2C = {
   // Local-device side effects the browser must perform
   // (audio + speech synthesis are browser-only capabilities)
   PLAY_AUDIO: 'play_audio',
+  /** A Play sound step: { url, volume }, to the one surface that plays sound. */
+  PLAY_SOUND: 'play_sound',
   PLAY_TTS: 'play_tts',
 
   // Leveling
@@ -188,22 +190,3 @@ export const S2C = {
   REPLY: 'reply',
   ERROR: 'error',
 };
-
-/**
- * Keys persisted server-side. Anything not in this list is considered
- * device-local (theme, font sizes, overlay chrome) and stays in localStorage.
- */
-export const PERSISTED_CONFIG_KEYS = [
-  'commands',
-  'streamActions',
-  'alertConfigs',
-  'tagOutputs',
-  'relayConfig',
-  'roleMappings',
-  'welcomeGoodbyeConfig',
-  'reactionRoleConfigs',
-  'discordButtonConfigs',
-  'linkedUsers',
-];
-
-export const DEFAULT_PORT = 8081;

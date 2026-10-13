@@ -577,6 +577,8 @@ export type TriggerType =
   | 'youtube_cheer' | 'youtube_sub' | 'youtube_sub_gift_bulk'
   // Somebody's first message during this stream, and ever (server/engine/viewer-history.js).
   | 'chat_first_of_stream' | 'chat_first_ever'
+  // Chat that says something: words, a start, the whole message or a pattern (shared/chat-match.js).
+  | 'chat_message'
   | 'tiktok_follow' | 'tiktok_sub' | 'tiktok_share' | 'tiktok_gift'
   | 'obs_stream_started' | 'obs_stream_stopped' | 'obs_recording_started' | 'obs_recording_stopped'
   | 'obs_scene_changed' // NEW
@@ -612,6 +614,13 @@ export interface ActionTrigger {
     /** A bundle of gifted subs or memberships: at least this many. A Super Chat: at least this much, in its own currency. */
     minGifts?: number | '';
     minValue?: number | '';
+    /** Chat message: how to match, what, on which chat, whether the streamer counts, and the cooldowns in seconds. */
+    match?: 'words' | 'starts' | 'exact' | 'regex';
+    text?: string;
+    platform?: 'any' | 'twitch' | 'youtube' | 'tiktok' | 'kick' | 'discord';
+    streamerToo?: boolean;
+    cooldown?: number | '';
+    userCooldown?: number | '';
     giftName?: string;
     rewardName?: string; // For Channel Point Redemptions
     rewardId?: string; // Unique ID for Channel Point Redemptions
@@ -702,6 +711,9 @@ export type ActionStepType =
   | 'random_pick'
   | 'random_choice'
   | 'later'
+  // A sound file played where alert sounds play; a web address asked, its answer kept as {response}.
+  | 'play_sound'
+  | 'web_request'
   | 'browser_tts'; // NEW: Text to Speech
 
 export interface SingleCondition {
@@ -712,14 +724,9 @@ export interface SingleCondition {
 }
 
 export interface ConditionLogic {
-  // New Array-based structure
+  /** Every check, or any of them. */
   matchType?: 'AND' | 'OR';
   conditions?: SingleCondition[];
-  
-  // Legacy fields (kept for migration types)
-  variable?: string;
-  operator?: string;
-  value?: string;
 }
 
 export interface ActionStep {
@@ -823,6 +830,14 @@ export interface ActionStep {
     mode?: 'after' | 'streamEnd';
     amount?: number;
     unit?: 'seconds' | 'minutes' | 'hours' | 'days';
+    /** play_sound: the file, and how loud (0-1). */
+    soundUrl?: string;
+    soundVolume?: number;
+    /** web_request: where, how, and what to send. Headers are "Name: value" lines. */
+    url?: string;
+    method?: 'GET' | 'POST';
+    body?: string;
+    headers?: string;
     // OBS Advanced
     filterName?: string;
     filterEnabled?: boolean;

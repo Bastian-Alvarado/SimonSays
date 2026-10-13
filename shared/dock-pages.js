@@ -32,7 +32,6 @@ export const pagerPlace = (grid) => (grid?.pagerAt === 'top' ? 'top' : 'bottom')
  * pages next to each other at their usual shape ('pages'). Anything else
  * stored reads as folding.
  */
-export const SIDEWAYS_MODES = ['fold', 'pages'];
 export const sidewaysMode = (grid) => (grid?.sideways === 'pages' ? 'pages' : 'fold');
 
 /**

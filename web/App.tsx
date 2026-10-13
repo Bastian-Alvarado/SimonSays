@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { 
   Layout, Package, MessageSquare, ListOrdered, MessageCircleQuestion, Menu, X, Terminal, Share2, Zap, Monitor, Bell, Settings as SettingsIcon, GitBranch, Tag, 
   Wifi, WifiOff, LogOut, Send, Bot, User, Check, Eye, EyeOff, Ghost, Link as LinkIcon, Loader2, Copy, ExternalLink,
@@ -19,29 +19,20 @@ import { Omnibar } from './components/Omnibar';
 import { TallOmnibar } from './components/TallOmnibar';
 import { Countdown, countdownFor } from './components/Countdown';
 import { ViewerCount } from './components/ViewerCount';
-import { ViewersView } from './components/views/ViewersView';
-import { CountdownView } from './components/views/CountdownView';
-import { TimerView } from './components/views/TimerView';
 import { Stopwatch } from './components/Stopwatch';
-import { OmnibarView } from './components/views/OmnibarView';
 import { OmnibarBarPicker } from './components/OmnibarBarPicker';
-import { LayoutsView } from './components/views/LayoutsView';
-import { AlertsView } from './components/views/AlertsView';
 import { ProfileSwitcher } from './components/ProfileSwitcher';
-import { AppView, Command, StreamAction, ActionStep, TriggerCategory, TriggerType, ActionStepType, AlertConfig, ActiveAlert, AlertType, ChatMessage } from './types';
+import { AppView, Command, StreamAction, ActionStep, ActionTrigger, TriggerCategory, TriggerType, ActionStepType, AlertConfig, ActiveAlert, AlertType, ChatMessage } from './types';
 import { THEMES, TRANSLATIONS, CHAT_THEMES, CHAT_RANKS } from './constants';
 import { liveLayout } from '../shared/live-layout.js';
 import { moveInTree } from '../shared/list-order.js';
+import { DEFAULT_CHAT_TRIGGER } from '../shared/chat-match.js';
 import { parseMessageWithEmotes, getRgbValues, insertAtCursor } from './utils';
 
 // Import "The Brain"
 import { useStreamSystem } from './hooks/useStreamSystem';
 
 // Import Views
-import { DashboardView } from './components/views/DashboardView';
-import { SettingsView } from './components/views/SettingsView';
-import { RoadmapView } from './components/views/RoadmapView';
-import { StudioView } from './components/views/StudioView';
 import { CommandEditorModal } from './components/CommandEditorModal';
 import { DockDeck } from './components/DockDeck';
 import { DockPlan } from './components/DockPlan';
@@ -59,47 +50,81 @@ const lastYoutubeMessageAt = (messages: any[]) => {
   }
   return 0;
 };
-import { DockActionsView } from './components/views/DockActionsView';
-import { ActionsView } from './components/views/ActionsView';
-import { ConnectionsView } from './components/views/ConnectionsView';
-import { TagsView } from './components/views/TagsView';
-import { ChatDockView } from './components/views/ChatDockView';
 import { SendToPicker } from './components/SendToPicker';
 import { refusalWords, fill } from './words';
 import { DockTabs, DockTab } from './components/DockTabs';
 import { ScreenControls, HoldAwake } from './components/ScreenControls';
 import { useSideways } from './hooks/useSideways';
-import { PlanView } from './components/views/PlanView';
-import { GameView } from './components/views/GameView';
-import { PeopleView } from './components/views/PeopleView';
-import { LibraryView } from './components/views/LibraryView';
-import { QuestionsView } from './components/views/QuestionsView';
-import { PlayersView } from './components/views/PlayersView';
-import { RemotePlayersView } from './components/views/RemotePlayersView';
-import { GuidesView, type GuidesTab } from './components/views/GuidesView';
-import { GUIDES, setupState, guideForScreen } from '../shared/guides.js';
-import { PollsView } from './components/views/PollsView';
-import { GiveawayView } from './components/views/GiveawayView';
-import { DiscordPagesView } from './components/views/DiscordPagesView';
-import { PointsView } from './components/views/PointsView';
-import { StreamsView } from './components/views/StreamsView';
-import { RequestsView } from './components/views/RequestsView';
-import { VoiceView } from './components/views/VoiceView';
-import { GoLiveView } from './components/views/GoLiveView';
-import { PngtuberView } from './components/views/PngtuberView';
-import { PixelAvatarsView } from './components/views/PixelAvatarsView';
-import { TwitchView } from './components/views/TwitchView';
-import { EventsDockView } from './components/views/EventsDockView';
-import { RoleManagementViewConnected } from './components/views/RoleManagementView';
-import { ReactionRolesView } from './components/views/ReactionRolesView';
-import { WelcomeGoodbyeView } from './components/views/WelcomeGoodbyeView';
-import { DiscordButtonsView } from './components/views/DiscordButtonsView';
+import type { GuidesTab } from './components/views/GuidesView';
+/** The guides module, fetched by the dashboard when it opens (see `guides` below). */
+type GuidesModule = typeof import('../shared/guides.js');
 import { ChatMessageRow, ChatStyle, PlatformMark } from './components/ChatMessageRow';
 import { AlertOverlay } from './components/AlertOverlay';
 import { CanvasStage } from './components/CanvasStage';
-import { SpotifyOverlayView } from './components/views/SpotifyOverlayView'; // New
-import { LevelsView } from './components/views/LevelsView'; // New Phase 4
 import { SpotifyPlayer, SpotifyIcon as SpotifyIconComponent } from './components/SpotifyPlayer'; // Import Player for standalone mode
+
+/*
+  The dashboard's screens, loaded when the dashboard opens one rather than
+  with the page. Every page OBS shows — the canvas, the alerts, the dock —
+  is this same app, and before this each one downloaded every screen of the
+  dashboard too: one 2.9 MB script for a page that draws a chat. The
+  dashboard fetches the rest in the background once it is up (SCREENS),
+  so moving between screens there stays instant.
+*/
+const SCREENS: Array<() => Promise<unknown>> = [];
+
+/** What a screen shows for the moment it takes to arrive. */
+const ScreenLoading = ({ t }: { t: any }) => (
+  <div className="flex items-center justify-center gap-2 py-24 text-xs text-zinc-500" data-screen-loading>
+    <Loader2 size={16} className="animate-spin" /> {t.screenLoading || 'Loading…'}
+  </div>
+);
+/** A screen loaded on first use, typed as the screen it is, so its props are checked as before. */
+function screen<M, K extends keyof M>(load: () => Promise<M>, name: K): M[K] {
+  SCREENS.push(load);
+  return lazy(() => load().then((m) => ({ default: m[name] as any }))) as unknown as M[K];
+}
+const ViewersView = screen(() => import('./components/views/ViewersView'), 'ViewersView');
+const CountdownView = screen(() => import('./components/views/CountdownView'), 'CountdownView');
+const TimerView = screen(() => import('./components/views/TimerView'), 'TimerView');
+const OmnibarView = screen(() => import('./components/views/OmnibarView'), 'OmnibarView');
+const LayoutsView = screen(() => import('./components/views/LayoutsView'), 'LayoutsView');
+const AlertsView = screen(() => import('./components/views/AlertsView'), 'AlertsView');
+const DashboardView = screen(() => import('./components/views/DashboardView'), 'DashboardView');
+const SettingsView = screen(() => import('./components/views/SettingsView'), 'SettingsView');
+const RoadmapView = screen(() => import('./components/views/RoadmapView'), 'RoadmapView');
+const StudioView = screen(() => import('./components/views/StudioView'), 'StudioView');
+const DockActionsView = screen(() => import('./components/views/DockActionsView'), 'DockActionsView');
+const ActionsView = screen(() => import('./components/views/ActionsView'), 'ActionsView');
+const ConnectionsView = screen(() => import('./components/views/ConnectionsView'), 'ConnectionsView');
+const TagsView = screen(() => import('./components/views/TagsView'), 'TagsView');
+const ChatDockView = screen(() => import('./components/views/ChatDockView'), 'ChatDockView');
+const PlanView = screen(() => import('./components/views/PlanView'), 'PlanView');
+const GameView = screen(() => import('./components/views/GameView'), 'GameView');
+const PeopleView = screen(() => import('./components/views/PeopleView'), 'PeopleView');
+const LibraryView = screen(() => import('./components/views/LibraryView'), 'LibraryView');
+const QuestionsView = screen(() => import('./components/views/QuestionsView'), 'QuestionsView');
+const PlayersView = screen(() => import('./components/views/PlayersView'), 'PlayersView');
+const RemotePlayersView = screen(() => import('./components/views/RemotePlayersView'), 'RemotePlayersView');
+const GuidesView = screen(() => import('./components/views/GuidesView'), 'GuidesView');
+const PollsView = screen(() => import('./components/views/PollsView'), 'PollsView');
+const GiveawayView = screen(() => import('./components/views/GiveawayView'), 'GiveawayView');
+const DiscordPagesView = screen(() => import('./components/views/DiscordPagesView'), 'DiscordPagesView');
+const PointsView = screen(() => import('./components/views/PointsView'), 'PointsView');
+const StreamsView = screen(() => import('./components/views/StreamsView'), 'StreamsView');
+const RequestsView = screen(() => import('./components/views/RequestsView'), 'RequestsView');
+const VoiceView = screen(() => import('./components/views/VoiceView'), 'VoiceView');
+const GoLiveView = screen(() => import('./components/views/GoLiveView'), 'GoLiveView');
+const PngtuberView = screen(() => import('./components/views/PngtuberView'), 'PngtuberView');
+const PixelAvatarsView = screen(() => import('./components/views/PixelAvatarsView'), 'PixelAvatarsView');
+const TwitchView = screen(() => import('./components/views/TwitchView'), 'TwitchView');
+const EventsDockView = screen(() => import('./components/views/EventsDockView'), 'EventsDockView');
+const RoleManagementViewConnected = screen(() => import('./components/views/RoleManagementView'), 'RoleManagementViewConnected');
+const ReactionRolesView = screen(() => import('./components/views/ReactionRolesView'), 'ReactionRolesView');
+const WelcomeGoodbyeView = screen(() => import('./components/views/WelcomeGoodbyeView'), 'WelcomeGoodbyeView');
+const DiscordButtonsView = screen(() => import('./components/views/DiscordButtonsView'), 'DiscordButtonsView');
+const SpotifyOverlayView = screen(() => import('./components/views/SpotifyOverlayView'), 'SpotifyOverlayView');
+const LevelsView = screen(() => import('./components/views/LevelsView'), 'LevelsView');
 
 // --- Custom Components ---
 const Logo = ({ className = "" }: { className?: string }) => (
@@ -212,6 +237,13 @@ export default function App() {
   const unknownPath = !APP_PATHS.includes(window.location.pathname);
   const notFound = unknownPath || (mode !== null && !PAGE_MODES.includes(mode));
   const activeTheme = useMemo(() => THEMES.find(t => t.id === system.settings.activeThemeId) || THEMES[0], [system.settings.activeThemeId]);
+  // The dashboard, once up, fetches every screen in the background so moving between them is instant;
+  // the pages OBS shows never do.
+  useEffect(() => {
+    if (notFound || (mode && mode !== 'dashboard')) return undefined;
+    const later = setTimeout(() => { for (const load of SCREENS) load().catch(() => {}); }, 1500);
+    return () => clearTimeout(later);
+  }, []);
 
   /**
    * Accent colour classes. Declared before the early returns because the
@@ -384,7 +416,8 @@ export default function App() {
      * operation at all — it looked configured and did nothing.
      */
     const defaultConfig: Partial<Record<ActionStepType, any>> = {
-        condition: { logic: { variable: 'user.isSub', operator: 'isTrue', value: '' } },
+        // One check to start from, in the list form the editor shows and the server reads.
+        condition: { logic: { matchType: 'AND', conditions: [{ id: 'c1', variable: 'user.isSub', operator: 'isTrue', value: '' }] } },
         droidcam_control: { droidcamOperation: 'torch' },
         // The run card steps start as a mod command would use them: whatever
         // follows the command word goes on the card.
@@ -424,6 +457,8 @@ export default function App() {
         repeat: { times: 3, waitSeconds: 1 },
         later: { mode: 'after', amount: 5, unit: 'minutes' },
         random_choice: { weight: 1 },
+        play_sound: { soundUrl: '', soundVolume: 1 },
+        web_request: { method: 'GET', url: '', body: '', headers: '' },
     };
 
     const stepId = () => Math.random().toString(36).substr(2, 9);
@@ -500,9 +535,12 @@ export default function App() {
   };
 
   // A calendar trigger starts with its time zone: this browser's, since the phone the server runs on may keep UTC.
+  // A chat message trigger starts as the server reads one with nothing set (shared/chat-match.js), so what shows is what is saved.
   const triggerDefaults = (type: TriggerType) => (type === 'timer_schedule'
     ? { days: [1], time: '18:00', tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }
-    : {});
+    : type === 'chat_message'
+      ? { ...DEFAULT_CHAT_TRIGGER } as ActionTrigger['config']
+      : {});
   const updateTrigger = (category: TriggerCategory, type: TriggerType) => { setCurrentAction(prev => ({ ...prev, trigger: { ...prev.trigger!, category, type, config: triggerDefaults(type) } })); };
   const updateTriggerConfig = (key: string, value: any) => { setCurrentAction(prev => ({ ...prev, trigger: { ...prev.trigger!, config: { ...prev.trigger!.config, [key]: value } } })); };
 
@@ -549,9 +587,22 @@ export default function App() {
     setGuidesTicked(next);
     try { localStorage.setItem(GUIDES_TICKED, JSON.stringify(next)); } catch { /* this visit only */ }
   };
+  /*
+    The guides and their setup steps: the dashboard's, fetched when it opens
+    rather than with every page OBS shows (71 KB of text none of them uses).
+  */
+  const [guides, setGuides] = useState<GuidesModule | null>(null);
+  useEffect(() => {
+    if (notFound || (mode && mode !== 'dashboard')) return undefined;
+    let alive = true;
+    import('../shared/guides.js').then((m) => { if (alive) setGuides(m); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   // Not before the server has said what it has: until then everything would read as not done.
-  const guidesReady = Boolean((system.data as any).surfaces);
-  const setupProgress = setupState({ status: system.status, data: system.data, connections: system.connections }, { seen: guidesSeen, ticked: guidesTicked });
+  const guidesReady = Boolean((system.data as any).surfaces) && Boolean(guides);
+  const setupProgress = guides
+    ? guides.setupState({ status: system.status, data: system.data, connections: system.connections }, { seen: guidesSeen, ticked: guidesTicked })
+    : { items: [] as ReturnType<GuidesModule['setupState']>['items'], left: 0, needed: 0 };
   const newlySeen = setupProgress.items.filter((i) => i.done && i.check.sticky && !guidesSeen.includes(i.check.id)).map((i) => i.check.id).join(',');
   useEffect(() => {
     if (!newlySeen) return;
@@ -568,7 +619,7 @@ export default function App() {
   const mainRef = useRef<HTMLElement | null>(null);
   useEffect(() => { mainRef.current?.scrollTo({ top: 0 }); }, [view]);
   // The guide a screen's "?" opens.
-  const screenGuide = view === 'guides' ? null : guideForScreen(view);
+  const screenGuide = view === 'guides' || !guides ? null : guides.guideForScreen(view);
 
   // --- The menu (components/NavMenu.tsx) ---
   const [searchOpen, setSearchOpen] = useState(false);
@@ -1035,7 +1086,7 @@ export default function App() {
     { view: 'reaction-roles', label: t.reactionRoles, section: t.navDiscord || 'Discord', icon: <MousePointerClick size={I} /> },
     { view: 'discord-buttons', label: t.discordButtons || 'Discord Buttons', section: t.navDiscord || 'Discord', icon: <GripHorizontal size={I} /> },
     // Each guide by its title, opened where it is.
-    ...GUIDES.map((g: any) => ({
+    ...(guides?.GUIDES || []).map((g: any) => ({
       view: 'guides' as AppView,
       label: (system.settings.language === 'es' ? g.es : g.en).title,
       section: t.guidesNav || 'Guides',
@@ -1182,6 +1233,7 @@ export default function App() {
               />
             </div>
           )}
+          <Suspense fallback={<ScreenLoading t={t} />}>
            {view === 'settings' && ( 
              <SettingsView 
                activeTheme={activeTheme} 
@@ -1263,6 +1315,7 @@ export default function App() {
                 streamActions={system.data.streamActions}
                 laterSteps={(system.data as any).laterSteps || []}
                 laterControl={(system.actions as any).laterControl}
+                uploadAsset={system.actions.uploadAsset}
                 setStreamActions={() => {}} // CRUD
                 isActionModalOpen={isActionModalOpen}
                 setIsActionModalOpen={setIsActionModalOpen}
@@ -1837,6 +1890,7 @@ export default function App() {
                 t={t}
               />
            )}
+          </Suspense>
           {/* Room at the end of every screen for the phone's bar, so it never covers the last of it. */}
           <div className="h-20 md:hidden" aria-hidden data-phone-bar-room />
         </div>

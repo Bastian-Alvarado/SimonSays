@@ -25,7 +25,7 @@
 import { collection } from '../core/store.js';
 import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
-import { readSettings, SETTINGS_VERSION } from './layouts.js';
+import { SETTINGS_VERSION } from './layouts.js';
 
 const log = createLogger('timer');
 
@@ -41,7 +41,7 @@ const DEFAULT = {
   elapsedMs: 0,
   style: {
     fontSize: 96,
-    // Empty is automatic: the look's, or the clock's own (OLD_COLOURS).
+    // Empty is automatic: the look's, or the clock's own.
     color: '',
     pausedColor: '',
     finishedColor: '',
@@ -60,30 +60,13 @@ const clampMs = (v, fallback) => {
 
 const colour = (v, fallback) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(v) ? v : fallback);
 
-/**
- * The clock's own colours, drawn with no look on the layer — and what a timer
- * stored before a colour could be left automatic held in full. Read once as
- * automatic, at startup (see initStopwatch).
- */
-const OLD_COLOURS = { color: '#ffffff', pausedColor: '#a1a1aa', finishedColor: '#facc15' };
-
-/**
- * `fromBefore` is for the style read from disk at startup: one stored before
- * the mark has its old defaults read as automatic. Never for a change from
- * the screen, which sends one colour at a time without the mark — a white
- * picked there is a white somebody chose.
- */
-export function cleanStyle(incoming, base, fromBefore = false) {
+/** The timer's look, checked: what the screen sends, or what was stored. */
+export function cleanStyle(incoming, base) {
   const s = incoming && typeof incoming === 'object' ? incoming : {};
   const n = Number(s.fontSize);
-  const old = fromBefore && !readSettings(s);
   // Empty is automatic: the look's colour, or the clock's own without one.
   // Chosen, each beats a look (the looks read --stopwatch-colour first).
-  const pick = (key) => {
-    if (s[key] === '') return '';
-    const v = colour(s[key], base[key] ?? '');
-    return old && String(v).toLowerCase() === OLD_COLOURS[key] ? '' : v;
-  };
+  const pick = (key) => (s[key] === '' ? '' : colour(s[key], base[key] ?? ''));
   return {
     fontSize: Number.isFinite(n) ? Math.min(400, Math.max(12, Math.round(n))) : base.fontSize,
     color: pick('color'),
@@ -127,7 +110,7 @@ export function initStopwatch() {
   state = collection('stopwatch', DEFAULT);
   const s = state.get();
   // A timer saved before a style field existed gets it, rather than undefined.
-  state.set({ ...DEFAULT, ...s, style: cleanStyle(s.style, DEFAULT.style, true) });
+  state.set({ ...DEFAULT, ...s, style: cleanStyle(s.style, DEFAULT.style) });
   if (s.mode === 'running') log.info(`timer resumed at ${Math.round(elapsedNow() / 1000)}s`);
 }
 

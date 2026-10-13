@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ActionStep, ActionStepType, Command, StreamAction, ThemeConfig, TriggerCategory, TriggerType, SingleCondition } from '../../types';
 import { Button } from '../Button';
-import { GlassWater, Hourglass, MonitorPlay, Target, Activity, Plus, Zap, ArrowRight, Play, Edit2, Trash2, X, RefreshCcw, ToggleRight, ToggleLeft, Monitor, Terminal, GitBranch, Split, Workflow, Smile, Search, Gamepad2, Type, GitMerge, Check, ArrowDown, ChevronDown, Eye, Type as TypeIcon, Heart, Star, Coins, Users, Share2, Gift, Ticket, Radio, Disc, Square, AlertTriangle, Music, SkipForward, SkipBack, Pause, ListPlus, Volume2, VolumeX, Save, Globe, Move, Mic, Sliders, Layers, LayoutGrid, List, ArrowDownAZ, History, Clock, Braces, Camera, Cpu, CalendarDays, Tag, Timer, User, Megaphone, Eraser, Undo2, MessageCircleQuestion, BarChart3, Shirt, Skull, Repeat, Trophy, Headphones, OctagonX, Dices, AlarmClock, CornerDownRight, MessageSquare, TrainFront, Sparkles } from 'lucide-react';
+import { GlassWater, Hourglass, MonitorPlay, Target, Activity, Plus, Zap, ArrowRight, Play, Edit2, Trash2, X, RefreshCcw, ToggleRight, ToggleLeft, Monitor, Terminal, GitBranch, Split, Workflow, Smile, Search, Gamepad2, Type, GitMerge, Check, ArrowDown, ChevronDown, Eye, Type as TypeIcon, Heart, Star, Coins, Users, Share2, Gift, Ticket, Radio, Disc, Square, AlertTriangle, Music, SkipForward, SkipBack, Pause, ListPlus, Volume2, VolumeX, Save, Globe, Move, Mic, Sliders, Layers, LayoutGrid, List, ArrowDownAZ, History, Clock, Braces, Camera, Cpu, CalendarDays, Tag, Timer, User, Megaphone, Eraser, Undo2, MessageCircleQuestion, BarChart3, Shirt, Skull, Repeat, Trophy, Headphones, OctagonX, Dices, AlarmClock, CornerDownRight, MessageSquare, TrainFront, Sparkles, Upload, MessageSquareText } from 'lucide-react';
 import { EmojiPicker } from '../EmojiPicker';
 import { VariablePicker } from '../VariablePicker';
 import { SpotifyIcon } from '../SpotifyPlayer';
@@ -32,6 +32,7 @@ import { REMOTE_SEATS } from '../../../shared/run.js';
 import { useDragOrder, DragGrip, DragOrder } from '../../hooks/useDragOrder';
 import { CallPersonSelect } from '../CallPersonSelect';
 import { fill, refusalWords } from '../../words';
+import { cleanChatTrigger, patternError } from '../../../shared/chat-match.js';
 
 const TwitchIcon = ({ size = 24, className = "" }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} width={size} height={size}><path d="M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7" /></svg>
@@ -138,7 +139,7 @@ type GoalSlotRef = { id: string; bar: string; name: string; source: string };
 type CountdownPresetRef = { id: string; name: string };
 
 /** The Logic menu's steps, Trigger Action aside: it chains to another action, and keeps its own plain chip. */
-const LOGIC_STEPS = new Set(['condition', 'wait', 'stop', 'repeat', 'random_pick', 'random_choice', 'later']);
+const LOGIC_STEPS = new Set(['condition', 'wait', 'stop', 'repeat', 'random_pick', 'random_choice', 'later', 'web_request']);
 
 /** A list of steps the menus add into instead of the action's own: a step holding steps, and which of its lists. */
 type AddTarget = { parentId: string; branch: 'then' | 'else' };
@@ -366,6 +367,8 @@ interface StepRendererProps {
   onAddInto?: (target: AddTarget | null) => void;
   /** A random choice: the weights of it and its neighbours together, for its chance in percent. */
   choiceTotal?: number;
+  /** Uploads a file to the server's media, for the Play a sound step. */
+  uploadAsset?: (file: File) => Promise<any>;
 }
 
 /**
@@ -543,6 +546,8 @@ const StepRenderer: React.FC<StepRendererProps> = (props) => {
   choiceTotal,
   } = props;
      const [gameQuery, setGameQuery] = useState('');
+     // Why a Play a sound step's upload did not take, said under the field.
+     const [uploadError, setUploadError] = useState('');
      // A condition's then and else are lists of their own: a step is dragged among its own neighbours.
      const thenOrder = useDragOrder(({ id, gap }) => moveActionStep?.(id, gap));
      const elseOrder = useDragOrder(({ id, gap }) => moveActionStep?.(id, gap));
@@ -750,6 +755,92 @@ const StepRenderer: React.FC<StepRendererProps> = (props) => {
                  <div className="p-3">{innerList(step.thenActions, thenOrder)}</div>
              </div>
          );
+     }
+
+     // A plain step's card, for the steps drawn here rather than in the long list below.
+     const plainCard = (Icon: any, title: string, tint: string, body: React.ReactNode) => (
+         <div {...order?.row(step.id)} data-plain-step={step.type} className={`bg-zinc-900 rounded-2xl border border-zinc-800 p-4 relative group animate-slide-up mb-2 ${order?.held === step.id ? 'opacity-40' : ''}`}>
+             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"> <button onClick={() => removeActionStep(step.id)} className="text-zinc-600 hover:text-red-500"><X size={16} /></button> </div>
+             <div className="flex items-center gap-3 mb-4">
+                 {stepGrip}
+                 <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${tint}`}><Icon size={14} /></div>
+                 <span className="text-xs font-black uppercase tracking-wider text-zinc-300">{title}</span>
+             </div>
+             <div className="pl-9 space-y-3">{body}</div>
+         </div>
+     );
+     const fieldLabel = "text-[10px] font-black uppercase tracking-widest text-zinc-500";
+     const fieldInput = "w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-current-accent";
+
+     /*
+       A sound file, played where the alerts' sounds play. Uploaded here like
+       an alert's, or any address; tried out in this browser with the button.
+     */
+     if (step.type === 'play_sound') {
+         const url = step.config.soundUrl || '';
+         const volume = step.config.soundVolume ?? 1;
+         return plainCard(Volume2, t.stepPlaySound || 'Play a sound', 'bg-pink-500 text-white', (
+             <>
+                 <label className={fieldLabel}>{t.stepPlaySoundFile || 'Sound file'}</label>
+                 <div className="flex gap-2">
+                     <input className={fieldInput} placeholder={t.alertsUrlPlaceholder || 'https://… or /media/…'} value={url} onChange={(e) => updateActionStepConfig(step.id, 'soundUrl', e.target.value)} data-step-field="soundUrl" />
+                     {props.uploadAsset && (
+                         <label className="px-3 rounded-xl border border-zinc-800 text-zinc-400 hover:text-white flex items-center cursor-pointer" title={t.upload || 'Upload'}>
+                             <Upload size={13} />
+                             <input type="file" accept="audio/*" hidden onChange={async (e) => {
+                                 const file = e.target.files?.[0];
+                                 e.target.value = '';
+                                 if (!file) return;
+                                 setUploadError('');
+                                 try {
+                                     const res = await props.uploadAsset!(file);
+                                     const at = res?.url || res?.path || '';
+                                     if (at) updateActionStepConfig(step.id, 'soundUrl', at);
+                                 } catch (err: any) {
+                                     setUploadError(refusalWords(t, err) || t.alertsUploadFailed || 'That file could not be uploaded.');
+                                 }
+                             }} />
+                         </label>
+                     )}
+                 </div>
+                 {uploadError && <p className="text-[9px] text-rose-400" data-sound-upload-error>{uploadError}</p>}
+                 {url && (
+                     <div className="flex items-center gap-2">
+                         <button onClick={() => { const a = new Audio(url); a.volume = volume; a.play().catch(() => {}); }} title={t.alertsPlaySound || 'Play it'} className="p-1.5 rounded-lg text-zinc-400 hover:text-white border border-zinc-800"><Play size={13} /></button>
+                         <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => updateActionStepConfig(step.id, 'soundVolume', Number(e.target.value))} className="flex-1 accent-current-accent" data-step-field="soundVolume" />
+                         <span className="text-[9px] font-mono text-zinc-500 w-8 text-right">{Math.round(volume * 100)}%</span>
+                     </div>
+                 )}
+                 <p className="text-[9px] text-zinc-500 leading-relaxed">{t.stepPlaySoundHint || 'Plays on the overlay in OBS that shows your alerts, so the stream hears it, or on the dock when no overlay is open. It does not wait for alerts or hold them up.'}</p>
+             </>
+         ));
+     }
+
+     /*
+       Ask a web address; the answer is {response} for the steps after it.
+     */
+     if (step.type === 'web_request') {
+         const method = step.config.method === 'POST' ? 'POST' : 'GET';
+         return plainCard(Globe, t.stepWebRequest || 'Fetch a web address', 'bg-amber-500 text-white', (
+             <>
+                 <div className="flex gap-2">
+                     <select value={method} onChange={(e) => updateActionStepConfig(step.id, 'method', e.target.value)} className="bg-zinc-950 border border-zinc-800 rounded-xl px-2 py-2 text-xs font-mono text-white outline-none" data-step-field="method">
+                         <option value="GET">GET</option>
+                         <option value="POST">POST</option>
+                     </select>
+                     <input className={`${fieldInput} font-mono`} placeholder="https://icanhazdadjoke.com/" value={step.config.url || ''} onChange={(e) => updateActionStepConfig(step.id, 'url', e.target.value)} data-step-field="url" />
+                 </div>
+                 {method === 'POST' && (
+                     <>
+                         <label className={fieldLabel}>{t.stepWebBody || 'What to send'}</label>
+                         <textarea value={step.config.body || ''} onChange={(e) => updateActionStepConfig(step.id, 'body', e.target.value)} placeholder='{"user": "{user}"}' className={`${fieldInput} h-16 resize-none font-mono`} data-step-field="body" />
+                     </>
+                 )}
+                 <label className={fieldLabel}>{t.stepWebHeaders || 'Headers (optional, one per line)'}</label>
+                 <textarea value={step.config.headers || ''} onChange={(e) => updateActionStepConfig(step.id, 'headers', e.target.value)} placeholder="Accept: application/json" className={`${fieldInput} h-12 resize-none font-mono`} data-step-field="headers" />
+                 <p className="text-[9px] text-zinc-500 leading-relaxed">{t.stepWebRequestHint || 'The steps after this one can use {response}, what came back, and {response.json.name} for one field of a JSON answer. {response.ok} is false when it failed, and {response.error} says why. Words typed into the address, like {input}, are made safe for it. It cannot reach the server itself.'}</p>
+             </>
+         ));
      }
 
      if (step.type === 'condition') {
@@ -1892,6 +1983,8 @@ interface ActionsViewProps {
   /** Later steps waiting their turn, soonest first (server/engine/later.js), and the Waiting list's two buttons. */
   laterSteps?: LaterStepRef[];
   laterControl?: (op: 'run' | 'cancel', key: string) => Promise<any>;
+  /** Uploads a file to the server's media, for the Play a sound step. */
+  uploadAsset?: (file: File) => Promise<any>;
 }
 
 /** A Later step waiting its turn, as the server lists it. */
@@ -1996,6 +2089,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
   searchCategories,
   laterSteps = [],
   laterControl,
+  uploadAsset,
 }) => {
   /*
     Where the step menus add: the action's own steps, or a list inside a step
@@ -2180,6 +2274,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
       ],
       // Somebody arriving: their first words this stream, and their first words ever, on any stream chat.
       chat: [
+          { value: 'chat_message', label: t.triggerChatMessage || 'Somebody says something', icon: MessageSquareText, color: 'text-emerald-400' },
           { value: 'chat_first_of_stream', label: t.triggerFirstOfStream || 'First message this stream', icon: Sparkles, color: 'text-emerald-400' },
           { value: 'chat_first_ever', label: t.triggerFirstEver || 'First message ever', icon: Sparkles, color: 'text-amber-400' },
       ],
@@ -2284,7 +2379,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                               colorClass={currentCategory.color}
                               activeDropdown={activeDropdown}
                               setActiveDropdown={setActiveDropdown}
-                              onSelect={(val) => updateTrigger(val as TriggerCategory, val === 'command' ? 'command_trigger' : val === 'twitch' ? 'twitch_follow' : val === 'youtube' ? 'youtube_cheer' : val === 'chat' ? 'chat_first_of_stream' : val === 'tiktok' ? 'tiktok_follow' : val === 'spotify' ? 'spotify_track_change' : val === 'system' ? 'countdown_finished' : val === 'discord' ? 'discord_join' : 'obs_stream_started')}
+                              onSelect={(val) => updateTrigger(val as TriggerCategory, val === 'command' ? 'command_trigger' : val === 'twitch' ? 'twitch_follow' : val === 'youtube' ? 'youtube_cheer' : val === 'chat' ? 'chat_message' : val === 'tiktok' ? 'tiktok_follow' : val === 'spotify' ? 'spotify_track_change' : val === 'system' ? 'countdown_finished' : val === 'discord' ? 'discord_join' : 'obs_stream_started')}
                           />
 
                           {currentCategory.value !== 'command' && (
@@ -2371,6 +2466,40 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                           {currentAction.trigger?.type === 'twitch_cheer' && (
                               <input type="number" placeholder={`${t.minBits} (e.g. 100)`} value={currentAction.trigger.config.minBits || ''} onChange={(e) => updateTriggerConfig('minBits', parseInt(e.target.value))} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none" />
                           )}
+                          {currentAction.trigger?.type === 'chat_message' && (() => {
+                              const c = cleanChatTrigger(currentAction.trigger.config);
+                              const broken = c.match === 'regex' && c.text ? patternError(c.text) : '';
+                              const field = "w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none";
+                              const modes: [string, string][] = [['words', t.chatMatchWords || 'Any of these words'], ['starts', t.chatMatchStarts || 'Starts with'], ['exact', t.chatMatchExact || 'Is exactly'], ['regex', t.chatMatchRegex || 'Matches a pattern']];
+                              const where: [string, string][] = [['any', t.chatOnAny || 'Any chat'], ['twitch', 'Twitch'], ['youtube', 'YouTube'], ['tiktok', 'TikTok'], ['kick', 'Kick'], ['discord', 'Discord']];
+                              return (
+                                  <div className="space-y-2" data-chat-trigger>
+                                      <select value={c.match} onChange={(e) => updateTriggerConfig('match', e.target.value)} className={field} data-trigger-field="match">
+                                          {modes.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                                      </select>
+                                      <input value={currentAction.trigger.config.text || ''} onChange={(e) => updateTriggerConfig('text', e.target.value)} placeholder={c.match === 'words' ? (t.chatMatchWordsExample || 'gg, good game, wp') : c.match === 'regex' ? 'https?://' : 'hola'} className={`${field} font-mono ${broken ? 'border-rose-500' : ''}`} data-trigger-field="text" />
+                                      {broken && <p className="text-[9px] text-rose-400" data-pattern-error>{fill(t.chatPatternBroken || 'That pattern does not work: {why}', { why: broken })}</p>}
+                                      <select value={c.platform} onChange={(e) => updateTriggerConfig('platform', e.target.value)} className={field} data-trigger-field="platform">
+                                          {where.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                                      </select>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <label className="space-y-1">
+                                              <span className="text-[9px] font-bold text-zinc-500">{t.chatCooldown || 'Wait between (seconds)'}</span>
+                                              <input type="number" min={0} value={currentAction.trigger.config.cooldown ?? c.cooldown} onChange={(e) => updateTriggerConfig('cooldown', e.target.value === '' ? '' : Number(e.target.value))} className={field} data-trigger-field="cooldown" />
+                                          </label>
+                                          <label className="space-y-1">
+                                              <span className="text-[9px] font-bold text-zinc-500">{t.chatUserCooldown || 'Per person (seconds)'}</span>
+                                              <input type="number" min={0} value={currentAction.trigger.config.userCooldown ?? c.userCooldown} onChange={(e) => updateTriggerConfig('userCooldown', e.target.value === '' ? '' : Number(e.target.value))} className={field} data-trigger-field="userCooldown" />
+                                          </label>
+                                      </div>
+                                      <label className="flex items-center gap-2 text-[10px] text-zinc-400">
+                                          <input type="checkbox" checked={c.streamerToo} onChange={(e) => updateTriggerConfig('streamerToo', e.target.checked)} data-trigger-field="streamerToo" />
+                                          {t.chatStreamerToo || 'Also when I say it'}
+                                      </label>
+                                      <p className="text-[9px] text-zinc-600">{t.chatMessageHint || 'Never the channel’s bot. Not you unless ticked: what the app sends from your account comes back as your own chat, so a reply could set itself off. {message} is the whole message, {match} what matched, and a pattern’s groups are {match.1}, {match.2}.'}</p>
+                                  </div>
+                              );
+                          })()}
                           {(currentAction.trigger?.type === 'twitch_sub_gift_bulk' || currentAction.trigger?.type === 'youtube_sub_gift_bulk') && (
                               <div className="space-y-1">
                                   <input type="number" min={0} placeholder={t.minGifts || 'At least this many gifts (empty: any)'} value={currentAction.trigger.config.minGifts || ''} onChange={(e) => updateTriggerConfig('minGifts', e.target.value === '' ? '' : Number(e.target.value))} data-trigger-field="minGifts" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white outline-none" />
@@ -2609,6 +2738,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                 scrollContainerRef={dropdownRef}
                                 items={[
                                     { label: 'Speak (TTS)', onClick: () => addStep('browser_tts'), icon: Mic },
+                                    { label: t.stepPlaySound || 'Play a sound', onClick: () => addStep('play_sound'), icon: Volume2 },
                                     { label: 'Spotify Control', onClick: () => addStep('spotify_control'), icon: Play }
                                 ]}
                              />
@@ -2663,6 +2793,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                                     { label: t.stepRepeat || 'Repeat', onClick: () => addStep('repeat'), icon: Repeat },
                                     { label: t.stepRandom || 'Pick one at random', onClick: () => addStep('random_pick'), icon: Dices },
                                     { label: t.stepLater || 'Later', onClick: () => addStep('later'), icon: AlarmClock },
+                                    { label: t.stepWebRequest || 'Fetch a web address', onClick: () => addStep('web_request'), icon: Globe },
                                 ]}
                              />
                              {/* What is on the overlay, wherever it came from. The
@@ -2716,6 +2847,7 @@ export const ActionsView: React.FC<ActionsViewProps> = ({
                              searchCategories={searchCategories}
                              addInto={addInto}
                              onAddInto={setAddInto}
+                             uploadAsset={uploadAsset}
                            />
                         ))}
                         {(!currentAction.actions || currentAction.actions.length === 0) && (

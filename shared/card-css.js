@@ -87,7 +87,8 @@ const bounded = (v, lo, hi, fallback) => {
   const n = Number(v);
   return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : fallback;
 };
-const line = (v, max) => String(v ?? '').replace(/[\r\n]+/g, ' ').slice(0, max);
+/** A text written one alternative per line, one picked each time the card is drawn (shared/pick-line.js). */
+const alternatives = (v, max) => String(v ?? '').replace(/\r\n?/g, '\n').slice(0, max);
 const oneOf = (v, list) => (list.includes(v) ? v : '');
 /** An uploaded picture, or one on the web. Nothing else is ever fetched. */
 const pictureSrc = (v) => {
@@ -133,9 +134,9 @@ export function cleanCard(incoming, fallback = DEFAULT_CARD) {
     enabled: c.enabled === true,
     width,
     height,
-    title: line(c.title ?? fallback.title, 120),
-    name: line(c.name ?? fallback.name, 120),
-    subtitle: line(c.subtitle ?? fallback.subtitle, 160),
+    title: alternatives(c.title ?? fallback.title, 600),
+    name: alternatives(c.name ?? fallback.name, 600),
+    subtitle: alternatives(c.subtitle ?? fallback.subtitle, 800),
     showAvatar: c.showAvatar !== false,
     background: pictureSrc(c.background),
     css: upgradeLookCss(String(c.css ?? '').slice(0, MAX_CARD_CSS)),

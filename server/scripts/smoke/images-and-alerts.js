@@ -276,14 +276,13 @@ test('style and timing are clamped, not trusted', () => {
   assert.equal(a.accentColor, '');
 });
 
-test('an alert\'s colours and font can be left automatic, and old defaults are read as automatic once', () => {
-  const old = normaliseAlert({ id: 'x', textColor: '#FFFFFF', accentColor: '#f43f5e', fontFamily: 'Montserrat' });
-  assert.deepEqual([old.textColor, old.accentColor, old.fontFamily], ['', '', ''], 'an old default still covers the look');
-  assert.equal(old.settingsVersion, 2);
-  const chosen = normaliseAlert({ id: 'x', textColor: '#ffffff', accentColor: '#c8102e', fontFamily: 'Baloo 2' });
-  assert.deepEqual([chosen.accentColor, chosen.fontFamily], ['#c8102e', 'Baloo 2'], 'what somebody chose is theirs');
-  const again = normaliseAlert({ ...old, accentColor: '#f43f5e', fontFamily: 'Montserrat' });
-  assert.deepEqual([again.accentColor, again.fontFamily], ['#f43f5e', 'Montserrat'], 'a default picked since the change was turned back into automatic');
+test('an alert\'s colours and font can be left automatic, and chosen ones are kept', () => {
+  const auto = normaliseAlert({ id: 'x', textColor: '', accentColor: '', fontFamily: '' });
+  assert.deepEqual([auto.textColor, auto.accentColor, auto.fontFamily], ['', '', '']);
+  assert.equal(auto.settingsVersion, 2);
+  // Up to 2.0.0 white, pink and Montserrat stored without the mark were read as automatic once; now they are chosen.
+  const chosen = normaliseAlert({ id: 'x', textColor: '#ffffff', accentColor: '#f43f5e', fontFamily: 'Montserrat' });
+  assert.deepEqual([chosen.textColor, chosen.accentColor, chosen.fontFamily], ['#ffffff', '#f43f5e', 'Montserrat'], 'what somebody chose is theirs');
   const overlay = fs.readFileSync(new URL('../../web/components/AlertOverlay.tsx', SCRIPT_URL), 'utf8');
   assert.ok(overlay.includes("['--alert-name' as any]: config.accentColor || undefined"));
   assert.ok(overlay.includes('`"${config.fontFamily.replace(/"/g, \'\')}"`'), 'a chosen font reaches the look unquoted, and "Baloo 2" is not a font unquoted');

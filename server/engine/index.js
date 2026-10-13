@@ -24,6 +24,8 @@ import { refusal } from '../core/refusal.js';
 import { buildContext, nowPlayingVars } from './variables.js';
 import { runSteps, runFor } from './steps.js';
 import * as later from './later.js';
+import * as chatters from './chatters.js';
+import { cleanChatTrigger, listensTo, matchChat } from '../../shared/chat-match.js';
 import * as commands from './commands.js';
 import * as cooldowns from './cooldowns.js';
 import * as alerts from './alerts.js';
@@ -42,7 +44,7 @@ import * as userThemes from './user-themes.js';
 import * as twitchExtras from './twitch-extras.js';
 import * as streamPlan from './plan.js';
 import { getAnnounce } from './announce.js';
-import { DEFAULT_LAYOUTS, normaliseLayouts, settingsBehind, readSettings, lookColour, SETTINGS_VERSION, setChatFallback, cleanAvatarSources, newAvatarSourceId, MAX_AVATAR_SOURCES } from './layouts.js';
+import { DEFAULT_LAYOUTS, normaliseLayouts, looksBehind, lookColour, SETTINGS_VERSION, setChatFallback, cleanAvatarSources, newAvatarSourceId, MAX_AVATAR_SOURCES } from './layouts.js';
 import { supersededLook, looksNow } from '../../shared/looks-history.js';
 import * as profiles from './profiles.js';
 import * as sceneTypes from './scene-types.js';
@@ -94,8 +96,7 @@ const DEFAULT_OMNIBAR = {
   style: {
     position: 'bottom',
     height: 64,
-    // Empty is automatic: the look's colour, or the bar's own without one
-    // (see OMNIBAR_OLD_COLOURS).
+    // Empty is automatic: the look's colour, or the bar's own without one.
     background: '',
     textColor: '',
     accentColor: '',
@@ -105,13 +106,6 @@ const DEFAULT_OMNIBAR = {
     settingsVersion: SETTINGS_VERSION,
   },
 };
-
-/**
- * The bar's own colours, drawn when it has no look — and what every bar
- * stored before a colour could be left automatic held in full, as though
- * somebody had chosen them. Read once as automatic (see SETTINGS_VERSION).
- */
-const OMNIBAR_OLD_COLOURS = { background: '#0b0b0ecc', textColor: '#ffffff', accentColor: '#f43f5e' };
 
 /**
  * The viewer counter overlay.
@@ -126,8 +120,7 @@ const DEFAULT_VIEWERS = {
   platforms: { twitch: true, youtube: true, tiktok: true },
   style: {
     fontSize: 28,
-    // Empty is automatic: the look's colour, or the counter's own without one
-    // (see VIEWERS_OLD_COLOURS).
+    // Empty is automatic: the look's colour, or the counter's own without one.
     color: '',
     accentColor: '',
     background: '',
@@ -135,13 +128,6 @@ const DEFAULT_VIEWERS = {
     settingsVersion: SETTINGS_VERSION,
   },
 };
-
-/**
- * The counter's own colours, drawn when it has no look — and what every
- * counter stored before a colour could be left automatic held in full.
- * Read once as automatic (see SETTINGS_VERSION).
- */
-const VIEWERS_OLD_COLOURS = { color: '#ffffff', accentColor: '#f43f5e', background: '#0b0b0ecc' };
 
 
 /**
@@ -231,8 +217,8 @@ const DOCK_ACTION_USER = 'Dock Actions';
 function normaliseCommand(c) {
   return {
     ...c,
-    name: c.name || c.trigger || 'Command',
-    triggers: c.triggers || (c.trigger ? [c.trigger] : []),
+    name: c.name || 'Command',
+    triggers: Array.isArray(c.triggers) ? c.triggers : [],
     permissions: {
       anyone: c.permissions?.anyone ?? true,
       vips: c.permissions?.vips ?? true,
@@ -447,7 +433,11 @@ export function initEngine(platformServices) {
     },
     // Later steps: written down, and run on their own when their time comes. See later.js.
     later: { schedule: (step, ctx, runState) => later.schedule(step, ctx, runState) },
+    // {random.user}: somebody who has been talking lately. See chatters.js.
+    chatters: { pick: (exclude) => chatters.pick(exclude) },
   };
+  // A stand-in a test hands over (webFetch, chatters) wins over the real one.
+  for (const key of ['webFetch', 'chatters']) if (platformServices[key]) services[key] = platformServices[key];
 
   db = {
     commands: collection('commands', []),
@@ -530,13 +520,6 @@ export function initEngine(platformServices) {
       a different look for the stream and the desk stays where it was.
     */
     chatDock: collection('chat_dock_settings', DEFAULT_CHAT),
-    /*
-      What has already been done to this install, so a one-time change stays
-      one-time. It travels in a backup on purpose: restoring somewhere else
-      carries the fact that a rewrite already happened, rather than running
-      it a second time over values somebody has since chosen for themselves.
-    */
-    upgrades: collection('upgrades', {}),
   };
 
   // Heal anything stored before these defaults existed, and persist it so the
@@ -567,37 +550,10 @@ export function initEngine(platformServices) {
   // passed in rather than imported so a profile lands through the same
   // validation an ordinary save runs — dock buttons pointing at an action
   // that is not in the incoming profile get dropped here, not on stream.
-  /*
-    One-time: the dock used to be an override map on the shared settings.
-
-    Each surface keeps exactly the look it had — the dock takes the shared
-    values with its own differences folded in, the overlay the same with
-    its own — so nothing moves on screen the first time this runs. The old
-    maps are dropped in the process, which is also what stops it running
-    twice.
-  */
-  const legacyChat = db.chat.get();
-  if (legacyChat && (legacyChat.dockOverrides || legacyChat.overlayOverrides)) {
-    db.chatDock.set(cleanChatSettings({ ...legacyChat, ...(legacyChat.dockOverrides || {}) }, DEFAULT_CHAT));
-    db.chat.set(cleanChatSettings({ ...legacyChat, ...(legacyChat.overlayOverrides || {}) }, DEFAULT_CHAT));
-    log.info('chat: the dock now keeps its own settings, separate from the overlay');
-  }
-
   // A chat layer from before chat layers kept their own settings is filled out
   // from the chat it was drawn with — on every save, before anything below saves.
   setChatFallback(() => db.chat.get());
 
-  /*
-    One-time: plan layers that never chose how much of the list to show.
-
-    Every save writes a mode, so a layer made before there was a screen to
-    pick one on holds the default of the day — "upcoming" — as though it had
-    been asked for. That made the newer default unreachable for every plan
-    that already existed: the setting was there, nothing had chosen it, and
-    nothing could change it. The ones still carrying that answer are moved
-    to it once; from here it is a choice somebody made on a screen, so it is
-    left alone.
-  */
   /*
     Dock buttons stored before a button had a cell of its own. Saving them back
     through the same validation stamps each one with the cell a list would have
@@ -606,49 +562,20 @@ export function initEngine(platformServices) {
   */
   store.setDockButtons(db.dockButtons.get());
 
-  const doneAlready = db.upgrades.get() || {};
-  if (!doneAlready.planRecap) {
-    let moved = 0;
-    const next = (db.layouts.get() || []).map((l) => ({
-      ...l,
-      layers: (l.layers || []).map((y) => {
-        if (y.type !== 'plan' || y.config?.mode !== 'upcoming') return y;
-        moved += 1;
-        return { ...y, config: { ...y.config, mode: 'recap' } };
-      }),
-    }));
-    if (moved) {
-      store.setLayouts(next);
-      log.info(`plan: ${moved} plan layer(s) now keep the line just finished`);
-    }
-    db.upgrades.set({ ...doneAlready, planRecap: true });
-  }
-
   /*
-    Layers stored before a setting could be left to the look. Saving them back
-    through the same validation empties what still holds the old default, so a
-    look on the layer shows its own. Each layer carries the mark, so this runs
-    once for each — and a profile saved long ago is caught the same way, by the
-    same validation, whenever it is loaded.
+    Layers and alerts wearing an old copy of a Library look, brought up to the
+    look's current text by saving them back through the same validation. A
+    profile saved long ago is caught the same way whenever it is loaded.
   */
-  const behind = settingsBehind(db.layouts.get());
+  const behind = looksBehind(db.layouts.get());
   if (behind) {
     store.setLayouts(db.layouts.get());
-    log.info(`layouts: ${behind} layer(s) brought up to date: defaults left to the look, looks to their current text`);
+    log.info(`layouts: ${behind} layer(s) brought up to their look's current text`);
   }
-  // The omnibars likewise: their colours are the bar's, whichever layer shows it.
-  const barsBehind = [db.omnibar.get(), ...(db.omnibars.get() || [])].filter((b) => b && !readSettings(b.style)).length;
-  if (barsBehind) {
-    store.setOmnibar(db.omnibar.get());
-    store.setOmnibars(db.omnibars.get());
-    log.info(`omnibar: ${barsBehind} bar(s) now leave their look to decide what was left at the default`);
-  }
-  // Each alert carries its own, so each is read through once by its own mark.
-  // Or wearing an old copy of a look, which does not read the alert's settings.
-  const alertsBehind = (db.alerts.get() || []).filter((a) => a && (!readSettings(a) || supersededLook(a.css) || supersededLook(a.motionCss))).length;
+  const alertsBehind = (db.alerts.get() || []).filter((a) => a && (supersededLook(a.css) || supersededLook(a.motionCss))).length;
   if (alertsBehind) {
     db.alerts.set((db.alerts.get() || []).map(alerts.normaliseAlert));
-    log.info(`alerts: ${alertsBehind} alert(s) brought up to date: defaults left to the look, looks to their current text`);
+    log.info(`alerts: ${alertsBehind} alert(s) brought up to their look's current text`);
   }
   /*
     Chat layers that still lean on the shared chat — holding nothing, or only
@@ -661,11 +588,6 @@ export function initEngine(platformServices) {
   if (chatLayersBehind) {
     db.layouts.set(withWholeChat(db.layouts.get(), db.chat.get()));
     log.info(`chat: ${chatLayersBehind} chat layer(s) now keep their own settings`);
-  }
-  // And the viewer counter, one set of colours for every layer that shows it.
-  if (!readSettings(db.viewers.get()?.style)) {
-    store.setViewers(db.viewers.get());
-    log.info('viewers: the counter now leaves its look to decide what was left at the default');
   }
 
   profiles.initProfiles({
@@ -783,6 +705,9 @@ export function initEngine(platformServices) {
   bus.on(EVENTS.CHANNEL, onChannel);
 
   bus.on(EVENTS.CHAT, onChat);
+  // Chat that sets an action off by what it says (shared/chat-match.js), and who has been talking, for {random.user}.
+  bus.on(EVENTS.CHAT, (chat) => { onChatMatch(chat).catch((err) => log.warn(`chat message actions failed: ${err.message}`)); });
+  chatters.initChatters();
   // The rest of the Discord server: its commands work too, unless that is turned off on Connections.
   bus.on('discord:message_elsewhere', (chat) => {
     if (services.discord?.commandsEverywhere?.() === false) return;
@@ -1273,6 +1198,46 @@ async function onChat(chat) {
   }
 }
 
+/*
+  The Chat message trigger: an action set off by what somebody says rather
+  than by a command word (shared/chat-match.js has the matching). Each action
+  keeps its own cooldowns — for everybody, and for each person — in memory,
+  since a restart forgetting them costs at most one early reply.
+*/
+const chatMatchRan = new Map();
+
+async function onChatMatch(chat) {
+  if (chat?.raw?.sentToBoth) return;
+  const listening = db.actions.get().filter((a) => a.enabled && a.trigger?.type === 'chat_message');
+  if (!listening.length) return;
+  const now = Date.now();
+  for (const action of listening) {
+    const cfg = cleanChatTrigger(action.trigger.config);
+    if (!listensTo(cfg, chat)) continue;
+    const match = matchChat(cfg, chat.msg);
+    if (!match) continue;
+    const ran = chatMatchRan.get(action.id) || { at: 0, by: new Map() };
+    const who = String(chat.userId || chat.user || '').toLowerCase();
+    if (now - ran.at < cfg.cooldown * 1000) continue;
+    if (cfg.userCooldown && now - (ran.by.get(who) || 0) < cfg.userCooldown * 1000) continue;
+    ran.at = now;
+    ran.by.set(who, now);
+    if (ran.by.size > 1000) ran.by.clear();
+    chatMatchRan.set(action.id, ran);
+    const ctx = buildContext({
+      user: { name: chat.user, id: chat.userId, avatar: chat.avatar, isSub: chat.isSub, isMod: chat.isMod, isVip: chat.isVip, isBroadcaster: chat.isBroadcaster, platform: chat.platform },
+      message: chat.msg,
+      platform: chat.platform,
+      nowPlaying: services.spotify?.getNowPlaying?.() ?? null,
+      upNext: services.spotify?.getUpNext?.() ?? null,
+      // {match} and its groups; and, from Discord, the channel it was said in, for "where it came from".
+      extra: { match, chatId: chat.id, ...(chat.platform === 'discord' && chat.raw?.channelId ? { discordChannelId: chat.raw.channelId } : {}) },
+    });
+    log.info(`chat by ${chat.user} matched "${action.name}"`);
+    await runSteps(action.actions, ctx, services, runFor(action));
+  }
+}
+
 // --------------------------------------------------------------- event path
 
 async function onEvent(event) {
@@ -1534,9 +1499,9 @@ function cleanOmnibar(next) {
       // Automatic when empty. Chosen, each beats any look on the bar: the
       // looks read --omnibar-background, --omnibar-text and --omnibar-accent
       // before their own, and the bar sets those only when chosen.
-      background: lookColour(style, 'background', OMNIBAR_OLD_COLOURS.background),
-      textColor: lookColour(style, 'textColor', OMNIBAR_OLD_COLOURS.textColor),
-      accentColor: lookColour(style, 'accentColor', OMNIBAR_OLD_COLOURS.accentColor),
+      background: lookColour(style, 'background'),
+      textColor: lookColour(style, 'textColor'),
+      accentColor: lookColour(style, 'accentColor'),
       settingsVersion: SETTINGS_VERSION,
       fontSize: bounded(style.fontSize, 10, 72, DEFAULT_OMNIBAR.style.fontSize),
       uppercase: style.uppercase !== false,
@@ -1885,9 +1850,9 @@ export const store = {
         // --viewers-background first). Transparent is on by default, so it
         // cannot be told from a choice: it stays the plain counter's, and a
         // background beats a look only once Transparent is off.
-        color: lookColour(style, 'color', VIEWERS_OLD_COLOURS.color),
-        accentColor: lookColour(style, 'accentColor', VIEWERS_OLD_COLOURS.accentColor),
-        background: lookColour(style, 'background', VIEWERS_OLD_COLOURS.background),
+        color: lookColour(style, 'color'),
+        accentColor: lookColour(style, 'accentColor'),
+        background: lookColour(style, 'background'),
         transparent: style.transparent !== false,
         settingsVersion: SETTINGS_VERSION,
       },

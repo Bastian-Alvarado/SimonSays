@@ -255,11 +255,16 @@ const WelcomeScreen = ({ activeTheme, t, system }: WelcomeGoodbyeViewProps) => {
     const lines: string[] = data.messages || [];
     const msg = fillGreeting(lines[lineShown(kind, lines)] || '', sample(k.pings));
     const picture = data.image?.enabled ? cardPreview[kind] : undefined;
+    // A title or footer written one alternative per line shows one of them, stepping with the message's arrows.
+    const oneOf = (raw: string) => {
+      const options = String(raw || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      return options.length > 1 ? options[lineShown(kind, lines) % options.length] : raw;
+    };
     const embed = data.sendCard ? {
-      title: fillGreeting(data.cardTitle || '', sample(false)),
+      title: fillGreeting(oneOf(data.cardTitle || ''), sample(false)),
       description: fillGreeting(data.cardDescription || '', sample(k.pings)),
       color: data.cardColor,
-      footer: fillGreeting(data.cardFooter || '', sample(false)),
+      footer: fillGreeting(oneOf(data.cardFooter || ''), sample(false)),
       image: picture || (data.cardImage ? pictureSrc(data.cardImage) : ''),
       thumbnail: data.cardThumbnail,
     } : null;
@@ -482,9 +487,10 @@ const WelcomeScreen = ({ activeTheme, t, system }: WelcomeGoodbyeViewProps) => {
                   <label className="block space-y-1">
                     <span className={small}>{t.greetEmbedTitle || 'Title'}</span>
                     <div className="relative">
-                      <input type="text" value={data.cardTitle || ''} onChange={(e) => update(kind, 'cardTitle', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 pr-8 text-xs text-white outline-none focus:border-current-accent" />
-                      <button onClick={(e) => openPicker(kind, 'cardTitle', e)} className="absolute top-1/2 -translate-y-1/2 right-2 p-1 text-zinc-400 hover:text-white"><Smile size={12} /></button>
+                      <textarea rows={1} value={data.cardTitle || ''} onChange={(e) => update(kind, 'cardTitle', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 pr-8 text-xs text-white outline-none focus:border-current-accent resize-y min-h-[34px] block" data-random-lines="greet-title" />
+                      <button onClick={(e) => openPicker(kind, 'cardTitle', e)} className="absolute top-1.5 right-2 p-1 text-zinc-400 hover:text-white"><Smile size={12} /></button>
                     </div>
+                    <span className="block text-[9px] text-zinc-600">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</span>
                   </label>
                   <div className="block space-y-1">
                     <span className={small}>{t.greetEmbedDescription || 'Description'}</span>
@@ -517,10 +523,10 @@ const WelcomeScreen = ({ activeTheme, t, system }: WelcomeGoodbyeViewProps) => {
                   <label className="block space-y-1">
                     <span className={small}>{t.greetEmbedFooter || 'Footer'}</span>
                     <div className="relative">
-                      <input type="text" value={data.cardFooter || ''} onChange={(e) => update(kind, 'cardFooter', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 pr-8 text-xs text-white outline-none focus:border-current-accent" />
-                      <button onClick={(e) => openPicker(kind, 'cardFooter', e)} className="absolute top-1/2 -translate-y-1/2 right-2 p-1 text-zinc-400 hover:text-white"><Smile size={12} /></button>
+                      <textarea rows={1} value={data.cardFooter || ''} onChange={(e) => update(kind, 'cardFooter', e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 pr-8 text-xs text-white outline-none focus:border-current-accent resize-y min-h-[34px] block" data-random-lines="greet-footer" />
+                      <button onClick={(e) => openPicker(kind, 'cardFooter', e)} className="absolute top-1.5 right-2 p-1 text-zinc-400 hover:text-white"><Smile size={12} /></button>
                     </div>
-                    <span className="block text-[9px] text-zinc-600">{t.greetFooterIconHint || 'A server emoji here becomes the footer\'s small picture, beside the words — Discord draws no emoji in a footer itself.'}</span>
+                    <span className="block text-[9px] text-zinc-600">{t.greetFooterIconHint || 'A server emoji here becomes the footer\'s small picture, beside the words — Discord draws no emoji in a footer itself.'} {t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</span>
                   </label>
                 </div>
               )}

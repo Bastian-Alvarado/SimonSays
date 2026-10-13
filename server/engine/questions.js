@@ -27,6 +27,7 @@ import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import * as commands from './commands.js';
 import { refusal } from '../core/refusal.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('questions');
 
@@ -103,7 +104,8 @@ export function cleanSettings(incoming, before = DEFAULT_QUESTION_SETTINGS) {
       trigger: cleanTrigger(ask.trigger, before?.ask?.trigger),
       cooldownSeconds: Number.isFinite(seconds) ? Math.min(3600, Math.max(0, seconds)) : DEFAULT_ASK.cooldownSeconds,
       reply: ask.reply !== false,
-      replyText: clip(ask.replyText, 200),
+      // Room for a few alternatives, one per line (answer() picks one).
+      replyText: clip(ask.replyText, 1000),
     },
     atStreamEnd: AT_STREAM_END.includes(atStreamEnd) ? atStreamEnd : 'keep',
   };
@@ -274,7 +276,8 @@ function onChat(chat) {
 function answer(chat, ask) {
   const discordChat = chat.platform === 'discord' && chat.raw?.channelId;
   const name = discordChat && deps.discord?.sanitise ? deps.discord.sanitise(chat.user) : chat.user;
-  const text = fill(ask.replyText, { user: name });
+  // One of the replies written, when there are several (shared/pick-line.js).
+  const text = fill(pickLine(ask.replyText), { user: name });
   const sent = discordChat
     ? deps.discord?.sendMessage?.(chat.raw.channelId, text, null, null, undefined, {
       allowed_mentions: { parse: [] },

@@ -30,6 +30,7 @@ import { nextStream } from './twitch-extras.js';
 import { getPlan, recapOf } from './plan.js';
 import * as sessions from './stream-sessions.js';
 import { initRecap, getTally, recapCard, cleanRecap, DEFAULT_RECAP } from './recap.js';
+import { pickLine } from '../../shared/pick-line.js';
 import { getGreetings } from './welcome.js';
 
 const log = createLogger('announce');
@@ -82,7 +83,8 @@ export function cleanAnnounce(incoming, before = DEFAULT_ANNOUNCE) {
     cardColor: /^#[0-9a-fA-F]{6}$/.test(c.cardColor || '') ? c.cardColor : DEFAULT_ANNOUNCE.cardColor,
     delaySeconds: Math.min(600, Math.max(0, Math.round(Number(c.delaySeconds) || 0))),
     whenOver: ['edit', 'delete', 'keep'].includes(c.whenOver) ? c.whenOver : 'edit',
-    overMessage: String(c.overMessage ?? '').slice(0, 500),
+    // Room for a few alternatives, one per line.
+    overMessage: String(c.overMessage ?? '').slice(0, 1500),
     youtubeUrl: link(c.youtubeUrl),
     tiktokUrl: link(c.tiktokUrl),
     recap: cleanRecap(c.recap, before.recap ?? DEFAULT_RECAP),
@@ -264,7 +266,8 @@ export async function postRecap({ test = false, now = Date.now() } = {}) {
     color: cfg.cardColor,
   }, discord.sanitise);
   const components = vod?.url ? [{ type: 1, components: [{ type: 2, style: 5, label: 'Ver el VOD', url: vod.url }] }] : [];
-  const content = fillNext(cfg.overMessage || '').trim();
+  // One of the messages written, when there are several (shared/pick-line.js).
+  const content = fillNext(pickLine(cfg.overMessage || '')).trim();
   const quiet = { allowed_mentions: { parse: [] } };
 
   if (!test && cfg.recap.where === 'edit' && last?.messageId) {
@@ -305,7 +308,7 @@ async function markOver(cfg) {
       const current = await discord.getMessage(last.channelId, last.messageId);
       const card = current?.embeds?.[0];
       await discord.editMessage(
-        last.channelId, last.messageId, fillNext(cfg.overMessage || '').trim(),
+        last.channelId, last.messageId, fillNext(pickLine(cfg.overMessage || '')).trim(),
         card ? { title: card.title, url: card.url, description: card.description, author: card.author?.name?.replace(' · LIVE', ' · OFFLINE'), color: '#4f545c', image: card.image?.url } : undefined,
         [], { allowed_mentions: { parse: [] } },
       );
@@ -341,8 +344,6 @@ function onEvent(event) {
 
 export function initAnnounce() {
   store = collection('discord_announce', DEFAULT_ANNOUNCE);
-  // A stored copy from before the recap existed has none.
-  if (!store.get().recap) store.set({ ...store.get(), recap: DEFAULT_RECAP });
   initRecap();
   bus.on(EVENTS.EVENT, onEvent);
 }

@@ -26,12 +26,8 @@ import { currentLook } from '../../shared/looks-history.js';
 /** The chat themes the renderer can actually draw. */
 export const CHAT_THEMES = CHAT_THEME_IDS;
 
-/**
- * The dock's set when nothing has been chosen. `migrated` is the dock's
- * alone: set once, by the first client that had settings in its browser to
- * carry up, from before chat settings lived on the server.
- */
-export const DEFAULT_CHAT = { ...CHAT_DEFAULTS, migrated: false };
+/** A chat's set when nothing has been chosen. */
+export const DEFAULT_CHAT = { ...CHAT_DEFAULTS };
 
 /*
   Values from a client end up interpolated into inline styles on a surface
@@ -157,7 +153,6 @@ export function cleanChatSettings(incoming, prev) {
     // Shown between the name and the message on one line, e.g. ":".
     nameSeparator: typeof incoming?.nameSeparator === 'string'
       ? incoming.nameSeparator.slice(0, 3) : (prev.nameSeparator || ''),
-    migrated: incoming?.migrated === true || prev.migrated === true,
   };
 }
 
@@ -174,11 +169,11 @@ export const isWholeChat = (config) => typeof config?.fontSize === 'number';
  * One that still holds only what it overrode is filled out from `fallback` —
  * the shared chat it was drawn with until now — so it looks exactly as it
  * did, and from then on is complete on its own. Without the page's own keys
- * (the colour behind the dock), and without the dock's migration mark.
+ * (the colour behind the dock).
  */
 export function normaliseChatLayer(config, fallback = {}) {
   const own = config && typeof config === 'object' ? config : {};
   const clean = cleanChatSettings(isWholeChat(own) ? own : { ...(fallback || {}), ...own }, DEFAULT_CHAT);
-  for (const key of [...CHAT_PAGE_KEYS, 'migrated']) delete clean[key];
+  for (const key of CHAT_PAGE_KEYS) delete clean[key];
   return clean;
 }

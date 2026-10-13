@@ -189,9 +189,3 @@ export function initLater(d) {
   if (waiting) log.info(`${waiting} step(s) still waiting from before the restart`);
   arm();
 }
-
-export function stopLater() {
-  if (timer) clearTimeout(timer);
-  timer = null;
-  bus.off('stream:ended', onStreamEnded);
-}

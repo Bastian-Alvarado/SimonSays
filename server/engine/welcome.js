@@ -27,6 +27,7 @@ import { kindOfBytes } from './picture-still.js';
 import { config } from '../config.js';
 import { cleanCard } from '../../shared/card-css.js';
 import { fillGreeting, accountAge, createdAt, longDate } from '../../shared/greeting-text.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('welcome');
 
@@ -212,15 +213,16 @@ export function greetingFor(cfg, user, arriving, withPicture = false, context = 
   const base = { ...context, name, id: user?.id, server: context.server ? discord.sanitise(context.server) : '' };
   const fill = (text, withMention) => fillGreeting(text, { ...base, mention: withMention ? mention : '' });
 
-  // The list the screen edits, or the single line an older setup kept.
-  const template = pickMessage(cfg.messages) || (cfg.message ? String(cfg.message) : '');
+  // One of the lines the screen edits. (The single line an older setup kept was read until 2.0.0.)
+  const template = pickMessage(cfg.messages) || '';
   const content = template ? fill(template, true) : '';
 
   const embed = cfg.sendCard
     ? {
-      title: fill(cfg.cardTitle, false) || undefined,
+      // The title and footer written one alternative per line, one picked (shared/pick-line.js); the description keeps its lines.
+      title: fill(pickLine(cfg.cardTitle), false) || undefined,
       description: fill(cfg.cardDescription, true) || undefined,
-      footer: fill(cfg.cardFooter, false) || undefined,
+      footer: fill(pickLine(cfg.cardFooter), false) || undefined,
       color: cfg.cardColor,
       // The picture card, when there is one, is the embed's big picture.
       image: withPicture ? `attachment://${CARD_FILE}` : cfg.cardImage,

@@ -340,12 +340,16 @@ export const QuestionsView = ({ questions, settings, setStatus, show, clear, con
                 <span className={label}>{t.questionsAskReply || 'The bot says it was received'}</span>
               </label>
               {ask.reply && (
-                <CommittedInput
-                  type="text" value={ask.replyText} maxLength={200}
-                  placeholder={t.questionsAskReplyText || 'What the bot says — {user} is who asked'}
-                  onCommit={(v: string) => setAsk({ replyText: v })}
-                  className={field}
-                />
+                <>
+                  <CommittedInput
+                    as="textarea" value={ask.replyText} maxLength={1000}
+                    placeholder={t.questionsAskReplyText || 'What the bot says — {user} is who asked'}
+                    onCommit={(v: string) => setAsk({ replyText: v })}
+                    className={`${field} resize-y min-h-[52px]`}
+                    data-random-lines="question-reply"
+                  />
+                  <p className="text-[10px] text-zinc-600">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</p>
+                </>
               )}
             </div>
           </div>

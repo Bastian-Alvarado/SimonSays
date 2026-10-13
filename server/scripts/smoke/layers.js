@@ -69,31 +69,26 @@ test('a text layer is checked like everything else that reaches a stream', () =>
   Controls win, on the text layer: what the panel is set to beats the look on
   the layer, and what it was never set to is the look's to decide.
 */
-const { settingsBehind, SETTINGS_VERSION } = await import('../../engine/layouts.js');
+const { looksBehind, SETTINGS_VERSION } = await import('../../engine/layouts.js');
 const { ALL_PRESETS } = await import('../../../shared/css-presets.js');
 
-test('a text colour can be left automatic, and one stored before that was possible is read as automatic once', () => {
+test('a text colour can be left automatic, and one stored is the one shown', () => {
   const text = (config) => normaliseLayouts([{ id: 'a', layers: [{ type: 'text', config }] }])[0].layers[0].config;
-  // Stored before the mark: the old default is what every untouched layer held.
-  assert.equal(text({ color: '#ffffff' }).color, '', 'the old white default still covers any look');
-  assert.equal(text({ color: '#FFFFFF' }).color, '');
   assert.equal(text({}).color, '');
+  assert.equal(text({ color: '' }).color, '');
   assert.equal(text({ color: '#ff8800' }).color, '#ff8800', 'a colour somebody chose is theirs');
-  // Marked, so it happens once: a white chosen after that is kept.
-  const once = text({ color: '#ffffff' });
-  assert.equal(once.settingsVersion, SETTINGS_VERSION);
-  assert.equal(text({ ...once, color: '#ffffff' }).color, '#ffffff', 'a white picked since the change was turned back into automatic');
-  assert.equal(text({ ...once, color: '' }).color, '');
+  // Up to 2.0.0 a white stored without the mark was read as automatic once; now a white is a white.
+  assert.equal(text({ color: '#ffffff' }).color, '#ffffff', 'a white is read as automatic again');
+  assert.equal(text({ color: '#ffffff' }).settingsVersion, SETTINGS_VERSION, 'a save no longer marks what it was saved under');
 });
 
-test('layouts on disk from before the mark are saved through once at startup, so an old white stops covering the look', () => {
-  const old = [{ id: 'a', layers: [{ type: 'text', config: { color: '#ffffff' } }, { type: 'shape', config: {} }, { type: 'text', config: { color: '#ff8800' } }] }];
-  assert.equal(settingsBehind(old), 2);
-  assert.equal(settingsBehind(normaliseLayouts(old)), 0, 'saving through validation marks every text layer');
-  assert.equal(settingsBehind(undefined), 0);
-  // Layouts are read from disk as stored; only saving them rewrites anything.
+test('layouts wearing an old copy of a look are saved through at startup, and nothing else is', () => {
+  const plain = [{ id: 'a', layers: [{ type: 'text', config: { color: '#ffffff' } }, { type: 'shape', config: {} }] }];
+  assert.equal(looksBehind(plain), 0, 'a layer with only an old default is saved through for nothing');
+  assert.equal(looksBehind(undefined), 0);
   const engine = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
-  assert.match(engine, /const behind = settingsBehind\(db\.layouts\.get\(\)\);\s*if \(behind\) \{\s*store\.setLayouts\(db\.layouts\.get\(\)\);/);
+  assert.match(engine, /const behind = looksBehind\(db\.layouts\.get\(\)\);\s*if \(behind\) \{\s*store\.setLayouts\(db\.layouts\.get\(\)\);/);
+  assert.ok(!engine.includes('readSettings') && !engine.includes('OLD_COLOURS'), 'the read-once of old defaults is back');
 });
 
 test('the text layer writes a colour only when one is chosen, and the panel says when the look decides', () => {
@@ -108,15 +103,13 @@ test('the text layer writes a colour only when one is chosen, and the panel says
   assert.ok(panel.includes("t.fontAutomatic || 'Automatic'"));
 });
 
-test('a goal\'s track and text colours can be left automatic, and old defaults are read as automatic once', () => {
+test('a goal\'s track and text colours can be left automatic, and chosen ones are kept', () => {
   const goal = (config) => normaliseLayouts([{ id: 'a', layers: [{ type: 'goal', config }] }])[0].layers[0].config;
-  const old = goal({ trackColor: '#27272acc', textColor: '#FFFFFF', barColor: '' });
-  assert.deepEqual([old.trackColor, old.textColor, old.barColor], ['', '', ''], 'an old default still covers the look');
-  assert.equal(old.settingsVersion, SETTINGS_VERSION);
-  const chosen = goal({ trackColor: '#1e3a8a', textColor: '#fde047', barColor: '#22c55e' });
-  assert.deepEqual([chosen.trackColor, chosen.textColor, chosen.barColor], ['#1e3a8a', '#fde047', '#22c55e'], 'a colour somebody chose is theirs');
-  assert.equal(goal({ ...old, textColor: '#ffffff' }).textColor, '#ffffff', 'a white picked since the change was turned back into automatic');
-  assert.equal(settingsBehind([{ id: 'a', layers: [{ type: 'goal', config: { textColor: '#ffffff' } }] }]), 1, 'an old goal is not saved through at startup');
+  const auto = goal({ trackColor: '', textColor: '', barColor: '' });
+  assert.deepEqual([auto.trackColor, auto.textColor, auto.barColor], ['', '', '']);
+  assert.equal(auto.settingsVersion, SETTINGS_VERSION);
+  const chosen = goal({ trackColor: '#1e3a8a', textColor: '#ffffff', barColor: '#22c55e' });
+  assert.deepEqual([chosen.trackColor, chosen.textColor, chosen.barColor], ['#1e3a8a', '#ffffff', '#22c55e'], 'a colour somebody chose is theirs, white included');
 });
 
 test('every goal look reads the layer\'s chosen colours before its own', () => {
@@ -144,12 +137,13 @@ test('every goal look reads the layer\'s chosen colours before its own', () => {
 
 test('a voice layer\'s talking colour can be left automatic, and the look reads a chosen one first', () => {
   const voice = (config) => normaliseLayouts([{ id: 'a', layers: [{ type: 'voice', config }] }])[0].layers[0].config;
-  const old = voice({ glowColor: '#23A55A', textColor: '#ffffff' });
-  assert.equal(old.glowColor, '', 'the old Discord green still covers the look\'s talking colour');
-  assert.equal(old.textColor, '#ffffff', 'no look colours the names, so their colour stays as it was');
-  assert.equal(old.settingsVersion, SETTINGS_VERSION);
+  const auto = voice({ glowColor: '', textColor: '#ffffff' });
+  assert.equal(auto.glowColor, '', 'an automatic talking colour is not left to the look');
+  assert.equal(auto.textColor, '#ffffff', 'no look colours the names, so their colour stays as it was');
+  assert.equal(auto.settingsVersion, SETTINGS_VERSION);
   assert.equal(voice({ glowColor: '#ff8800' }).glowColor, '#ff8800', 'a colour somebody chose is theirs');
-  assert.equal(voice({ ...old, glowColor: '#23a55a' }).glowColor, '#23a55a', 'a green picked since the change was turned back into automatic');
+  // The old Discord green stored without the mark was read as automatic once, until 2.0.0; now it is a choice.
+  assert.equal(voice({ glowColor: '#23a55a' }).glowColor, '#23a55a');
   for (const p of ALL_PRESETS.filter((x) => x.layerType === 'voice')) {
     const talking = (p.css.match(/\[data-voice-speaking="true"\] \[data-voice="avatar"\]\s*\{([^}]*)\}/) || [])[1] || '';
     if (/var\(--talk\)/.test(talking.replace(/var\(--voice-glow, var\(--talk\)\)/g, ''))) assert.fail(`${p.id} draws its talking colour without reading the chosen one`);
@@ -200,9 +194,9 @@ test('every chat look reads the chat\'s chosen row, words and name weight before
 
 test('a nameplate\'s colours can be left automatic, and its looks read the chosen ones first', () => {
   const plate = (config) => normaliseLayouts([{ id: 'a', layers: [{ type: 'nameplate', config }] }])[0].layers[0].config;
-  const old = plate({ textColor: '#ffffff', backgroundColor: '#09090bD9', accentColor: '' });
-  assert.deepEqual([old.textColor, old.backgroundColor, old.accentColor], ['', '', ''], 'an old default still covers the look');
-  assert.equal(old.settingsVersion, SETTINGS_VERSION);
+  const auto = plate({ textColor: '', backgroundColor: '', accentColor: '' });
+  assert.deepEqual([auto.textColor, auto.backgroundColor, auto.accentColor], ['', '', ''], 'an empty colour is not left to the look');
+  assert.equal(auto.settingsVersion, SETTINGS_VERSION);
   assert.equal(plate({ textColor: '#fde047' }).textColor, '#fde047', 'a colour somebody chose is theirs');
   const ruleOf = (css, part) => (css.match(new RegExp(`\\[data-nameplate="${part}"\\]\\s*\\{([^}]*)\\}`)) || [])[1] || '';
   for (const p of ALL_PRESETS.filter((x) => x.layerType === 'nameplate' && /\[data-nameplate="plate"\]/.test(x.css) && !/^motion-/.test(x.id))) {
@@ -234,8 +228,8 @@ test('a run card\'s chosen accent goes wherever its look puts its own', () => {
 test('the players list\'s and the poll\'s colours can be left automatic, and their looks read the chosen ones first', () => {
   const cfg = (type, config) => normaliseLayouts([{ id: 'a', layers: [{ type, config }] }])[0].layers[0].config;
   for (const type of ['players', 'poll']) {
-    const old = cfg(type, { textColor: '#ffffff', background: '#09090bcc' });
-    assert.deepEqual([old.textColor, old.background, old.settingsVersion], ['', '', SETTINGS_VERSION], `${type}: an old default still covers the look`);
+    const auto = cfg(type, { textColor: '', background: '' });
+    assert.deepEqual([auto.textColor, auto.background, auto.settingsVersion], ['', '', SETTINGS_VERSION], `${type}: an empty colour is not left to the look`);
     assert.equal(cfg(type, { background: '#1e3a8acc' }).background, '#1e3a8acc', `${type}: a background somebody chose is theirs`);
   }
   const css = (id) => ALL_PRESETS.find((p) => p.id === id).css;

@@ -309,9 +309,6 @@ function halfShut(E, g, lashesTo) {
   return out;
 }
 
-/** Where its eyes can look. Right is how the built-in one was drawn. */
-export const pixelLooks = (pa) => Object.keys(pa?.eyes?.looks || AVATAR_LOOKS);
-
 // ------------------------------------------------------- breathing and turning
 
 /**

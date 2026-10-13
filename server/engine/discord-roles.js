@@ -69,10 +69,7 @@ export function emojiKey(emoji) {
   const markup = /^<(a?):([^:]+):(\d+)>$/.exec(String(emoji).trim());
   if (markup) return `id:${markup[3]}`;
 
-  // `name:id`, the shape the previous key produced and older configs may hold.
-  const pair = /^([^:<>]+):(\d+)$/.exec(String(emoji).trim());
-  if (pair) return `id:${pair[2]}`;
-
+  // (The bare `name:id` an earlier key produced was read here until 2.0.0; nothing stored still holds it.)
   return String(emoji).trim();
 }
 

@@ -452,10 +452,3 @@ export function openFromLine(line) {
   }
   return control('open', parsed);
 }
-
-/** Stop the timers, for a clean shutdown and for tests. */
-export function stopPolls() {
-  if (closeTimer) { clearTimeout(closeTimer); closeTimer = null; }
-  if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
-  if (resultTimer) { clearTimeout(resultTimer); resultTimer = null; }
-}

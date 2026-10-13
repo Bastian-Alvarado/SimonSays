@@ -55,7 +55,8 @@ test('a card is kept within bounds, and only fetches pictures it may', () => {
   assert.equal(clean.height, 150);
   assert.equal(clean.background, '');
   assert.deepEqual(clean.cssVars, { '--ok': '#fff' });
-  assert.equal(clean.title, 'line break');
+  // A line break is another alternative now, one picked each time the card is drawn (random-lines.js), not a space.
+  assert.equal(clean.title, 'line\nbreak');
   assert.equal(cardCss.cleanCard({ background: '/media/banner.png' }).background, '/media/banner.png');
   assert.equal(cardCss.fillCardText('Welcome {username} to {server}, #{count}', { name: 'Ana', server: 'S', count: 7 }), 'Welcome Ana to S, #7');
 });

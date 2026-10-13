@@ -100,6 +100,8 @@ export const doubles = {
 export const droidcamCalls = [];
 /* What Omnilayer asked OBS for: ['place', scene, source, box] and ['visible', scene, source, on]. */
 export const obsCalls = [];
+/** What Fetch a web address steps asked for: { url, method, body, headers }. */
+export const webRequests = [];
 
 initStore();
 
@@ -112,6 +114,8 @@ engine.initEngine({
   // Later steps run when a test says it is time (later.fireDue), not on a clock of their own.
   laterAutoTimer: false,
   laterBootGraceMs: 0,
+  // A Fetch a web address step asks nothing of the network: what it asked is kept, and doubles.webAnswer is the answer.
+  webFetch: async (req) => { webRequests.push(req); return doubles.webAnswer || { ok: true, status: 200, text: 'answer' }; },
   youtube: {
     setTitle: async (title) => { youtubeCalls.push(['title', title]); },
     setDescription: async (description) => { youtubeCalls.push(['description', description]); },

@@ -104,8 +104,8 @@ export const TwitchView = ({ settings, hype, schedule, scopes, request, t }: Pro
           {so.chat !== false && (
             <label className="block">
               <span className={tag}>{t.twitchShoutoutMessage || 'In chat'}</span>
-              <CommittedInput value={so.message || ''} onCommit={(v: string) => save('shoutout', { message: v })} className={box} />
-              <span className="block text-[10px] text-zinc-600 mt-1 leading-relaxed">{t.twitchShoutoutMessageHint || '{name}, {login}, {link}, {game}, {title}, {viewers}. With no game to name, the part naming it is left out.'}</span>
+              <CommittedInput as="textarea" value={so.message || ''} onCommit={(v: string) => save('shoutout', { message: v })} className={`${box} resize-y min-h-[52px]`} data-random-lines="shoutout" />
+              <span className="block text-[10px] text-zinc-600 mt-1 leading-relaxed">{t.twitchShoutoutMessageHint || '{name}, {login}, {link}, {game}, {title}, {viewers}. With no game to name, the part naming it is left out.'} {t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</span>
             </label>
           )}
           <div className="flex gap-2 items-center pt-1">
@@ -143,7 +143,8 @@ export const TwitchView = ({ settings, hype, schedule, scopes, request, t }: Pro
           {clip.chat !== false && (
             <label className="block">
               <span className={tag}>{t.twitchClipMessage || 'In chat'}</span>
-              <CommittedInput value={clip.message || ''} onCommit={(v: string) => save('clip', { message: v })} className={box} />
+              <CommittedInput as="textarea" value={clip.message || ''} onCommit={(v: string) => save('clip', { message: v })} className={`${box} resize-y min-h-[52px]`} data-random-lines="clip" />
+              <span className="block text-[10px] text-zinc-600 mt-1 leading-relaxed">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</span>
             </label>
           )}
           <p className="text-[10px] text-zinc-600 leading-relaxed">{t.twitchClipsHint || 'Both need the stream live. They are dock buttons too (Dock Actions → Twitch), and action steps: "Twitch: clip" makes {clip.url} for the steps after it — a Discord post, say — and "Twitch: marker" takes a note, {input} by default.'}</p>

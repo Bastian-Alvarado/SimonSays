@@ -562,25 +562,18 @@ test('a look’s own fields sit with Look and Motion, not under the stylesheet',
 
 const { presetKind: presetKindOf } = await import('../../../shared/css-presets.js');
 
-test('a bar colour can be left automatic, and a bar stored before that was possible is read as automatic once', () => {
+test('a bar colour can be left automatic, and one stored is the one shown', () => {
   const before = engine.store.getOmnibar();
   const save = (style) => engine.store.setOmnibar({ ...before, style: { ...before.style, settingsVersion: undefined, ...style } }).style;
-  // Stored before the mark: the old defaults are what every untouched bar held.
-  const old = save({ background: '#0b0b0ecc', textColor: '#FFFFFF', accentColor: '#f43f5e', transparent: true });
-  assert.deepEqual([old.background, old.textColor, old.accentColor], ['', '', ''], 'an old default still covers the look');
-  assert.equal(old.transparent, true, 'see-through is a choice, and is kept');
-  assert.equal(old.settingsVersion, 2);
-  const chosen = save({ background: '#000000', textColor: '#fde047', accentColor: '#22c55e' });
-  assert.deepEqual([chosen.background, chosen.textColor, chosen.accentColor], ['#000000', '#fde047', '#22c55e'], 'a colour somebody chose is theirs');
-  // Marked, so it happens once: the old pink chosen since is kept.
-  const again = engine.store.setOmnibar({ ...before, style: { ...old, accentColor: '#f43f5e' } }).style;
-  assert.equal(again.accentColor, '#f43f5e', 'a colour picked since the change was turned back into automatic');
+  const auto = save({ background: '', textColor: '', accentColor: '', transparent: true });
+  assert.deepEqual([auto.background, auto.textColor, auto.accentColor], ['', '', '']);
+  assert.equal(auto.transparent, true, 'see-through is a choice, and is kept');
+  assert.equal(auto.settingsVersion, 2);
+  // Up to 2.0.0 the old white and pink stored without the mark were read as automatic once; now they are chosen.
+  const chosen = save({ background: '#0b0b0ecc', textColor: '#ffffff', accentColor: '#f43f5e' });
+  assert.deepEqual([chosen.background, chosen.textColor, chosen.accentColor], ['#0b0b0ecc', '#ffffff', '#f43f5e'], 'a colour somebody chose is theirs');
   assert.equal(save({ background: 'red; url(x)' }).background, '', 'what is not a colour is left automatic');
   engine.store.setOmnibar(before);
-
-  const engineSrc = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
-  assert.match(engineSrc, /filter\(\(b\) => b && !readSettings\(b\.style\)\)\.length;\s*if \(barsBehind\) \{\s*store\.setOmnibar\(db\.omnibar\.get\(\)\);\s*store\.setOmnibars\(db\.omnibars\.get\(\)\);/,
-    'bars on disk from before the mark are not saved through at startup');
 });
 
 test('every omnibar look reads the bar’s chosen background and accent before its own', () => {
@@ -620,19 +613,16 @@ test('the bar hands a look only what was chosen, and draws its own colours witho
     'a new bar starts with its colours chosen, or the screen stamps the mark itself and an old bar\'s defaults are kept as chosen');
 });
 
-test('the viewer counter\'s colours can be left automatic, and old defaults are read as automatic once', () => {
+test('the viewer counter\'s colours can be left automatic, and chosen ones are kept', () => {
   const before = engine.store.getViewers();
   const save = (style) => engine.store.setViewers({ ...before, style: { ...before.style, settingsVersion: undefined, ...style } }).style;
-  const old = save({ color: '#FFFFFF', accentColor: '#f43f5e', background: '#0b0b0ecc', transparent: true });
-  assert.deepEqual([old.color, old.accentColor, old.background], ['', '', ''], 'an old default still covers the look');
-  assert.equal(old.transparent, true);
-  assert.equal(old.settingsVersion, 2);
-  const chosen = save({ color: '#fde047', accentColor: '#f4434c', background: '#1e3a8a' });
-  assert.deepEqual([chosen.color, chosen.accentColor, chosen.background], ['#fde047', '#f4434c', '#1e3a8a'], 'a colour somebody chose is theirs');
+  const auto = save({ color: '', accentColor: '', background: '', transparent: true });
+  assert.deepEqual([auto.color, auto.accentColor, auto.background], ['', '', '']);
+  assert.equal(auto.transparent, true);
+  assert.equal(auto.settingsVersion, 2);
+  const chosen = save({ color: '#ffffff', accentColor: '#f4434c', background: '#1e3a8a' });
+  assert.deepEqual([chosen.color, chosen.accentColor, chosen.background], ['#ffffff', '#f4434c', '#1e3a8a'], 'a colour somebody chose is theirs, white included');
   engine.store.setViewers(before);
-  const engineSrc = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
-  assert.match(engineSrc, /if \(!readSettings\(db\.viewers\.get\(\)\?\.style\)\) \{\s*store\.setViewers\(db\.viewers\.get\(\)\);/,
-    'a counter on disk from before the mark is not saved through at startup');
 });
 
 test('every viewers look reads the counter\'s chosen colours before its own', () => {
@@ -653,34 +643,29 @@ test('every viewers look reads the counter\'s chosen colours before its own', ()
   assert.ok(view.includes('<AutoColourRow') && view.includes("onClear={() => patchStyle({ [key]: '' } as any)}"), 'the counter\'s colours have no automatic state');
 });
 
-const { cleanStyle: cleanCountdownStyle, upgradeStyle: upgradeCountdownStyle } = await import('../../engine/countdown.js');
+const { cleanStyle: cleanCountdownStyle } = await import('../../engine/countdown.js');
 
-test('the countdown\'s colours can be left automatic, and old setups are read as automatic once', () => {
+test('the countdown\'s colours can be left automatic, and chosen ones are kept', () => {
   const base = { fontSize: 96, color: '#fde047', labelColor: '#22c55e', background: '#00000000', showLabel: true, settingsVersion: 2 };
   // Empty is kept as asked for; junk keeps what was there.
   const cleared = cleanCountdownStyle({ ...base, color: '', labelColor: 'red; url(x)' }, base);
   assert.equal(cleared.color, '', 'the cross cannot hand a colour back to the look');
   assert.equal(cleared.labelColor, '#22c55e');
   assert.equal(cleared.settingsVersion, 2);
-  // Stored before the mark: the old defaults are what every untouched setup held.
-  const old = upgradeCountdownStyle({ fontSize: 96, color: '#FFFFFF', labelColor: '#f43f5e', background: '#00000000', showLabel: true });
-  assert.deepEqual([old.color, old.labelColor, old.settingsVersion], ['', '', 2], 'an old default still covers the look');
-  const chosen = upgradeCountdownStyle({ fontSize: 96, color: '#4ade80', labelColor: '#f43f5e', showLabel: true });
-  assert.deepEqual([chosen.color, chosen.labelColor], ['#4ade80', ''], 'a colour somebody chose is theirs');
-  assert.equal(upgradeCountdownStyle(base), base, 'a marked setup was rewritten a second time');
+  assert.equal(cleanCountdownStyle({ ...base, color: '#ffffff' }, base).color, '#ffffff', 'a white is a colour somebody chose');
   const engineSrc = fs.readFileSync(new URL('../engine/countdown.js', SCRIPT_URL), 'utf8');
-  assert.ok(engineSrc.includes('presets: (existing.presets || []).map((p) => ({ ...p, style: upgradeStyle(p.style) })),'), 'saved setups are not read as automatic at startup');
+  assert.ok(!engineSrc.includes('upgradeStyle') && !engineSrc.includes('OLD_COLOURS'), 'the read-once of old defaults is back');
 });
 
 const { cleanStyle: cleanTimerStyle } = await import('../../engine/stopwatch.js');
 
 test('the run timer\'s colours can be left automatic, and a colour picked on the screen stays picked', () => {
   const base = { fontSize: 96, color: '', pausedColor: '', finishedColor: '', background: '#00000000', showTenths: true, settingsVersion: 2 };
-  // Read from disk at startup, from before the mark: the old defaults were never chosen.
-  const old = cleanTimerStyle({ fontSize: 96, color: '#FFFFFF', pausedColor: '#a1a1aa', finishedColor: '#22c55e', background: '#00000000', showTenths: true }, base, true);
-  assert.deepEqual([old.color, old.pausedColor, old.finishedColor], ['', '', '#22c55e'], 'an old default still covers the look, or a chosen colour was lost');
-  assert.equal(old.settingsVersion, 2);
-  // The screen sends one colour at a time, unmarked: a white picked there is a choice.
+  // What was stored is what is shown: up to 2.0.0 an unmarked white was read as automatic once.
+  const stored = cleanTimerStyle({ fontSize: 96, color: '#FFFFFF', pausedColor: '', finishedColor: '#22c55e', background: '#00000000', showTenths: true }, base);
+  assert.deepEqual([stored.color, stored.pausedColor, stored.finishedColor], ['#FFFFFF', '', '#22c55e'], 'a stored colour was lost');
+  assert.equal(stored.settingsVersion, 2);
+  // The screen sends one colour at a time: a white picked there is a choice.
   assert.equal(cleanTimerStyle({ color: '#ffffff' }, base).color, '#ffffff', 'a white picked on the screen was taken for an old default');
   assert.equal(cleanTimerStyle({ color: '' }, { ...base, color: '#ff0000' }).color, '', 'the cross cannot hand the colour back');
   const looks = ALL_PRESETS.filter((p) => p.layerType === 'stopwatch' && presetKindOf(p) === 'look');

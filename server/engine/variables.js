@@ -90,13 +90,10 @@ export function buildContext({
     /**
      * What the viewer supplied, whichever way they supplied it.
      *
-     * V2 called this `{input}` and used it everywhere — song requests, stream
-     * titles, TTS, reward text. The alias table below already carries V2's
-     * other single-word names, but this one was missed, so those templates
-     * came out with a literal "{input}" in them. It cannot be a plain alias
-     * because it means two things: the text after a trigger word when a
-     * command fired the action, and the viewer's typed text when a channel
-     * point reward did.
+     * Used everywhere — song requests, stream titles, TTS, reward text. It
+     * cannot be a plain alias because it means two things: the text after a
+     * trigger word when a command fired the action, and the viewer's typed
+     * text when a channel point reward did.
      */
     input: isCommand ? String(args) : (event?.data?.input ?? ''),
     spotify: nowPlayingVars(nowPlaying, upNext),
@@ -143,24 +140,34 @@ export function resolve(pathStr, ctx) {
  * Replace `{path}` placeholders. Unknown paths are left intact so a typo is
  * visible in the output rather than silently becoming "undefined".
  *
- * Legacy single-word aliases from V2 ({user}, {count}, {level}) are mapped
- * onto their dotted equivalents for backwards compatibility.
+ * The short names people type, for the dotted values they stand for. (V2's
+ * {username} and {args} were read here too until 2.0.0; nothing stored still
+ * used them, and {user} and {message.args} say the same.)
  */
 const ALIASES = {
   user: 'user.name',
-  username: 'user.name',
   message: 'message.content',
-  args: 'message.args',
   platform: 'platform',
+  // What a Fetch a web address step got back, and what a Chat message trigger matched.
+  response: 'response.text',
+  match: 'match.text',
 };
 
-export function interpolate(template, ctx) {
+/**
+ * `encode` is applied to each value put in, for a template that is itself a
+ * web address: {input} as "New York" has to arrive as New%20York, or the
+ * address is two words. A value that is an object — {response.json} — is put
+ * in as its JSON rather than as "[object Object]"; a list, {message.words},
+ * as its items with commas, as it always was.
+ */
+export function interpolate(template, ctx, encode = null) {
   if (typeof template !== 'string' || !template.includes('{')) return template ?? '';
 
   return template.replace(/\{([a-zA-Z0-9_.\-]+)\}/g, (match, key) => {
     const target = ALIASES[key] ?? key;
     const value = resolve(target, ctx);
     if (value === undefined || value === null) return match;
-    return String(value);
+    const text = Array.isArray(value) ? String(value) : typeof value === 'object' ? JSON.stringify(value) : String(value);
+    return encode ? encode(text) : text;
   });
 }

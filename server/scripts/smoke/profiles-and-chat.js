@@ -191,21 +191,15 @@ test('the dock reads its own set, and a chat on stream reads its layer', () => {
   assert.ok(!chatCase.includes('system.settings'), 'a chat layer is drawn with the dock\'s settings');
 });
 
-test('the dock keeps the look it had when it became its own', () => {
+test('the dock and the overlay each keep a set of their own, with no override map left to fold in', () => {
   /*
-    The dock used to be an override map on one shared set. The move has to
-    leave both surfaces looking exactly as they did, or everyone's chat
-    changes on upgrade for no reason they asked for.
+    The dock used to be an override map on one shared set, folded apart on
+    start-up. Every install has long since been moved, and 2.0.0 drops the
+    move: two collections, read as they are.
   */
   const src = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
-  const migration = src.slice(src.indexOf('legacyChat'), src.indexOf('profiles.initProfiles'));
-  assert.ok(migration.includes('db.chatDock.set('), 'the dock is not seeded from what it had');
-  // Plain substrings: the text being matched is mostly spread syntax, and a
-  // regex for it is more escaping than meaning.
-  assert.ok(migration.includes('legacyChat.dockOverrides'),
-    'the dock is seeded without folding in its own differences');
-  assert.ok(migration.includes('legacyChat.overlayOverrides'),
-    'the overlay loses its own differences in the move');
+  assert.ok(src.includes("chatDock: collection('chat_dock_settings', DEFAULT_CHAT)"));
+  assert.ok(!src.includes('legacyChat') && !src.includes('dockOverrides'), 'the old override map is still read');
 });
 
 test('chat appearance is not read from the URL any more', () => {
@@ -1221,9 +1215,9 @@ test('the TikTok proxy and the app\u2019s own address do not share a key', () =>
   const hook = fs.readFileSync(new URL('../../web/hooks/useStreamSystem.ts', SCRIPT_URL), 'utf8');
   assert.ok(hook.includes("setTiktokProxyUrl: (v: string) => localStorage.setItem('tiktok_proxy_url', v)"),
     'the TikTok proxy writes to the shared key again');
-  /* Read from the old one too, so a proxy set before this keeps working. */
-  assert.ok(hook.includes("localStorage.getItem('tiktok_proxy_url') || localStorage.getItem('server_url')"),
-    'a proxy set before this change is forgotten');
+  /* Read from its own key alone: the old shared one was read as well until 2.0.0. */
+  assert.ok(hook.includes("tiktokProxyUrl: localStorage.getItem('tiktok_proxy_url') || ''"),
+    'the TikTok proxy is read from the app\'s own address again');
 
   const backend = fs.readFileSync(new URL('../../web/hooks/useBackend.ts', SCRIPT_URL), 'utf8');
   assert.ok(!backend.includes("read('server_url')"),

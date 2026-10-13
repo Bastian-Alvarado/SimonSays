@@ -28,6 +28,7 @@ import { config } from '../config.js';
 import { cascadeCard, cleanCard, fillCardText, DEFAULT_CARD } from '../../shared/card-css.js';
 import { fontFamilyName } from '../../shared/chat-style.js';
 import { drawableDataUrl } from './picture-still.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('welcome-card');
 const require = createRequire(import.meta.url);
@@ -272,7 +273,8 @@ export async function renderCard(card, member = {}, context = {}, { format = 'pn
     c.showAvatar ? pictureData(member.avatar) : null,
     layerElements(c, context),
   ]);
-  const texts = [['title', fill(c.title)], ['name', fill(c.name)], ['subtitle', fill(c.subtitle)]]
+  // Each written one alternative per line, one of them picked for this card (shared/pick-line.js).
+  const texts = [['title', fill(pickLine(c.title))], ['name', fill(pickLine(c.name))], ['subtitle', fill(pickLine(c.subtitle))]]
     .filter(([, text]) => text)
     .map(([part, text]) => el('div', styles[part], { 'data-card': part }, text));
 

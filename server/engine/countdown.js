@@ -23,7 +23,7 @@
 import { collection } from '../core/store.js';
 import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { createLogger } from './../core/logger.js';
-import { readSettings, lookColour, SETTINGS_VERSION } from './layouts.js';
+import { SETTINGS_VERSION } from './layouts.js';
 
 const log = createLogger('countdown');
 
@@ -42,8 +42,7 @@ const DEFAULT = {
   label: '',
   style: {
     fontSize: 96,
-    // Empty is automatic: the look's colour, or the clock's own without one
-    // (see OLD_COLOURS).
+    // Empty is automatic: the look's colour, or the clock's own without one.
     color: '',
     labelColor: '',
     background: '#00000000',
@@ -75,13 +74,6 @@ const MAX_PRESETS = 12;
 const colour = (v, fallback) => (/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(v || '') ? v : fallback);
 
 /**
- * The clock's own colours, drawn with no look on the layer — and what every
- * setup stored before a colour could be left automatic held in full, as
- * though somebody had chosen them. Read once as automatic (see upgradeStyle).
- */
-const OLD_COLOURS = { color: '#ffffff', labelColor: '#f43f5e' };
-
-/**
  * A colour a look can decide: empty is automatic, and is kept as asked for;
  * anything else that is not a colour keeps what was there.
  */
@@ -98,17 +90,6 @@ export function cleanStyle(incoming, base) {
     labelColor: lookable(from.labelColor, base.labelColor),
     background: colour(from.background, base.background),
     showLabel: from.showLabel !== false,
-    settingsVersion: SETTINGS_VERSION,
-  };
-}
-
-/** A style from before the mark, with its old defaults read as automatic. */
-export function upgradeStyle(style) {
-  if (!style || readSettings(style)) return style;
-  return {
-    ...style,
-    color: lookColour(style, 'color', OLD_COLOURS.color),
-    labelColor: lookColour(style, 'labelColor', OLD_COLOURS.labelColor),
     settingsVersion: SETTINGS_VERSION,
   };
 }
@@ -214,24 +195,6 @@ export function initCountdown() {
       state.set({ ...existing, presets: [preset], activeId: preset.id });
       state.flush();
       log.info(`countdown adopted the existing countdown as "${preset.name}"`);
-    }
-  }
-
-  /*
-    Setups stored before a colour could be left to the look: the live one and
-    every saved row, once each, by the mark on each style.
-  */
-  {
-    const existing = state.get();
-    const behind = [existing.style, ...(existing.presets || []).map((p) => p.style)].filter((st) => st && !readSettings(st)).length;
-    if (behind) {
-      state.set({
-        ...existing,
-        style: upgradeStyle(existing.style),
-        presets: (existing.presets || []).map((p) => ({ ...p, style: upgradeStyle(p.style) })),
-      });
-      state.flush();
-      log.info(`countdown: ${behind} setup(s) now leave their look to decide what was left at the default`);
     }
   }
 
@@ -508,9 +471,4 @@ export function act(op, { timer = '', amount = '' } = {}) {
     after = ms ? control('add', ms) : before;
   }
   return { before, after, time: formatLeft(remainingNow(after)) };
-}
-
-/** Stop the scheduled wake-up, for a clean shutdown. */
-export function stopCountdown() {
-  if (finishTimer) { clearTimeout(finishTimer); finishTimer = null; }
 }

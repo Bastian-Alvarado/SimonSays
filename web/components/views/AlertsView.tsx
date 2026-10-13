@@ -471,7 +471,9 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
         )),
       ]) as AlertConfig
       : draft;
-    const text = fillPreview(config.messageTemplate);
+    // A caption of several lines is one of them on stream: the preview shows each in turn, one per replay.
+    const lines = String(config.messageTemplate || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const text = fillPreview(lines.length > 1 ? lines[(Number(previewKey) || 0) % lines.length] : config.messageTemplate);
     return { id: `preview-${previewKey}-${previewVariation || 'base'}`, config, user: SAMPLE_USER, text };
   }, [draft, previewKey, previewVariation, fillPreview]);
 
@@ -690,7 +692,9 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                     className={`${input} min-h-[64px] font-mono leading-relaxed`}
                     value={draft.messageTemplate}
                     onChange={(e) => patch({ messageTemplate: e.target.value })}
+                    data-random-lines="alert-caption"
                   />
+                  <p className="text-[9px] text-zinc-600 mt-1">{t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</p>
                   <button
                     onClick={() => setShowPicker(true)}
                     className="mt-2 text-[9px] font-black uppercase tracking-widest text-current-accent hover:brightness-125"
@@ -817,8 +821,8 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                         <>
                           <label className="block mb-3">
                             <Label>{t.alertsReadText || 'What it says'}</Label>
-                            <textarea className={`${input} min-h-[52px] font-mono leading-relaxed`} value={tts.text} onChange={(e) => setTts({ text: e.target.value })} />
-                            <span className="block text-[9px] text-zinc-600 mt-1 leading-relaxed">{t.alertsReadTextHint || '{alert} is the alert\'s own text, {message} what the viewer wrote with it (bits, a sub message, a Super Chat, a channel-point reward\'s text). Every other variable works too. Nothing to say, nothing is read.'}</span>
+                            <textarea className={`${input} min-h-[52px] font-mono leading-relaxed`} value={tts.text} onChange={(e) => setTts({ text: e.target.value })} data-random-lines="alert-tts" />
+                            <span className="block text-[9px] text-zinc-600 mt-1 leading-relaxed">{t.alertsReadTextHint || '{alert} is the alert\'s own text, {message} what the viewer wrote with it (bits, a sub message, a Super Chat, a channel-point reward\'s text). Every other variable works too. Nothing to say, nothing is read.'} {t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</span>
                           </label>
                           <div className="flex gap-3 mb-3">
                             <label className="flex-1">

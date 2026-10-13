@@ -29,7 +29,7 @@ import {
 import { CHAT_THEMES, chatEventsOn } from '../constants';
 import { PLATFORMS } from '../../shared/platforms.js';
 import { CHAT_STYLE_KEYS } from '../../shared/chat-style.js';
-import { DOCK_CHAT_CSS } from '../../shared/css-presets.js';
+import { DOCK_CHAT_CSS } from '../../shared/dock-chat-css.js';
 import { ASSET_KINDS, assetKindOf } from '../../shared/asset-kinds.js';
 import { safeJSONParse, spotifyRedirectUri, youtubeRedirectUri } from '../utils';
 import { useBackend, httpBase, C2S, S2C } from './useBackend';
@@ -350,7 +350,7 @@ export const useStreamSystem = () => {
     state, so nothing can loop. The whole set goes, with the change folded in.
   */
   const pushChat = useCallback((patch: Record<string, any>) => {
-    send(C2S.SET_CHAT_DOCK_SETTINGS, { ...(chatLatest.current || {}), ...patch, migrated: true });
+    send(C2S.SET_CHAT_DOCK_SETTINGS, { ...(chatLatest.current || {}), ...patch });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [send]);
 
@@ -610,6 +610,14 @@ export const useStreamSystem = () => {
         const audio = new Audio(`data:audio/mp3;base64,${d.audioBase64}`);
         if (d.rate) audio.playbackRate = d.rate;
         audio.play().catch((err) => console.error('audio playback failed:', err));
+      }),
+
+      // A Play sound step's file, at its volume. An uploaded one is a /media/… path on the server.
+      on(S2C.PLAY_SOUND, (d: any) => {
+        if (!d?.url) return;
+        const audio = new Audio(d.url);
+        audio.volume = Math.min(1, Math.max(0, Number(d.volume ?? 1)));
+        audio.play().catch((err) => console.error('sound playback failed:', err));
       }),
     ];
 
@@ -1432,8 +1440,7 @@ export const useStreamSystem = () => {
       obsLastConnectedAt: Number(c.obs?.lastConnectedAt) || 0,
       obsPassword: obsPasswordDraft,
       tiktokUrl: c.tiktok?.username ?? '',
-      // The old key is still read, so a proxy set before this keeps working.
-      tiktokProxyUrl: localStorage.getItem('tiktok_proxy_url') || localStorage.getItem('server_url') || '',
+      tiktokProxyUrl: localStorage.getItem('tiktok_proxy_url') || '',
       /*
         The names the server has cached, until this browser asks for fresh
         ones. Without the fallback the list was empty on every load and a

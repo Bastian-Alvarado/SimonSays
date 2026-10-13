@@ -26,8 +26,6 @@
 
 import { aspectRatio, fitAspect } from './aspect.js';
 
-export const FORMATS = ['horizontal', 'vertical'];
-
 /** The vertical canvas a layout gets until it is given another: 1080×1920, a phone's screen. */
 export const VERTICAL_CANVAS = Object.freeze({ width: 1080, height: 1920 });
 

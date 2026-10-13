@@ -226,18 +226,18 @@ export const WelcomeCardEditor = ({ kind, card: incoming, onChange, preview, onP
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1 block">
               <span className={label}>{t.welcomeCardLine1 || 'Top line'}</span>
-              <input value={card.title} onChange={(e) => set({ title: e.target.value })} className={field} maxLength={120} />
+              <textarea rows={1} value={card.title} onChange={(e) => set({ title: e.target.value })} className={`${field} resize-y block`} maxLength={600} data-random-lines="card-title" />
             </label>
             <label className="space-y-1 block">
               <span className={label}>{t.welcomeCardLine2 || 'Name'}</span>
-              <input value={card.name} onChange={(e) => set({ name: e.target.value })} className={field} maxLength={120} />
+              <textarea rows={1} value={card.name} onChange={(e) => set({ name: e.target.value })} className={`${field} resize-y block`} maxLength={600} data-random-lines="card-name" />
             </label>
             <label className="space-y-1 block col-span-2">
               <span className={label}>{t.welcomeCardLine3 || 'Bottom line'}</span>
-              <input value={card.subtitle} onChange={(e) => set({ subtitle: e.target.value })} className={field} maxLength={160} />
+              <textarea rows={1} value={card.subtitle} onChange={(e) => set({ subtitle: e.target.value })} className={`${field} resize-y block`} maxLength={800} data-random-lines="card-subtitle" />
             </label>
           </div>
-          <p className="text-[10px] text-zinc-600">{t.welcomeCardVars || '{username} is their name, {server} the server, {count} how many are in it. A line left empty is left off.'}</p>
+          <p className="text-[10px] text-zinc-600">{t.welcomeCardVars || '{username} is their name, {server} the server, {count} how many are in it. A line left empty is left off.'} {t.oneLinePerOption || 'One per line: a different one is picked at random each time.'}</p>
 
           <div className="flex flex-wrap items-center gap-2">
             {SIZES.map((s) => (

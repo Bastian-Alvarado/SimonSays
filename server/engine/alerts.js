@@ -12,9 +12,10 @@
 
 import { bus, EVENTS } from '../core/bus.js';
 import { interpolate, buildContext } from './variables.js';
+import { pickLine } from '../../shared/pick-line.js';
 import { cleanCss, MAX_ALERT_CSS } from '../../shared/clean-css.js';
 import { createLogger } from '../core/logger.js';
-import { readSettings, lookColour, SETTINGS_VERSION } from './layouts.js';
+import { lookColour, SETTINGS_VERSION } from './layouts.js';
 import { currentLook } from '../../shared/looks-history.js';
 import { sampleEvent } from '../../shared/alert-samples.js';
 
@@ -138,11 +139,8 @@ const text = (v, max, fallback = '') => {
   return s ? s.slice(0, max) : fallback;
 };
 
-/** An alert's font, or automatic; before the mark, the old Montserrat default was automatic too. */
-const lookFont = (incoming) => {
-  const f = text(incoming?.fontFamily, 80).trim();
-  return !readSettings(incoming) && (f === '' || f === 'Montserrat') ? '' : f;
-};
+/** An alert's font, or automatic when empty. */
+const lookFont = (incoming) => text(incoming?.fontFamily, 80).trim();
 
 /**
  * Validate and fill in one alert.
@@ -167,7 +165,8 @@ export function normaliseAlert(incoming) {
       ? Math.min(1, Math.max(0, Number(incoming.soundVolume)))
       : 1,
     layout: LAYOUTS.includes(incoming?.layout) ? incoming.layout : 'image-above',
-    messageTemplate: text(incoming?.messageTemplate, 300, '{user}'),
+    // Room for a few alternatives, one per line: 300 was one caption.
+    messageTemplate: text(incoming?.messageTemplate, 1000, '{user}'),
     highlightText: incoming?.highlightText !== false,
     /*
       The font and the two colours are automatic when empty: the look on the
@@ -178,8 +177,8 @@ export function normaliseAlert(incoming) {
     */
     fontFamily: lookFont(incoming),
     fontSize: bounded(incoming?.fontSize, 8, 200, 32),
-    textColor: lookColour(incoming, 'textColor', '#ffffff'),
-    accentColor: lookColour(incoming, 'accentColor', '#f43f5e'),
+    textColor: lookColour(incoming, 'textColor'),
+    accentColor: lookColour(incoming, 'accentColor'),
     settingsVersion: SETTINGS_VERSION,
     // Under half a second is not long enough to read; over a minute is a
     // stuck overlay rather than an alert.
@@ -230,7 +229,7 @@ export const DEFAULT_ALERT_TTS_TEXT = '{alert} {message}';
 function normaliseTts(t) {
   return {
     enabled: t?.enabled === true,
-    text: text(t?.text, 300, DEFAULT_ALERT_TTS_TEXT),
+    text: text(t?.text, 1000, DEFAULT_ALERT_TTS_TEXT),
     voice: text(t?.voice, 200),
     rate: between(t?.rate, 0.5, 2, 1),
     pitch: between(t?.pitch, 0, 2, 1),
@@ -387,8 +386,9 @@ export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null, 
     // which variation played.
     const chosen = opts.variationId && (base.variations || []).find((v) => v.id === opts.variationId);
     const config = chosen ? withVariation(base, chosen) : pickVariation(base, event);
-    // Pre-rendered so every connected overlay shows identical text.
-    const shown = interpolate(config.messageTemplate, ctx);
+    // Pre-rendered so every connected overlay shows identical text — and, with
+    // a caption written one per line, the same one of them (shared/pick-line.js).
+    const shown = interpolate(pickLine(config.messageTemplate), ctx);
     const alert = {
       id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`,
       config,
@@ -404,7 +404,8 @@ export function dispatch(alertConfigs, event, nowPlaying = null, upNext = null, 
       takes, on every surface alike, so the next one waits its turn.
     */
     const tts = config.tts;
-    const said = tts?.enabled ? interpolate(tts.text, { ...ctx, alert: shown }).replace(/\s+/g, ' ').trim() : '';
+    // Its own box of alternatives, one per line; {alert} is the caption picked above.
+    const said = tts?.enabled ? interpolate(pickLine(tts.text), { ...ctx, alert: shown }).replace(/\s+/g, ' ').trim() : '';
     if (said) {
       alert.speak = { text: said, voiceURI: tts.voice || undefined, rate: tts.rate, pitch: tts.pitch, volume: tts.volume, delayMs: tts.delayMs };
       alert.config = { ...config, duration: Math.max(config.duration, readingMs(said, tts.rate, tts.delayMs)) };

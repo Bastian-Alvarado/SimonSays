@@ -158,7 +158,7 @@ test('the trigger picker offers the new triggers, under YouTube and Chat too, in
     assert.ok(view.includes(`{ value: '${type}', label:`), `the picker has no ${type}`);
   }
   assert.ok(view.includes("{ value: 'youtube', label: t.triggerYoutube") && view.includes("{ value: 'chat', label: t.triggerChat"));
-  assert.ok(view.includes("val === 'youtube' ? 'youtube_cheer' : val === 'chat' ? 'chat_first_of_stream'"), 'picking a new category leaves the trigger on something else');
+  assert.ok(view.includes("val === 'youtube' ? 'youtube_cheer' : val === 'chat' ? 'chat_message'"), 'picking a new category leaves the trigger on something else');
   const constants = read('../../web/constants.ts');
   for (const key of ['triggerYoutube', 'triggerChat', 'triggerGiftBomb', 'triggerHypeBegin', 'triggerHypeLevel', 'triggerHypeEnd', 'triggerTwitchOnline', 'triggerTwitchOffline', 'triggerSuperChat', 'triggerYoutubeMember', 'triggerYoutubeGifts', 'triggerFirstOfStream', 'triggerFirstEver', 'minGifts', 'giftBombHint', 'minSuperChat', 'superChatHint', 'youtubeMemberHint', 'hypeTrainHint', 'twitchLiveHint', 'firstOfStreamHint', 'firstEverHint']) {
     assert.equal(constants.split(`    ${key}: '`).length - 1, 2, `${key} is not in both languages`);

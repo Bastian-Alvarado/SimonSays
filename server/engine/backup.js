@@ -52,8 +52,6 @@ export const MANIFEST = [
   // whose chat leaned on it, are filled out from it when they are restored.
   { name: 'chat_settings' },
   { name: 'chat_dock_settings' },
-  // What has already been done to this install, so a restore does not redo it.
-  { name: 'upgrades' },
   { name: 'plan' },
   // Plans for nights that repeat, saved to load again.
   { name: 'plan_saved' },
@@ -236,13 +234,7 @@ export function applyBundle(bundle, { healCommands, setDockButtons } = {}) {
 
   const meta = bundle.meta;
   if (!meta || meta.app !== BACKUP_APP) throw refusal('backup_not_simonsays', 'not a SimonSays backup file');
-  if (!bundle.collections || typeof bundle.collections !== 'object') {
-    // V1 files carried localStorage keys under `data` and no server state at
-    // all, so there is genuinely nothing here to restore.
-    throw meta.version === 1 || bundle.data
-      ? refusal('backup_settings_only', 'this is an old settings-only backup and carries no commands or actions')
-      : refusal('backup_empty', 'backup file has no collections');
-  }
+  if (!bundle.collections || typeof bundle.collections !== 'object') throw refusal('backup_empty', 'backup file has no collections');
 
   const restored = [];
   const skipped = [];

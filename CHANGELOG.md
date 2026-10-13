@@ -2,6 +2,18 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [1.2.3] — 2026-10-13
+
+- Tidier inside before 2.0.0: unused words and code removed, and security updates to the build tools and the server's packages.
+- OBS pages load much less: the dashboard's screens load only when the dashboard opens them, so an overlay downloads about 60% less.
+- Data from V2 and from before 1.0's settings changes is no longer converted on start: V2's XP file, its single-check conditions and {username}/{args}, the old chat override map, V1 settings-only backups. Anything saved by 1.x is unaffected.
+- New Condition steps start in the list form the editor shows.
+- "Somebody says something" trigger: chat with certain words, a start, the whole message or a pattern sets an action off, with cooldowns; {match} is what matched.
+- Play a sound step: a sound file from an action, played where alert sounds play.
+- Fetch a web address step: ask an address and use the answer as {response} (JSON fields too). It cannot reach the server itself.
+- {random.user}: somebody who talked in the last half hour.
+- One per line, picked at random, in more places: alert captions and speech, the shoutout and clip chat lines, the !pregunta and !plan replies, live DMs, the "stream over" message, level-up messages, and the welcome card's title, footer and drawn words.
+
 ## [1.2.2] — 2026-10-12
 
 - When an action step fails, the server log says which scene, source or filter it was looking for.

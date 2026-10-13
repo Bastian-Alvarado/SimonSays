@@ -49,7 +49,6 @@ export const VARIABLE_GROUPS: Group[] = [
     vars: [
       { token: 'user', en: 'Who set this off. Short for {user.name}.', es: 'Quien lo activo. Atajo de {user.name}.', sample: 'Nightbot' },
       { token: 'user.name', en: 'The display name.', es: 'El nombre visible.', sample: 'Nightbot' },
-      { token: 'username', en: 'Another name for {user}. Kept for templates brought over from V2.', es: 'Otro nombre para {user}. Se mantiene para plantillas traidas de V2.', sample: 'Nightbot' },
       { token: 'user.id', en: 'Platform user id.', es: 'ID del usuario en la plataforma.', sample: '12345678' },
       { token: 'user.avatar', en: 'Avatar image URL.', es: 'URL de la imagen de perfil.' },
       { token: 'user.isSub', en: 'true / false.', es: 'true / false.', sample: 'true' },
@@ -69,7 +68,6 @@ export const VARIABLE_GROUPS: Group[] = [
       { token: 'message.raw', en: 'The whole line, trigger word included.', es: 'La linea completa, con la palabra clave.', sample: '!tts hola mundo' },
       { token: 'message.content', en: 'The long name for {message}. Identical value.', es: 'El nombre largo de {message}. Mismo valor.', sample: 'hola mundo' },
       { token: 'message.args', en: 'Same as {message} on a command.', es: 'Igual que {message} en un comando.', sample: 'hola mundo' },
-      { token: 'args', en: 'Another name for {message.args}. Kept for templates brought over from V2.', es: 'Otro nombre para {message.args}. Se mantiene para plantillas traidas de V2.', sample: 'hola mundo' },
       { token: 'message.words', en: 'Every word of the WHOLE line, trigger included, comma-separated when printed.', es: 'Cada palabra de la linea COMPLETA, con la palabra clave, separada por comas al imprimirse.', sample: '!tts,hola,mundo' },
       { token: 'input', en: 'Text after the trigger, or what a viewer typed into a channel-point reward.', es: 'Texto tras la palabra clave, o lo que el espectador escribio en una recompensa de puntos.', sample: 'hola mundo' },
     ],
@@ -92,6 +90,37 @@ export const VARIABLE_GROUPS: Group[] = [
     noteEs: 'Solo despues de un paso de YouTube: alternar categoria, asi que pon el mensaje despues.',
     vars: [
       { token: 'youtube.category', en: 'The category the stream is in now.', es: 'La categoria en la que esta el stream ahora.', sample: 'Gaming', conditional: true },
+    ],
+  },
+  {
+    id: 'random-user',
+    en: 'Somebody around', es: 'Alguien presente',
+    noteEn: 'Somebody who talked on stream in the last half hour, not the person who set the action off. The same person all through one run.',
+    noteEs: 'Alguien que habló en el directo en la última media hora, que no sea quien activó la acción. La misma persona en toda la ejecución.',
+    vars: [
+      { token: 'random.user', en: 'Their name.', es: 'Su nombre.', sample: 'Ana' },
+    ],
+  },
+  {
+    id: 'response',
+    en: 'Web answer', es: 'Respuesta web',
+    noteEn: 'Only after a "Fetch a web address" step, so put the message after it.',
+    noteEs: 'Solo despues de un paso "Consultar una direccion web", asi que pon el mensaje despues.',
+    vars: [
+      { token: 'response', en: 'What came back, as text.', es: 'Lo que llego, como texto.', sample: 'Why did the chicken…', conditional: true },
+      { token: 'response.json.name', en: 'One field of a JSON answer: change "name" to the field.', es: 'Un campo de una respuesta JSON: cambia "name" por el campo.', sample: '21', conditional: true },
+      { token: 'response.ok', en: 'Whether it worked.', es: 'Si funciono.', sample: 'true', conditional: true },
+      { token: 'response.status', en: 'The HTTP status.', es: 'El estado HTTP.', sample: '200', conditional: true },
+    ],
+  },
+  {
+    id: 'match',
+    en: 'Chat match', es: 'Coincidencia en el chat',
+    noteEn: 'Only for the "Somebody says something" trigger.',
+    noteEs: 'Solo con el disparador "Alguien dice algo".',
+    vars: [
+      { token: 'match', en: 'What matched.', es: 'Lo que coincidio.', sample: 'gg', conditional: true },
+      { token: 'match.1', en: 'A pattern\'s first group (and .2, .3…).', es: 'El primer grupo de un patron (y .2, .3…).', sample: 'youtube.com', conditional: true },
     ],
   },
   {

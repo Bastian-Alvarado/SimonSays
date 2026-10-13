@@ -23,6 +23,7 @@ import * as twitch from '../platforms/twitch.js';
 import * as sessions from './stream-sessions.js';
 import { getAnnounce } from './announce.js';
 import { getGreetings } from './welcome.js';
+import { pickLine } from '../../shared/pick-line.js';
 
 const log = createLogger('live-dms');
 
@@ -51,7 +52,8 @@ export function cleanLiveDms(c = {}, before = DEFAULT_LIVE_DMS) {
   return {
     enabled: x.enabled === true,
     delaySec: Number.isFinite(d) ? Math.min(600, Math.max(0, Math.round(d))) : DEFAULT_LIVE_DMS.delaySec,
-    message: String(x.message ?? '').slice(0, 300) || DEFAULT_LIVE_DMS.message,
+    // Room for a few alternatives, one per line.
+    message: String(x.message ?? '').slice(0, 1000) || DEFAULT_LIVE_DMS.message,
     post: {
       channelId: /^\d{5,25}$/.test(String(x.post?.channelId || '')) ? String(x.post.channelId) : '',
       messageId: /^\d{5,25}$/.test(String(x.post?.messageId || '')) ? String(x.post.messageId) : '',
@@ -82,7 +84,8 @@ export function choices(cfg = getAnnounce()) {
 /** The direct message: words, the link as a button, and a way to stop. */
 export function dmFor(platform, info = {}, cfg = getLiveDms()) {
   const url = linkFor(platform);
-  const words = cfg.message
+  // One of the messages written, when there are several (shared/pick-line.js): each person may get a different one.
+  const words = pickLine(cfg.message)
     .replace(/\{streamer\}/g, info.name || 'El directo')
     .replace(/\{title\}/g, info.title || '')
     .replace(/\{game\}/g, info.game || '')
