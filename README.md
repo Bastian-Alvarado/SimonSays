@@ -34,6 +34,12 @@ The web app is where you set it up; close it and everything keeps working.
 - **Community**: levels, points and a shop, polls, giveaways, questions,
   game requests, remote players.
 - **Discord**: welcome cards, role menus, pages, go-live posts.
+- **Your moderators**: a sign-in for the dashboard, so you and the
+  moderators of your Twitch channel can use it from anywhere. They help run
+  the stream from their own dock, moderate chat as themselves, and never touch
+  your connections, overlays or backups.
+- **A home screen** that greets whoever opens it with the stream at a glance
+  and only what needs doing.
 - **Guides** inside the app walk a new streamer through setting it all up,
   including each platform's keys, click by click.
 
@@ -43,7 +49,8 @@ English and Spanish throughout. What changed in each version is in
 ## Privacy
 
 It runs on your own computer and sends nothing to the people who make it: no
-analytics, no tracking, no cookies. What it keeps about you and your viewers,
+analytics and no tracking. Its one cookie is the sign-in's, set only once
+somebody signs in. What it keeps about you and your viewers,
 where, and what reaches which service is in [PRIVACY.md](PRIVACY.md).
 
 ## License
@@ -56,44 +63,140 @@ value is mainly SimonSays itself.
 
 ---
 
-## Quick start
+## Getting started
+
+About half an hour from nothing to a first stream. The app also walks you
+through all of this itself, on its home screen and in **Guides**, in English
+and Spanish — this is the same path, written down.
+
+### What you need
+
+- **A computer to run it on.** The one that runs OBS is simplest. Windows,
+  macOS or Linux; a spare PC or an old Android phone on your network works
+  too.
+- **[Node.js](https://nodejs.org) 22 or newer.** Take the LTS installer and
+  keep its defaults. To check, open a terminal and run `node -v`.
+- **[OBS Studio](https://obsproject.com) 28 or newer**, for the overlays.
+- **The accounts you stream from** — Twitch, YouTube, TikTok — and Discord
+  or Spotify if you want those too.
+
+### 1. Download it
+
+On GitHub, press **Code → Download ZIP** and unzip it somewhere that stays
+put, like `Documents\SimonSays`. Or, with git, copy the address under
+**Code** and run `git clone` with it.
+
+### 2. Install it
+
+Open a terminal in that folder. On Windows: open the folder, right-click
+an empty space, and choose **Open in Terminal**. Then:
 
 ```bash
 npm install
 ```
 
-```bash
-cp .env.example .env
-```
+It downloads what the app needs. A few minutes, once.
 
-Fill in whichever platforms you use — anything left blank simply stays
-disconnected. Then:
-
-```bash
-npm run dev
-```
-
-That runs the server on `:8081` and the config UI on `:5173`.
-
-Leave that terminal running — it *is* the service. Closing it stops everything.
-
-For production, build the UI once and let the server host it:
+### 3. Start it
 
 ```bash
 npm run serve
 ```
 
-Everything is then on `http://localhost:8081`.
+The first time it builds the app, then starts it. When it says
+`listening on http://0.0.0.0:8081`, it's running. **Leave that window
+open** — it is the app. Closing it stops everything; closing the browser
+doesn't.
 
-> **Windows PowerShell note.** PowerShell 5.1 has no `&&` operator, so
-> `cd "path" && npm run dev` fails with *"The token '&&' is not a valid
-> statement separator in this version."* Use `;` instead:
->
-> ```
-> cd "C:\path\to\SimonSays"; npm run dev
-> ```
->
-> Or just `cd` first and run `npm run dev` on its own line.
+Every time after that, `npm start` is enough. Start it before you go live.
+
+### 4. Open it
+
+Go to **http://localhost:8081** in your browser. The home screen welcomes
+you with the setup steps still to do, each with a button to where it's
+done, and ticks them off as you go.
+
+### 5. Connect where you stream
+
+On the **Connections** screen:
+
+- **Twitch.** Twitch needs an app of your own, made once:
+  1. Turn on two-factor authentication on your Twitch account (twitch.tv →
+     Settings → Security and Privacy). Twitch won't let you make an app
+     without it.
+  2. At [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps),
+     press **Register Your Application**. Any name; **OAuth Redirect URLs**:
+     `http://localhost:8081/`; category: Chat Bot.
+  3. Press **Manage**, copy the **Client ID** (not the secret), paste it on
+     the Connections screen and press **Login with Twitch**.
+
+  Sign in on the computer the app runs on: Twitch accepts a plain `http://`
+  address only for `localhost`. A second account for the bot is optional
+  (see [Connecting a separate bot account](#connecting-a-separate-bot-account)).
+- **YouTube**, **TikTok LIVE**, **Discord** and **Spotify** each have a
+  click-by-click walkthrough in **Guides → Start here**.
+
+### 6. Connect OBS
+
+In OBS: **Tools → WebSocket Server Settings**, tick **Enable WebSocket
+server**, press **Show Connect Info** and copy the password. On the
+Connections screen, fill in `localhost`, `4455` and that password, and
+connect.
+
+### 7. Put your stream in OBS
+
+Add a **Browser** source to your scenes, 1920 × 1080, with the address from
+the **Overlays** screen (`http://localhost:8081/?mode=canvas`). That one
+source draws everything the app puts on stream: chat, alerts, bars, timers,
+avatars. Copy the address from the app rather than typing it — once sign-in
+is on, it carries the key OBS needs.
+
+For the chat and your buttons beside OBS's preview, add a dock: **Docks →
+Custom Browser Docks**, with `http://localhost:8081/?mode=dock`.
+
+### 8. Make it yours
+
+- **Overlays:** make a layout, or start from a theme in **Looks**. Bind
+  each layout to the OBS scenes it shows in, or turn on **Omnilayer** to run
+  the whole stream from one scene.
+- **Alerts:** turn on the ones you want, with their sounds.
+- **Commands** and **Actions:** a command is what chat types; an action is
+  what happens — chat lines, scene switches, sounds, timers, anything.
+- **Dock Actions:** a grid of buttons for those actions, in the OBS dock and
+  on your phone.
+
+### 9. Before anyone else can reach it
+
+On your home network nothing more is needed. If the app can be reached
+from anywhere else — a public address in front of it, say — switch
+**sign-in** on first (**Settings → Sign-in**): from then on only you and
+your Twitch channel's moderators can open the dashboard. Every address you
+sign in from must be added to your Twitch app's OAuth Redirect URLs, as in
+step 5.
+
+Moderators then sign in with their own Twitch account and help run the
+stream from their own dock, without touching what's yours. The
+**Moderators** screen shows who's in and what they did.
+
+### If something goes wrong
+
+- **"Port 8081 is already in use":** the app is already running, in another
+  window. Use that one, or close it first.
+- **`'&&' is not a valid statement separator`** (Windows PowerShell 5.1):
+  run the commands on separate lines, or join them with `;`.
+- **Twitch says "redirect_mismatch":** the address in your Twitch app must be
+  exactly the one you opened, `http://localhost:8081/` — slash included.
+- **A phone or another PC can't open it:** allow Node.js through the
+  Windows firewall on private networks (Windows asks the first time).
+- **Anything else:** **Guides** has a "when it doesn't work" list for every
+  platform.
+
+### Keys in a file, if you prefer
+
+Everything above goes in through the app, and the server keeps it. To set
+the port, the address it listens on, or platform keys in a file instead,
+copy `.env.example` to `.env` and fill in what you need; anything left
+blank is ignored.
 
 ---
 
@@ -224,6 +327,10 @@ Point OBS browser sources at the server:
 | The stream (every layer, chat included) | `http://localhost:8081/?mode=canvas` |
 | Alerts only | `http://localhost:8081/?mode=alerts` |
 
+Copy these from their screens in the app rather than typing them: once sign-in
+is on, the pages OBS shows carry a page key in their links, and the dock signs
+in like any browser.
+
 The chat on stream is a layer on a layout, with its own settings on the
 Overlays screen, so it changes with the overlay profile like everything else.
 The standalone chat page (`?mode=overlay`) is retired and draws nothing.
@@ -286,5 +393,14 @@ Boots the engine with stub platforms, pushes synthetic chat and events through
 the bus, and asserts on the results — permissions, cooldowns, condition
 branching, variable interpolation, event filters, tag updates and the
 recursion guard. No network, no OBS, no browser.
+
+### Developing
+
+```bash
+npm run dev
+```
+
+Runs the server on `:8081` and the UI on `:5173`, reloading as you edit.
+It has no updater; keep a development copy up to date with git.
 
 ---

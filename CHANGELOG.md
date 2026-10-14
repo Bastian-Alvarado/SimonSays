@@ -2,6 +2,10 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.1.1] — 2026-10-14
+
+- The README has a step-by-step Getting started guide in place of the old quick start: what you need, installing and starting the app, connecting Twitch and OBS, the stream page and dock in OBS, sign-in, and what to do when something goes wrong.
+
 ## [2.1.0] — 2026-10-14
 
 - A new home screen, for whoever opens it: a greeting by name; while live, the stream’s viewers per platform and tonight’s follows, subs and bits; offline, the next scheduled stream, the plan and a quick check that OBS and the stream page are ready.
