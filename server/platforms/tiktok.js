@@ -19,25 +19,28 @@
  * names are used.
  *
  * Every attempt spends a request against the signing service's rate limit,
- * so it only looks while the Twitch stream is live — TikTok is where that
- * stream is also sent (server/core/twitch-live.js):
- *
- *   Twitch not live               ->  no looking at all
- *   Twitch live                   ->  at once, every 30s for ten minutes
- *                                     (TikTok tends to go live a beat after
- *                                     Twitch does), then every two minutes
- *
- * Twitch not connected, nobody can say whether it is live, and OBS decides
- * as it did before:
+ * so it only looks while OBS is streaming — TikTok is where that stream is
+ * also sent:
  *
  *   OBS connected, not streaming  ->  no looking at all
- *   OBS streaming                 ->  the same timetable, from when OBS went live
- *   OBS not reachable             ->  every config.tiktok.pollIntervalMs, so
- *                                     it is never blind
+ *   OBS streaming                 ->  at once, every 30s for ten minutes
+ *                                     (TikTok tends to go live a beat after
+ *                                     OBS does), then every two minutes
+ *
+ * OBS not reachable, nobody can say whether it is streaming, and Twitch
+ * being live decides (server/core/twitch-live.js), on the same timetable;
+ * with neither, every config.tiktok.pollIntervalMs, so it is never blind.
  *
  * A TikTok stream started without either is still found by pressing Connect.
- * Once connected it stays connected until that stream ends, whatever Twitch
+ * Once connected it stays connected until that stream ends, whatever OBS
  * does: being connected costs nothing.
+ *
+ * One connection at a time, and only the one kept speaks: an attempt still
+ * under way when another starts, or when Disconnect is pressed, is closed
+ * when it arrives, and a connection replaced or let go says nothing more.
+ * Two connections once ran side by side — every message twice, and the one
+ * left behind still talking after Disconnect. A message TikTok sends again
+ * is let through once.
  */
 
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
@@ -57,6 +60,11 @@ let status = 'disconnected';
 let lastError = null;
 let pollTimer = null;
 let isLive = false;
+/* The generation an attempt under way belongs to: no second one starts beside it, while it counts. */
+let connectingIn = -1;
+/* Goes up on every Disconnect: an attempt that started before one is not kept. */
+let generation = 0;
+const connecting = () => connectingIn === generation;
 /*
   Whether anyone asked for TikTok. Pressing Disconnect means stay away until
   Connect is pressed again — OBS going live must not quietly undo that.
@@ -72,20 +80,22 @@ const LIVE_FAST_MS = 30_000;
 const LIVE_FAST_FOR_MS = 10 * 60_000;
 const LIVE_SLOW_MS = 2 * 60_000;
 
-/** Which it is: Twitch's say when Twitch can say, otherwise OBS's, as before. */
+/** Which it is: OBS's say when OBS can say, otherwise Twitch's, otherwise neither. */
 const currentMode = () => {
+  if (obsLink.connected) return obsLink.streaming ? 'obs-live' : 'obs-idle';
   const tw = twitchLive();
   if (tw.known) return tw.live ? 'twitch-live' : 'twitch-idle';
-  return obsLink.connected ? (obsLink.streaming ? 'obs-live' : 'obs-idle') : 'no-obs';
+  return 'no-obs';
 };
 
 /*
-  Follows Twitch going live and stopping. Already on TikTok, or nobody to
-  look for, or told to stay away: nothing to decide.
+  Follows Twitch going live and stopping, which decides only while OBS
+  cannot be reached. Already on TikTok, or nobody to look for, or told to
+  stay away: nothing to decide.
 */
 function watchTwitch() {
   onTwitchLive((_s, { wentLive }) => {
-    if (!channel || connection || !wanted) return;
+    if (obsLink.connected || !channel || connection || connecting() || !wanted) return;
     schedule(currentMode(), { now: wentLive });
   });
 }
@@ -103,8 +113,8 @@ function watchObs() {
     if (connected === obsLink.connected && streaming === obsLink.streaming) return;
     const wentLive = streaming && !obsLink.streaming;
     obsLink = { connected, streaming, since: wentLive ? Date.now() : obsLink.since };
-    // Already on TikTok, or nobody to look for: nothing to decide.
-    if (!channel || connection || !wanted) return;
+    // Already on TikTok (or about to be), or nobody to look for: nothing to decide.
+    if (!channel || connection || connecting() || !wanted) return;
     schedule(currentMode(), { now: wentLive });
   });
 }
@@ -116,7 +126,7 @@ function watchObs() {
 function schedule(mode, { now = false } = {}) {
   clearTimeout(pollTimer);
   pollTimer = null;
-  if (!channel || connection || !wanted) return;
+  if (!channel || connection || connecting() || !wanted) return;
 
   const live = mode === 'obs-live' || mode === 'twitch-live';
   if (mode !== watch.mode) {
@@ -140,7 +150,7 @@ function schedule(mode, { now = false } = {}) {
     return;
   }
 
-  // Fast at first, from when the stream went live — Twitch's, or OBS's when Twitch cannot say.
+  // Fast at first, from when the stream went live — OBS's, or Twitch's when OBS cannot say.
   const since = mode === 'twitch-live' ? twitchLive().since : obsLink.since;
   const every = live
     ? (Date.now() - since < LIVE_FAST_FOR_MS ? LIVE_FAST_MS : LIVE_SLOW_MS)
@@ -239,8 +249,15 @@ function stopPolling() {
   pollTimer = null;
 }
 
+/* Let go of a connection, or an attempt at one, without waiting on it. */
+function close(conn) {
+  try { Promise.resolve(conn?.disconnect()).catch(() => {}); } catch { /* never opened */ }
+}
+
 async function attemptConnect({ fromPolling = false } = {}) {
-  if (connection || !channel) return;
+  if (connection || connecting() || !channel) return;
+  const gen = generation;
+  connectingIn = gen;
 
   if (!fromPolling) setStatus('connecting');
 
@@ -248,9 +265,16 @@ async function attemptConnect({ fromPolling = false } = {}) {
 
   try {
     const state = await attempt.connect();
+    // Done trying, whatever comes next (going back to looking needs this off).
+    if (connectingIn === gen) connectingIn = -1;
 
+    // Disconnect pressed meanwhile, or another connection already kept: this one is not wanted.
+    if (gen !== generation || connection || !wanted) {
+      close(attempt);
+      return;
+    }
     connection = attempt;
-    wireEvents();
+    wireEvents(attempt);
     stopPolling();
 
     isLive = true;
@@ -258,7 +282,9 @@ async function attemptConnect({ fromPolling = false } = {}) {
     setStatus('connected');
     log.info(`connected to @${channel} (room ${state.roomId})`);
   } catch (err) {
-    try { attempt.disconnect(); } catch { /* never opened */ }
+    if (connectingIn === gen) connectingIn = -1;
+    close(attempt);
+    if (gen !== generation) return;
 
     // Offline is the expected case, not a failure — wait for them to go live.
     const offline = err?.constructor?.name === 'UserOfflineError'
@@ -272,6 +298,8 @@ async function attemptConnect({ fromPolling = false } = {}) {
       log.warn(`could not connect to @${channel}: ${err.message}`);
       startPolling();
     }
+  } finally {
+    if (connectingIn === gen) connectingIn = -1;
   }
 }
 
@@ -289,8 +317,10 @@ export async function connect() {
 export async function disconnect({ keepChannel = false } = {}) {
   stopPolling();
   isLive = false;
+  // An attempt still under way is closed when it arrives, not kept.
+  generation += 1;
   if (connection) {
-    try { connection.disconnect(); } catch { /* already closed */ }
+    close(connection);
     connection = null;
   }
   if (!keepChannel) {
@@ -309,8 +339,24 @@ const avatarOf = (d) => d?.user?.avatarThumb?.urlList?.[0]
   || d?.user?.profilePicture?.urlList?.[0]
   || undefined;
 
-function wireEvents() {
-  connection.on(WebcastEvent.CHAT, (d) => {
+/* What was let through already, by TikTok's id for it: a message TikTok sends again is let through once. */
+const seenIds = new Set();
+const SEEN_KEEP = 2000;
+function firstTime(d) {
+  const id = d?.common?.msgId;
+  if (id === undefined || id === null || id === '' || String(id) === '0') return true;
+  const key = String(id);
+  if (seenIds.has(key)) return false;
+  seenIds.add(key);
+  if (seenIds.size > SEEN_KEEP) seenIds.delete(seenIds.values().next().value);
+  return true;
+}
+
+function wireEvents(conn) {
+  // Only the connection kept speaks: one replaced or let go says nothing more.
+  const on = (event, fn) => conn.on(event, (d) => { if (conn === connection) fn(d); });
+  on(WebcastEvent.CHAT, (d) => {
+    if (!firstTime(d)) return;
     bus.emit(EVENTS.CHAT, normaliseChat({
       platform: 'tiktok',
       id: d.common?.msgId || undefined,
@@ -327,11 +373,12 @@ function wireEvents() {
     }));
   });
 
-  connection.on(WebcastEvent.GIFT, (d) => {
+  on(WebcastEvent.GIFT, (d) => {
     // Streak gifts fire repeatedly while held; bank once at streak end so a
     // 100x combo does not trigger a hundred alerts.
     const isStreak = d.giftType === 1 || d.gift?.type === 1;
     if (isStreak && !d.repeatEnd) return;
+    if (!firstTime(d)) return;
 
     const count = d.repeatCount || 1;
     const each = d.gift?.diamondCount ?? d.diamondCount ?? 0;
@@ -348,13 +395,15 @@ function wireEvents() {
   });
 
   // v2 has dedicated follow/share events; v1 required parsing SOCIAL labels.
-  connection.on(WebcastEvent.FOLLOW, (d) => {
+  on(WebcastEvent.FOLLOW, (d) => {
+    if (!firstTime(d)) return;
     bus.emit(EVENTS.EVENT, normaliseEvent({
       type: 'tiktok_follow', platform: 'tiktok', user: nameOf(d), avatar: avatarOf(d), data: { userId: idOf(d) || undefined },
     }));
   });
 
-  connection.on(WebcastEvent.SHARE, (d) => {
+  on(WebcastEvent.SHARE, (d) => {
+    if (!firstTime(d)) return;
     bus.emit(EVENTS.EVENT, normaliseEvent({
       type: 'tiktok_share', platform: 'tiktok', user: nameOf(d), avatar: avatarOf(d), data: {},
     }));
@@ -363,7 +412,8 @@ function wireEvents() {
   // v2 has no SUBSCRIBE event — `WebcastEvent.SUBSCRIBE` is undefined, so the
   // guarded handler here never bound and `tiktok_sub` could never fire. The
   // real event is SUB_NOTIFY.
-  connection.on(WebcastEvent.SUB_NOTIFY, (d) => {
+  on(WebcastEvent.SUB_NOTIFY, (d) => {
+    if (!firstTime(d)) return;
     bus.emit(EVENTS.EVENT, normaliseEvent({
       type: 'tiktok_sub', platform: 'tiktok', user: nameOf(d), avatar: avatarOf(d), data: {},
     }));
@@ -371,7 +421,7 @@ function wireEvents() {
 
   // Live viewer count. Published as a stat file rather than a stream tag,
   // because StreamTags has a fixed set of keys in the UI's type.
-  connection.on(WebcastEvent.ROOM_USER, (d) => {
+  on(WebcastEvent.ROOM_USER, (d) => {
     const viewers = Number(d.total ?? d.viewerCount ?? d.totalUser ?? 0);
     if (Number.isFinite(viewers) && viewers > 0) {
       bus.emit(EVENTS.STAT, { key: 'tiktokViewers', value: viewers });
@@ -379,7 +429,7 @@ function wireEvents() {
   });
 
   // Likes. `total` is cumulative for the stream; `count` is this batch.
-  connection.on(WebcastEvent.LIKE, (d) => {
+  on(WebcastEvent.LIKE, (d) => {
     const total = Number(d.total ?? d.totalLikeCount ?? 0);
     if (Number.isFinite(total) && total > 0) {
       bus.emit(EVENTS.STAT, { key: 'tiktokLikes', value: total });
@@ -388,7 +438,7 @@ function wireEvents() {
 
   // A moderator deleted a message (or banned a user) upstream — drop it from
   // our dock too, rather than leaving removed content on screen.
-  connection.on(WebcastEvent.IM_DELETE, (d) => {
+  on(WebcastEvent.IM_DELETE, (d) => {
     const msgIds = d.deleteMsgIds ?? [];
     const userIds = d.deleteUserIds ?? [];
     if (msgIds.length === 0 && userIds.length === 0) return;
@@ -396,7 +446,8 @@ function wireEvents() {
     log.debug(`removed ${msgIds.length} message(s) / ${userIds.length} user(s)`);
   });
 
-  connection.on(WebcastEvent.MEMBER, (d) => {
+  on(WebcastEvent.MEMBER, (d) => {
+    if (!firstTime(d)) return;
     // Joins are informational — surfaced as chat so the dock can show them
     // without counting as an alertable event.
     bus.emit(EVENTS.CHAT, normaliseChat({
@@ -409,14 +460,14 @@ function wireEvents() {
     }));
   });
 
-  connection.on(WebcastEvent.STREAM_END, () => {
+  on(WebcastEvent.STREAM_END, () => {
     log.info('stream ended — returning to polling');
     isLive = false;
     connection = null;
     startPolling();
   });
 
-  connection.on(ControlEvent.DISCONNECTED, () => {
+  on(ControlEvent.DISCONNECTED, () => {
     if (!isLive) return;
     log.warn('dropped — reconnecting shortly');
     connection = null;
@@ -424,7 +475,7 @@ function wireEvents() {
     startPolling();
   });
 
-  connection.on(ControlEvent.ERROR, (err) => {
+  on(ControlEvent.ERROR, (err) => {
     log.debug('connection error:', err?.message ?? err);
   });
 }

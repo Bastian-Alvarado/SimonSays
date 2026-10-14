@@ -355,7 +355,7 @@ test('the TikTok card says what it is waiting on, in both languages', () => {
 });
 
 
-// ------------------------------------- TikTok and YouTube wait on Twitch being live
+// ------------------- YouTube waits on Twitch being live; TikTok on it without OBS
 
 const twitchSays = (live) => bus.emit(EVENTS.STAT, { key: 'twitchLive', value: live });
 const twitchGone = () => bus.emit(EVENTS.STATUS, { platform: 'twitch', status: 'disconnected', detail: { main: 'disconnected', bot: 'disconnected', eventsub: 'disconnected' } });
@@ -375,46 +375,54 @@ globalThis.fetch = async (url) => {
 };
 yt.stop();
 
-// TikTok: with Twitch known, Twitch decides; OBS no longer does.
+// TikTok: with OBS connected, OBS decides; without OBS, Twitch being live does.
 tiktokAttempts = 0;
 tiktokMod.useConnectionFactory(() => ({
   connect: async () => { tiktokAttempts += 1; throw new Error('The requested user is not live (offline)'); },
   disconnect() {},
   on() {},
 }));
+obsSays(false, false);
 twitchSays(false);
 await tiktokMod.connect();
 await settleTiktok();
 const tkTwitchIdle = { ...tiktokMod.getStatus().watch, status: tiktokMod.getStatus().status, attempts: tiktokAttempts };
-obsSays(true, true);
-await settleTiktok();
-const tkObsLiveTwitchNot = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
 twitchSays(true);
 await settleTiktok();
 const tkTwitchLive = { ...tiktokMod.getStatus().watch, status: tiktokMod.getStatus().status, attempts: tiktokAttempts };
 twitchSays(true);
 await settleTiktok();
 const tkStillLive = { attempts: tiktokAttempts };
+obsSays(true, false);
+await settleTiktok();
+const tkObsIdleTwitchLive = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
+twitchSays(false);
+twitchSays(true);
+await settleTiktok();
+const tkTwitchAgainObsIdle = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
+obsSays(true, true);
+await settleTiktok();
+const tkObsLive = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
 twitchSays(false);
 await settleTiktok();
-const tkTwitchStopped = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
+const tkObsLiveTwitchNot = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
+obsSays(false, false);
+await settleTiktok();
+const tkObsGone = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
 twitchGone();
 await settleTiktok();
 const tkTwitchGone = { ...tiktokMod.getStatus().watch, attempts: tiktokAttempts };
-obsSays(false, false);
 await tiktokMod.disconnect();
 tiktokMod.useConnectionFactory(null);
 
-test('Twitch not live: TikTok is not looked for, even with OBS streaming, and says it is waiting, not polling', () => {
+test('without OBS, Twitch decides: not live, TikTok is not looked for and says it is waiting, not polling', () => {
   assert.equal(tkTwitchIdle.mode, 'twitch-idle');
   assert.equal(tkTwitchIdle.status, 'waiting');
   assert.equal(tkTwitchIdle.nextTryAt, 0, 'a look is still scheduled');
-  assert.equal(tkObsLiveTwitchNot.mode, 'twitch-idle', 'OBS going live started the looking');
   assert.equal(tkTwitchIdle.attempts, 0, 'Connect looked although Twitch is not live');
-  assert.equal(tkObsLiveTwitchNot.attempts, 0, 'OBS going live made it look');
 });
 
-test('Twitch goes live: TikTok is looked for at once, then every thirty seconds; saying so again changes nothing', () => {
+test('without OBS, Twitch goes live: TikTok is looked for at once, then every thirty seconds; saying so again changes nothing', () => {
   assert.equal(tkTwitchLive.attempts, 1, 'it did not look the moment Twitch went live');
   assert.equal(tkTwitchLive.mode, 'twitch-live');
   assert.equal(tkTwitchLive.status, 'polling', 'looking is polling');
@@ -423,10 +431,108 @@ test('Twitch goes live: TikTok is looked for at once, then every thirty seconds;
   assert.equal(tkStillLive.attempts, 1, 'the minute\'s live check made it look again');
 });
 
-test('Twitch stops: TikTok stops looking; Twitch disconnected: OBS decides again, as before', () => {
-  assert.equal(tkTwitchStopped.mode, 'twitch-idle');
-  assert.equal(tkTwitchStopped.nextTryAt, 0);
-  assert.equal(tkTwitchGone.mode, 'obs-live', 'with Twitch gone, OBS streaming should have it looking');
+test('OBS connected decides over Twitch: not streaming, no looking even with Twitch live; streaming, looking even with Twitch not', () => {
+  assert.equal(tkObsIdleTwitchLive.mode, 'obs-idle', 'Twitch live kept it looking with OBS not streaming');
+  assert.equal(tkObsIdleTwitchLive.nextTryAt, 0);
+  assert.equal(tkTwitchAgainObsIdle.attempts, tkObsIdleTwitchLive.attempts, 'Twitch going live made it look with OBS not streaming');
+  assert.equal(tkObsLive.mode, 'obs-live');
+  assert.equal(tkObsLive.attempts, tkObsIdleTwitchLive.attempts + 1, 'it did not look the moment OBS went live');
+  assert.equal(tkObsLiveTwitchNot.mode, 'obs-live', 'Twitch stopping stopped the looking while OBS streams');
+  assert.equal(tkObsGone.mode, 'twitch-idle', 'with OBS gone, Twitch should decide again');
+  assert.equal(tkTwitchGone.mode, 'no-obs', 'with neither, the slow looking');
+});
+
+// TikTok: one connection at a time, and only the one kept speaks.
+const tkChats = [];
+const tkOnChat = (c) => { if (c.platform === 'tiktok') tkChats.push(c.msg); };
+bus.on(EVENTS.CHAT, tkOnChat);
+const tkMade = [];
+let tkDelay = 40;
+tiktokMod.useConnectionFactory(() => {
+  const handlers = {};
+  const conn = {
+    closed: false,
+    connect: () => new Promise((r) => setTimeout(() => r({ roomId: 'r1' }), tkDelay)),
+    disconnect: async () => { conn.closed = true; },
+    on: (event, fn) => { (handlers[event] ||= []).push(fn); },
+    say: (event, d) => { for (const fn of handlers[event] || []) fn(d); },
+  };
+  tkMade.push(conn);
+  return conn;
+});
+const tkChat = (conn, id, text) => conn.say('chat', { common: { msgId: id }, user: { uniqueId: 'tk-ana', nickname: 'AnaTk' }, content: text });
+obsSays(true, true);
+await settleTiktok();
+// Connect pressed twice, while OBS going live also looks: one attempt, one connection.
+await Promise.all([tiktokMod.connect(), tiktokMod.connect()]);
+await new Promise((r) => setTimeout(r, 80));
+const tkKept = tkMade.filter((c) => !c.closed);
+const tkStatusAfterTwo = tiktokMod.getStatus().status;
+tkKept.forEach((c) => tkChat(c, 'm1', 'hola tiktok'));
+tkKept.forEach((c) => tkChat(c, 'm1', 'hola tiktok'));
+tkKept.forEach((c) => tkChat(c, 'm2', 'segundo'));
+const tkHeardOnce = tkChats.slice();
+// Connect again: the new connection is kept, and the one it replaced, heard until now, says nothing more.
+await tiktokMod.connect();
+await new Promise((r) => setTimeout(r, 80));
+const tkReplaced = tkKept[0];
+if (tkReplaced) tkChat(tkReplaced, 'm3', 'fantasma');
+const tkGhostHeard = tkChats.includes('fantasma');
+const tkWas = tkMade.filter((c) => !c.closed)[0];
+if (tkWas) tkChat(tkWas, 'm3b', 'el nuevo');
+const tkNewHeard = tkChats.includes('el nuevo');
+// Disconnect: the connection kept says nothing more, and stays let go.
+await tiktokMod.disconnect();
+if (tkWas) tkChat(tkWas, 'm4', 'despues de desconectar');
+const tkAfterDisconnectHeard = tkChats.includes('despues de desconectar');
+// Disconnect while an attempt is under way: it is not kept when it arrives.
+tkDelay = 60;
+const tkMadeBefore = tkMade.length;
+const tkInFlight = tiktokMod.connect();
+await new Promise((r) => setTimeout(r, 10));
+await tiktokMod.disconnect();
+await tkInFlight;
+await new Promise((r) => setTimeout(r, 80));
+const tkLateOne = tkMade[tkMadeBefore];
+const tkLateStatus = tiktokMod.getStatus().status;
+if (tkLateOne) tkChat(tkLateOne, 'm5', 'llego tarde');
+const tkLateHeard = tkChats.includes('llego tarde');
+// Connect while an earlier attempt is still under way after a Disconnect: the new one counts.
+tkDelay = 40;
+const tkMadeBefore2 = tkMade.length;
+const tkOld = tiktokMod.connect();
+await new Promise((r) => setTimeout(r, 5));
+await tiktokMod.disconnect();
+await tiktokMod.connect();
+await tkOld;
+await new Promise((r) => setTimeout(r, 80));
+const tkReconnected = { status: tiktokMod.getStatus().status, made: tkMade.length - tkMadeBefore2, open: tkMade.slice(tkMadeBefore2).filter((c) => !c.closed).length };
+await tiktokMod.disconnect();
+obsSays(false, false);
+bus.off?.(EVENTS.CHAT, tkOnChat);
+tiktokMod.useConnectionFactory(null);
+
+test('TikTok keeps one connection: Connect twice makes one, and each message is heard once', () => {
+  assert.equal(tkKept.length, 1, `${tkKept.length} connections were kept`);
+  assert.equal(tkStatusAfterTwo, 'connected');
+  assert.deepEqual(tkHeardOnce, ['hola tiktok', 'segundo'], 'a message was heard twice, or not at all');
+  assert.equal(tkReplaced?.closed, true, 'the replaced connection was not closed');
+  assert.equal(tkGhostHeard, false, 'a connection replaced by Connect was still heard');
+  assert.equal(tkNewHeard, true, 'the new connection was not heard');
+});
+
+test('Disconnect is the end of it: the old connection is not heard, and one arriving late is not kept', () => {
+  assert.equal(tkAfterDisconnectHeard, false, 'TikTok chat still came in after Disconnect');
+  assert.ok(tkLateOne, 'no attempt was made');
+  assert.equal(tkLateOne.closed, true, 'an attempt that arrived after Disconnect was kept');
+  assert.equal(tkLateStatus, 'disconnected');
+  assert.equal(tkLateHeard, false, 'an attempt that arrived after Disconnect was heard');
+});
+
+test('Connect after a Disconnect is not held up by an attempt from before it', () => {
+  assert.equal(tkReconnected.status, 'connected', 'the earlier attempt kept Connect from connecting');
+  assert.equal(tkReconnected.made, 2);
+  assert.equal(tkReconnected.open, 1, 'not exactly one connection is open');
 });
 
 twitchSays(false);

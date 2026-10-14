@@ -23,6 +23,7 @@ import { bus, EVENTS } from '../core/bus.js';
 import { createLogger } from '../core/logger.js';
 import * as leveling from '../leveling/index.js';
 import * as twitch from '../platforms/twitch.js';
+import * as obs from '../platforms/obs.js';
 import { getPlan } from './plan.js';
 
 const log = createLogger('streams');
@@ -30,6 +31,10 @@ const log = createLogger('streams');
 /** A stream back within this long is the same stream (as the recap counts it). */
 export const SAME_STREAM_MS = 5 * 60_000;
 const SAVE_EVERY_MS = 60_000;
+/** How often a stream on is checked against OBS and Twitch, for an end that was missed. */
+const CHECK_EVERY_MS = 3 * 60_000;
+/** With neither OBS nor Twitch to ask, a stream nothing has happened in for this long is taken as over. */
+export const QUIET_OVER_MS = 6 * 60 * 60_000;
 /** The platforms a minute is counted on, in the order the counts are kept: [all, …these]. */
 export const MINUTE_PLATFORMS = ['twitch', 'youtube', 'tiktok', 'discord', 'kick'];
 const STREAM_CHATS = new Set(MINUTE_PLATFORMS);
@@ -38,6 +43,11 @@ let live = null;
 let past = null;
 let saveTimer = null;
 let endTimer = null;
+let checkTimer = null;
+let checking = false;
+/** When Twitch first said the stream on now was offline (two checks in a row end it), or 0. */
+let offlineSince = 0;
+let obsWas = '';
 
 const session = () => live?.get().session || null;
 export const isRunning = (s = session()) => Boolean(s?.startedAt && !s.endedAt);
@@ -81,6 +91,8 @@ function start(now) {
   clearTimeout(endTimer);
   endTimer = null;
   const s = session();
+  // Already on (told twice, or found streaming just before OBS said so): the same stream, not a new one over it.
+  if (isRunning(s)) return;
   // Back within a few minutes: the same stream, carrying on.
   if (s?.startedAt && s.endedAt && now - s.endedAt < SAME_STREAM_MS) {
     live.set({ session: { ...s, endedAt: 0 } });
@@ -97,7 +109,7 @@ function start(now) {
   // What it is called and played, once Twitch says (EVENTS.CHANNEL may not come before).
   twitch.getLiveInfo?.().then((info) => {
     if (!info || !isRunning() || session().id !== next.id) return;
-    changed((v) => ({ ...v, title: v.title || info.title || '', game: v.game || info.game || '' }));
+    changed((v) => ({ ...v, title: v.title || info.title || '', game: v.game || info.game || '', ...(info.live ? { onTwitch: true } : {}) }));
     tellStreamNow();
   }).catch(() => {});
 }
@@ -105,13 +117,116 @@ function start(now) {
 function stop(now) {
   const s = session();
   if (!isRunning(s)) return;
+  offlineSince = 0;
   live.set({ session: { ...s, endedAt: now } });
   live.flush();
   tellStreamNow();
   clearTimeout(endTimer);
-  // Finished for good only once it is clear it is not coming back.
-  endTimer = setTimeout(() => finish(session()), SAME_STREAM_MS);
+  // Finished for good only once it is clear it is not coming back (an end found late may be clear already).
+  endTimer = setTimeout(() => finish(session()), Math.max(0, SAME_STREAM_MS - (Date.now() - now)));
   endTimer.unref?.();
+}
+
+// ------------------------------------------------------------ an end that was missed
+
+/** The last sign of life in a stream: the end of its last minute with chat, its last song or moment, or its start. */
+export function lastSign(s) {
+  let at = s.startedAt;
+  const minutes = s.minutes || [];
+  for (let i = minutes.length - 1; i >= 0; i -= 1) {
+    if (minutes[i]?.[0]) { at = s.startedAt + (i + 1) * 60_000; break; }
+  }
+  for (const x of [...(s.songs || []), ...(s.moments || [])]) if (x.at > at) at = x.at;
+  return at;
+}
+
+/** When a check last found the stream on now still on: { id, at }. */
+let confirmed = { id: '', at: 0 };
+
+/**
+ * When a stream found over really ended: now, if it was known to be on a
+ * check or two ago; otherwise (OBS was away a long while, or the app was
+ * off) the last time it was known to be on, so it is not kept as days long.
+ */
+function endedBy(s, now) {
+  const known = Math.max(lastSign(s), confirmed.id === s.id ? confirmed.at : 0);
+  return now - known > 2 * CHECK_EVERY_MS ? known : now;
+}
+
+const realAskers = {
+  obs: () => obs.streamingNow(),
+  twitch: () => twitch.getLiveInfo(),
+};
+let askers = realAskers;
+
+/**
+ * A stream ends when OBS says so, but OBS can crash, its connection drop or
+ * the app restart mid-stream, and then the end never comes and the stream
+ * stays "live" for days. So a stream on is checked every few minutes: OBS is
+ * asked first; when OBS cannot be reached, Twitch (if this stream was seen on
+ * Twitch), and two offline answers in a row end it from the first; when
+ * neither can say, hours with nothing happening end it from its last sign of
+ * life.
+ */
+async function checkStillLive(now = Date.now(), ask = askers) {
+  const s = session();
+  if (!isRunning(s) || checking) return;
+  checking = true;
+  try {
+    const still = () => isRunning() && session().id === s.id;
+    const onObs = await ask.obs().catch(() => null);
+    if (!still()) return;
+    if (onObs === false) {
+      log.info(`stream ${s.n} is over: OBS is not streaming`);
+      stop(endedBy(s, now));
+      return;
+    }
+    if (onObs === true) confirmed = { id: s.id, at: now };
+    // Twitch is asked while OBS streams too, until this stream is seen there.
+    if (onObs === true && s.onTwitch) { offlineSince = 0; return; }
+    const info = await ask.twitch().catch(() => null);
+    if (!still()) return;
+    if (info?.live) {
+      offlineSince = 0;
+      confirmed = { id: s.id, at: now };
+      if (!s.onTwitch) changed((v) => ({ ...v, onTwitch: true }));
+      return;
+    }
+    if (onObs === true) return;
+    // Only a stream that was on Twitch is over when Twitch is offline (one sent elsewhere never is there).
+    if (info?.live === false && s.onTwitch) {
+      if (!offlineSince) { offlineSince = now; return; }
+      log.info(`stream ${s.n} is over: Twitch says the channel is offline`);
+      stop(offlineSince);
+      return;
+    }
+    // Quiet, but OBS or Twitch said it was on a check ago: not over for one check nobody could answer.
+    const last = Math.max(lastSign(s), confirmed.id === s.id ? confirmed.at : 0);
+    if (now - last >= QUIET_OVER_MS) {
+      log.info(`stream ${s.n} is over: nothing has happened in it for ${Math.round((now - last) / 3_600_000)} h`);
+      stop(last);
+    }
+  } finally {
+    checking = false;
+  }
+}
+
+/** OBS back: a stream it stopped meanwhile is over, and one it is sending that nobody counted starts. */
+async function onObsBack(ask = askers) {
+  if (isRunning()) return checkStillLive(Date.now(), ask);
+  const onObs = await ask.obs().catch(() => null);
+  if (onObs === true && !isRunning()) {
+    log.info('OBS was already streaming: the stream is counted from now');
+    start(Date.now());
+  }
+  return undefined;
+}
+
+function onStatus(st) {
+  if (st?.platform !== 'obs') return;
+  const was = obsWas;
+  obsWas = st.status;
+  if (st.status === 'connected' && was !== 'connected') onObsBack().catch((err) => log.debug(`stream check: ${err.message}`));
 }
 
 /** A stream over for good: its plan and VOD added, written to the list, and said. */
@@ -326,6 +441,10 @@ export function initStreamSessions() {
   clearInterval(saveTimer);
   saveTimer = setInterval(() => live.flush(), SAVE_EVERY_MS);
   saveTimer.unref?.();
+  bus.on(EVENTS.STATUS, onStatus);
+  clearInterval(checkTimer);
+  checkTimer = setInterval(() => { checkStillLive().catch((err) => log.debug(`stream check: ${err.message}`)); }, CHECK_EVERY_MS);
+  checkTimer.unref?.();
   // A stream that ended while the server was down: finished now, or once its few minutes are up.
   const s = session();
   if (s?.startedAt && s.endedAt) {
@@ -336,4 +455,4 @@ export function initStreamSessions() {
 }
 
 /** For tests: what a moment in time does, now. */
-export const _test = { onChat, onEvent, onChannel, onMoment, finish: () => finish(session()) };
+export const _test = { onChat, onEvent, onChannel, onMoment, finish: () => finish(session()), checkStillLive, onObsBack, useAskers: (a) => { askers = a || realAskers; } };

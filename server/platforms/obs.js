@@ -361,6 +361,17 @@ export async function stopStream() {
   return true;
 }
 
+/**
+ * Whether OBS is sending the stream, asked of OBS now (engine/stream-sessions.js
+ * checks a stream it thinks is on): true or false, or null when OBS cannot be
+ * reached to say.
+ */
+export async function streamingNow() {
+  if (!isConnected()) return null;
+  const { outputActive } = await ensure().call('GetStreamStatus');
+  return Boolean(outputActive);
+}
+
 export async function setBrowserUrl(inputName, url) {
   await ensure().call('SetInputSettings', { inputName, inputSettings: { url } });
 }

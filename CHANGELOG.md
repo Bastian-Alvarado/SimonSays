@@ -2,6 +2,13 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.1.2] — 2026-10-14
+
+- A stream no longer stays “live” for days when its end was missed — OBS crashing, its connection dropping or the app restarting mid-stream. A stream on is checked every few minutes: with OBS, whether it is still streaming; without OBS, whether Twitch still has the channel live; and with neither, a stream nothing has happened in for six hours is over from its last message. One found over long after it ended is kept as ending when it was last known to be on, not as days long, on home, the Streams screen and the recap.
+- A stream OBS is already sending when the app connects to it is counted from then, instead of not at all.
+- TikTok chat no longer comes in twice. Two connections to TikTok could open side by side (pressing Connect while the app was already looking, or OBS going live during a look), so every message came in twice, and the one left behind kept going after Disconnect. Now there is only ever one, Disconnect really stops it, and a message TikTok sends again shows once.
+- TikTok is looked for only while OBS is streaming. Twitch being live decides only when OBS is not connected.
+
 ## [2.1.1] — 2026-10-14
 
 - The README has a step-by-step Getting started guide in place of the old quick start: what you need, installing and starting the app, connecting Twitch and OBS, the stream page and dock in OBS, sign-in, and what to do when something goes wrong.

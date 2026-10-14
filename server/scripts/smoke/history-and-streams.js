@@ -154,3 +154,112 @@ test('people away too long are forgotten only when chosen, and only those with n
   assert.ok(uidOf('twitch:h-ana'), 'a linked person was forgotten');
   assert.equal(history.getHistorySettings().forgetAfterMonths, 0);
 });
+
+// ---------------------------------------------------------------- a stream whose end was missed
+
+const HOUR = 3_600_000;
+const asks = (onObs, info) => ({ obs: async () => onObs, twitch: async () => info });
+const endOf = async () => { const s = sessions.latest(); await sessions._test.finish(); return s; };
+const offline = { live: false };
+
+// OBS can be asked, and is not streaming.
+event('obs_stream_started');
+const obsStillOn = await (async () => { await sessions._test.checkStillLive(Date.now(), asks(true, { live: true })); return sessions.current(); })();
+const seenOnTwitch = Boolean(obsStillOn?.onTwitch);
+const obsAt = Date.now();
+await sessions._test.checkStillLive(obsAt, asks(false, null));
+const obsOver = await endOf();
+
+// OBS found not streaming hours after anything was known of the stream: it ended then, not now.
+const lateStart = Date.now() - 4 * 3_600_000;
+sessions._test.onEvent({ type: 'obs_stream_started' }, lateStart);
+sessions._test.onChat(normaliseChat({ platform: 'twitch', user: 'AnaH', userId: 'h-ana', msg: 'hola' }), lateStart + 30_000);
+const lastKnown = sessions.lastSign(sessions.current());
+await sessions._test.checkStillLive(Date.now(), asks(false, null));
+const lateOver = sessions.latest();
+await new Promise((r) => setTimeout(r, 30));
+const lateKeptAlone = sessions.finished().some((x) => x.id === lateOver.id);
+
+// Quiet for hours, but OBS said it was streaming a check ago: one check nobody can answer does not end it.
+event('obs_stream_started');
+const quietButOn = Date.now() + 7 * 3_600_000;
+await sessions._test.checkStillLive(quietButOn, asks(true, null));
+await sessions._test.checkStillLive(quietButOn + 3 * 60_000, asks(null, null));
+const confirmedQuietStillOn = sessions.isRunning();
+// Told it started again while on: the same stream, not a new one over it.
+const onBefore = sessions.current().id;
+event('obs_stream_started');
+const sameAfterTwice = sessions.current()?.id === onBefore;
+await sessions._test.checkStillLive(quietButOn + 6 * 60_000, asks(false, null));
+await endOf();
+
+// OBS cannot be asked: Twitch, offline twice in a row, ends one seen on Twitch from the first time.
+event('obs_stream_started');
+await sessions._test.checkStillLive(Date.now(), asks(null, { live: true }));
+const firstOffline = Date.now() + 3 * 60_000;
+await sessions._test.checkStillLive(firstOffline, asks(null, offline));
+const afterOneOffline = sessions.isRunning();
+await sessions._test.checkStillLive(firstOffline + 3 * 60_000, asks(null, offline));
+const twitchOver = await endOf();
+
+// Never seen on Twitch (sent elsewhere): Twitch being offline says nothing; hours of nothing do.
+event('obs_stream_started');
+say({ platform: 'youtube', user: 'Yuyu', userId: 'UCh-yuyu' });
+const quietFrom = sessions.lastSign(sessions.current());
+await sessions._test.checkStillLive(Date.now() + 10 * 60_000, asks(null, offline));
+await sessions._test.checkStillLive(Date.now() + 20 * 60_000, asks(null, offline));
+const elsewhereStillOn = sessions.isRunning();
+await sessions._test.checkStillLive(Date.now() + 5 * HOUR, asks(null, null));
+const fiveHoursQuiet = sessions.isRunning();
+await sessions._test.checkStillLive(Date.now() + 7 * HOUR, asks(null, null));
+const quietOver = await endOf();
+
+// OBS connects while already streaming, with no stream counted: one starts.
+const noneBefore = sessions.isRunning();
+await sessions._test.onObsBack(asks(true, null));
+const counted = sessions.current();
+await sessions._test.onObsBack(asks(false, null));
+const countedOver = await endOf();
+
+// Through OBS's own status: connected again, and streaming, starts one; stopped, ends it.
+sessions._test.useAskers(asks(true, null));
+bus.emit(EVENTS.STATUS, { platform: 'obs', status: 'disconnected' });
+bus.emit(EVENTS.STATUS, { platform: 'obs', status: 'connected' });
+await new Promise((r) => setTimeout(r, 20));
+const startedByStatus = sessions.isRunning();
+sessions._test.useAskers(asks(false, null));
+bus.emit(EVENTS.STATUS, { platform: 'obs', status: 'connected', currentScene: 'x' });
+await new Promise((r) => setTimeout(r, 20));
+const notAskedAgainWhileConnected = sessions.isRunning();
+bus.emit(EVENTS.STATUS, { platform: 'obs', status: 'disconnected' });
+bus.emit(EVENTS.STATUS, { platform: 'obs', status: 'connected' });
+await new Promise((r) => setTimeout(r, 20));
+const endedByStatus = !sessions.isRunning();
+sessions._test.useAskers(null);
+await sessions._test.finish();
+
+test('a stream whose end was missed is ended: by OBS, by Twitch twice, or by hours of nothing', () => {
+  assert.ok(seenOnTwitch, 'a stream Twitch said was live was not marked as on Twitch');
+  assert.equal(obsOver.endedAt, obsAt, 'OBS not streaming did not end the stream then');
+  assert.equal(lateOver.endedAt, lastKnown, 'a stream found over hours later was kept as ending when it was found');
+  assert.ok(lateKeptAlone, 'a stream found over long after was not kept straight away');
+  assert.equal(confirmedQuietStillOn, true, 'a quiet stream OBS had just said was on was ended by one unanswered check');
+  assert.equal(sameAfterTwice, true, 'a second "started" replaced the stream on');
+  assert.equal(afterOneOffline, true, 'one offline answer from Twitch ended the stream');
+  assert.equal(twitchOver.endedAt, firstOffline, 'the stream did not end from the first offline answer');
+  assert.equal(elsewhereStillOn, true, 'a stream never on Twitch was ended because Twitch was offline');
+  assert.equal(fiveHoursQuiet, true, 'a stream was ended after five quiet hours');
+  assert.equal(quietOver.endedAt, quietFrom, 'a quiet stream did not end at its last sign of life');
+  assert.ok(sessions.finished().some((s) => s.id === quietOver.id), 'a stream ended late was not kept');
+  assert.equal(sessions.isRunning(), false);
+});
+
+test('OBS found already streaming starts a stream, and found stopped ends it', () => {
+  assert.equal(noneBefore, false);
+  assert.ok(counted?.startedAt, 'OBS streaming at connect did not start a stream');
+  assert.ok(countedOver.endedAt, 'OBS stopped at connect did not end the stream');
+  assert.equal(startedByStatus, true, 'OBS connecting while streaming did not start a stream');
+  assert.equal(notAskedAgainWhileConnected, true, 'every OBS status while connected asked again');
+  assert.equal(endedByStatus, true, 'OBS connecting again, not streaming, did not end the stream');
+  assert.equal(sessions.streamNow(), null);
+});
