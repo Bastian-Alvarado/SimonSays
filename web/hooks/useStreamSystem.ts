@@ -967,6 +967,8 @@ export const useStreamSystem = () => {
     setLayouts: (layouts: any[]) => send(C2S.SET_LAYOUTS, layouts),
     /** Moderating Twitch chat, as whoever is signed in here (server/engine/twitch-mod.js). Answers, or refuses. */
     twitchMod: (payload: any) => request(C2S.TWITCH_MOD, payload),
+    /** The home screen: { op: 'layouts', ids } | { op: 'show', layoutId } (server/engine/home.js). Answers, or refuses. */
+    home: (payload: any) => request(C2S.HOME, payload),
     // Profiles. Switching and reverting replace whole collections, so the
     // server answers those with a full snapshot rather than a patch.
     // A moderator looks at an overlay profile instead (peekProfile): only the streamer changes what is live.
@@ -1729,6 +1731,10 @@ export const useStreamSystem = () => {
       laterSteps: ((snapshot as any).laterSteps || []) as any[],
       // What AutoMod is holding back, for the docks to decide on (server/engine/twitch-mod.js).
       automodHeld: ((snapshot as any).automodHeld || []) as any[],
+      // The stream on now, for the home screen (server/engine/stream-sessions.js streamNow): null while offline.
+      streamNow: ((snapshot as any).streamNow ?? null) as { n: number; startedAt: number; title: string; game: string } | null,
+      // The layouts with a button on the home screen, this person's own (server/engine/home.js).
+      homeLayouts: ((snapshot as any).homeLayouts || []) as string[],
       eventsDockSettings: (snapshot as any).eventsDockSettings,
       viewers: peeked('viewers', (snapshot as any).viewers),
       layouts: peeked('layouts', (snapshot as any).layouts ?? []),

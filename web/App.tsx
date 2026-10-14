@@ -622,7 +622,7 @@ export default function App() {
   // Not before the server has said what it has: until then everything would read as not done.
   const guidesReady = Boolean((system.data as any).surfaces) && Boolean(guides);
   const setupProgress = guides
-    ? guides.setupState({ status: system.status, data: system.data, connections: system.connections }, { seen: guidesSeen, ticked: guidesTicked })
+    ? guides.setupState({ status: system.status, data: system.data, connections: system.connections, auth: system.auth }, { seen: guidesSeen, ticked: guidesTicked })
     : { items: [] as ReturnType<GuidesModule['setupState']>['items'], left: 0, needed: 0 };
   const newlySeen = setupProgress.items.filter((i) => i.done && i.check.sticky && !guidesSeen.includes(i.check.id)).map((i) => i.check.id).join(',');
   useEffect(() => {
@@ -1328,7 +1328,7 @@ export default function App() {
                openUpdates={() => goTo('settings')}
              />
            )}
-           {view === 'dashboard' && ( <DashboardView activeTheme={activeTheme} t={t} setView={setView} spotify={system.spotify} setup={guidesReady ? setupProgress : null} isMod={system.auth.isMod} /> )}
+           {view === 'dashboard' && ( <DashboardView activeTheme={activeTheme} t={t} setView={setView} spotify={system.spotify} setup={guidesReady ? setupProgress : null} isMod={system.auth.isMod} system={system} language={system.settings.language} openGuide={openGuideAt} dropped={dropped} updateOut={updateOut} /> )}
            {view === 'guides' && (
              <GuidesView
                t={t}

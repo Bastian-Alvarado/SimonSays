@@ -80,7 +80,8 @@ export const SETUP_CHECKS = [
   },
   {
     id: 'stream-page', guide: 'obs-pages', sticky: true,
-    done: (s) => Number(s?.data?.surfaces?.canvasInObs) > 0,
+    // Open in OBS now, or seen there before (server/api/ws.js surfaces_seen): OBS is closed between streams.
+    done: (s) => Number(s?.data?.surfaces?.canvasInObs) > 0 || Number(s?.data?.surfaces?.seen?.canvasInObs) > 0,
     en: { title: 'Put the stream page in OBS', why: 'One browser source draws everything the app puts on stream. Ticked the moment OBS opens it.' },
     es: { title: 'Pon la página del directo en OBS', why: 'Una fuente de navegador dibuja todo lo que la app pone en directo. Se marca en cuanto OBS la abre.' },
   },
@@ -110,7 +111,7 @@ export const SETUP_CHECKS = [
   },
   {
     id: 'dock', guide: 'obs-pages', sticky: true, optional: true,
-    done: (s) => Number(s?.data?.surfaces?.dockInObs) > 0,
+    done: (s) => Number(s?.data?.surfaces?.dockInObs) > 0 || Number(s?.data?.surfaces?.seen?.dockInObs) > 0,
     en: { title: 'Add the chat dock to OBS', why: 'Every chat in one place, and your buttons, beside the stream preview.' },
     es: { title: 'Añade el dock de chat a OBS', why: 'Todos los chats en un sitio, y tus botones, junto a la vista previa.' },
   },

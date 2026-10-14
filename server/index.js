@@ -58,6 +58,7 @@ import { initAuth } from './api/auth.js';
 import { initModDecks } from './engine/mod-decks.js';
 import { initModActivity } from './engine/mod-activity.js';
 import { initTwitchMod } from './engine/twitch-mod.js';
+import { initHome } from './engine/home.js';
 import { modActingToken } from './api/auth.js';
 import { VERSION } from '../shared/version.js';
 
@@ -154,6 +155,8 @@ async function main() {
   initModActivity();
   // Moderating Twitch chat from the docks and from actions, as whoever pressed (engine/twitch-mod.js).
   initTwitchMod({ tokenFor: modActingToken });
+  // The home screen's layout buttons (engine/home.js).
+  initHome();
   const webDist = path.join(__dirname, '..', 'web', 'dist');
   const webRoot = fs.existsSync(webDist) ? webDist : null;
   if (webRoot) log.info(`serving built UI from ${webDist}`);

@@ -44,6 +44,14 @@ export const isRunning = (s = session()) => Boolean(s?.startedAt && !s.endedAt);
 
 /** The stream on now, or null. */
 export const current = () => (isRunning() ? session() : null);
+
+/** The stream on now as the home screen shows it (web DashboardView): since when, called what, playing what. */
+export const streamNow = () => {
+  const s = current();
+  return s ? { n: s.n, startedAt: s.startedAt, title: s.title || '', game: s.game || '' } : null;
+};
+/** Tell every page the stream started, ended or was renamed. */
+const tellStreamNow = () => bus.emit(EVENTS.CONFIG, { key: 'streamNow', value: streamNow() });
 /** Every finished stream, oldest first. */
 export const finished = () => past?.get().list || [];
 /** The number the next stream will have, or the one on now has. */
@@ -77,6 +85,7 @@ function start(now) {
   if (s?.startedAt && s.endedAt && now - s.endedAt < SAME_STREAM_MS) {
     live.set({ session: { ...s, endedAt: 0 } });
     log.info(`stream ${s.n} carries on`);
+    tellStreamNow();
     return;
   }
   if (s?.startedAt && s.endedAt) finish(s);
@@ -84,10 +93,12 @@ function start(now) {
   live.set({ session: next });
   log.info(`stream ${next.n} started`);
   bus.emit('stream:started', next);
+  tellStreamNow();
   // What it is called and played, once Twitch says (EVENTS.CHANNEL may not come before).
   twitch.getLiveInfo?.().then((info) => {
     if (!info || !isRunning() || session().id !== next.id) return;
     changed((v) => ({ ...v, title: v.title || info.title || '', game: v.game || info.game || '' }));
+    tellStreamNow();
   }).catch(() => {});
 }
 
@@ -96,6 +107,7 @@ function stop(now) {
   if (!isRunning(s)) return;
   live.set({ session: { ...s, endedAt: now } });
   live.flush();
+  tellStreamNow();
   clearTimeout(endTimer);
   // Finished for good only once it is clear it is not coming back.
   endTimer = setTimeout(() => finish(session()), SAME_STREAM_MS);
@@ -169,6 +181,7 @@ function onChannel(c, now = Date.now()) {
     game: c.categoryName || v.game,
     channel: [...v.channel, { at: now, title: c.title || '', game: c.categoryName || '' }].slice(-100),
   }));
+  tellStreamNow();
 }
 
 /** A clip, a marker or a highlight, at this moment of the stream. */

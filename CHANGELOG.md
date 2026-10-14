@@ -2,6 +2,15 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.1.0] — 2026-10-14
+
+- A new home screen, for whoever opens it: a greeting by name; while live, the stream’s viewers per platform and tonight’s follows, subs and bits; offline, the next scheduled stream, the plan and a quick check that OBS and the stream page are ready.
+- “Needs you” on the home screen lists only what does — Twitch wanting connecting again, a platform that dropped, a new version, what AutoMod holds, moderators here now — each with a button to where it’s fixed.
+- Buttons on the home screen for the layouts you pick, to put one on screen in a press; each moderator picks their own.
+- A “Live view” switch on the home screen shows the live view while you’re offline, marked “Live preview”, so you and your moderators can set it up before a stream; each person’s own choice.
+- A moderator’s home has their own deck, the chat’s modes and the AutoMod queue. Somebody new gets a welcome with the setup steps still to do, in place of the old headline.
+- The OBS setup steps stay done while OBS is closed, on every browser: the server remembers having seen the stream page and the dock in OBS, where before only the browser that saw it did.
+
 ## [2.0.0] — 2026-10-13
 
 - **After updating:** connect Twitch again once on the Connections screen, as it asks for new permissions (moderating, the chat’s modes, AutoMod). Copy your OBS links again from their screens, so they carry the page key. Then switch sign-in on in Settings → Sign-in, and add every address you and your moderators open the app at to your Twitch app’s OAuth Redirect URLs (dev.twitch.tv), since signing in with Twitch comes back to it. Sign-in stays off until you switch it on, so nothing changes until then.

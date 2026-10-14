@@ -31,9 +31,10 @@
 
 import { collection } from '../core/store.js';
 import * as engine from './index.js';
+import * as home from './home.js';
 
 /** The three a moderator keeps, by the name the snapshot gives them. */
-export const MOD_OWN = ['chatDockSettings', 'dockButtons', 'dockGrid'];
+export const MOD_OWN = ['chatDockSettings', 'dockButtons', 'dockGrid', 'homeLayouts'];
 
 let prefs = null;
 
@@ -48,6 +49,8 @@ const streamers = () => ({
   chatDockSettings: engine.store.getChatDockSettings(),
   dockButtons: engine.store.getDockButtons(),
   dockGrid: engine.store.getDockGrid(),
+  // And the home screen's layout buttons (engine/home.js).
+  homeLayouts: home.homeLayouts(),
 });
 
 /** A moderator's dock as they see it: their own where they have made it so, the streamer's where not. */
@@ -59,6 +62,7 @@ export function dockFor(userId) {
     // Read again through the check, so a button whose action is gone is gone here too.
     dockButtons: mine.dockButtons ? engine.store.cleanDockButtons(mine.dockButtons) : theirs.dockButtons,
     dockGrid: mine.dockGrid || theirs.dockGrid,
+    homeLayouts: mine.homeLayouts || theirs.homeLayouts,
   };
 }
 
@@ -74,7 +78,8 @@ export function setFor(identity, key, value) {
   const now = dockFor(identity.userId);
   const clean = key === 'dockButtons' ? engine.store.cleanDockButtons(value)
     : key === 'dockGrid' ? engine.store.cleanDockGrid(value, now.dockGrid)
-      : engine.store.cleanChatDock(value, now.chatDockSettings);
+      : key === 'homeLayouts' ? home.cleanHomeLayouts(value)
+        : engine.store.cleanChatDock(value, now.chatDockSettings);
   db().update((all) => ({
     ...all,
     [identity.userId]: { ...(all[identity.userId] || {}), login: identity.login || '', [key]: clean, changedAt: Date.now() },

@@ -187,14 +187,14 @@ test('the default layout is a stylesheet, not an inline style', () => {
 });
 
 
-test('the dashboard keeps the player with the buttons on it', () => {
+test('the player with the buttons on it stays on the Spotify screen (the home screen left it out in 2.1.0, as the streamer asked)', () => {
   /*
     Two jobs, two components. The dashboard one can be clicked; a browser
     source cannot, and arranging a layout around controls nobody can press is
     what made the old one a card in the first place.
   */
-  const dash = fs.readFileSync(new URL('../../web/components/views/DashboardView.tsx', SCRIPT_URL), 'utf8');
-  assert.ok(dash.includes('<SpotifyPlayer'), 'the dashboard lost its player');
+  const screen = fs.readFileSync(new URL('../../web/components/views/SpotifyOverlayView.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(screen.includes('<SpotifyPlayer'), 'the Spotify screen lost its player');
   const canvas = fs.readFileSync(new URL('../../web/components/CanvasStage.tsx', SCRIPT_URL), 'utf8');
   assert.ok(canvas.includes('<SpotifyNowPlaying'), 'the canvas still draws the card with the buttons');
   assert.ok(!NOW_PLAYING.includes('onClick'), 'the overlay one has controls a browser source cannot press');

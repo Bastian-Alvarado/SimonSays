@@ -19,7 +19,8 @@ import * as auth from './auth.js';
 import * as modDecks from '../engine/mod-decks.js';
 import * as modActivity from '../engine/mod-activity.js';
 import * as twitchMod from '../engine/twitch-mod.js';
-import { getCollection } from '../core/store.js';
+import * as home from '../engine/home.js';
+import { getCollection, collection } from '../core/store.js';
 import { C2S, S2C } from '../../shared/protocol.js';
 import { VERSION } from '../../shared/version.js';
 import { liveLayout } from '../../shared/live-layout.js';
@@ -88,7 +89,26 @@ export function countSurfaces(list) {
   }
   return out;
 }
-const surfacesNow = () => countSurfaces([...clients].filter(isOpen));
+/*
+  When each kind of page was last seen inside OBS, kept on the server: OBS
+  is closed between streams, and a setup step that only counted what is open
+  now went back to undone every time it was — on every browser that had not
+  seen it open itself. Remembered once, here, it stays done for all of them.
+*/
+let seenDb = null;
+const seenStore = () => (seenDb ??= collection('surfaces_seen', {}));
+function rememberSeen(counts) {
+  const was = seenStore().get();
+  const now = Date.now();
+  const next = { ...was };
+  for (const k of ['canvasInObs', 'dockInObs', 'alertsInObs']) if (counts[k] > 0 && !was[k]) next[k] = now;
+  if (Object.keys(next).length !== Object.keys(was).length) seenStore().set(next);
+  return next;
+}
+const surfacesNow = () => {
+  const counts = countSurfaces([...clients].filter(isOpen));
+  return { ...counts, seen: rememberSeen(counts) };
+};
 let lastSurfacesJson = '';
 /** Tells every page when what is open changed: a page arriving, saying what it is, or going. */
 function publishSurfaces() {
@@ -538,6 +558,10 @@ function buildSnapshot() {
     ...engine.snapshot(),
     // What AutoMod is holding back, for the docks to decide on.
     automodHeld: twitchMod.heldNow(),
+    // The stream on now, for the home screen: since when, called what.
+    streamNow: streamSessions.streamNow(),
+    // The home screen's layout buttons: the streamer's here, a moderator's own in forMod.
+    homeLayouts: home.homeLayouts(),
     // Paused, how many wait, and whether alerts nothing shows are held.
     alertGate: alertGateState(),
     ...discordRoles.snapshot(),
@@ -683,6 +707,16 @@ async function handleMessage(ws, raw) {
           return;
         }
         throw refusal('unknown_request', `no sign-in op "${op}"`);
+      }
+
+      // -------- the home screen (engine/home.js)
+      case C2S.HOME: {
+        if (payload?.op === 'show') return reply(await home.show(String(payload.layoutId || ''), engine.store.getLayouts()));
+        if (payload?.op !== 'layouts') throw refusal('unknown_request', `no home op "${payload?.op}"`);
+        // Each person picks their own: a moderator's in their copy, told to them only.
+        if (ws.who?.role === 'mod') { sendToUser(ws.who.userId, S2C.CONFIG_PATCH, { homeLayouts: modDecks.setFor(ws.who, 'homeLayouts', payload.ids) }); return reply({ ok: true }); }
+        broadcast(S2C.CONFIG_PATCH, { homeLayouts: home.setHomeLayouts(payload.ids) });
+        return reply({ ok: true });
       }
 
       // -------- moderating Twitch chat, as whoever pressed (engine/twitch-mod.js)

@@ -116,6 +116,8 @@ await import('./smoke/voice-call.js');
 await import('./smoke/call-triggers.js');
 // Moderating Twitch chat, against a stand-in Twitch.
 await import('./smoke/moderating.js');
+// The home screen's own settings and data.
+await import('./smoke/home.js');
 // Its own server and sockets, switched on and off again within the file.
 await import('./smoke/sign-in.js');
 // Last: it gives the Spotify module a stand-in token no other file expects.

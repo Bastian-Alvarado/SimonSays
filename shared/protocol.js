@@ -99,6 +99,8 @@ export const C2S = {
   MODERATORS: 'moderators',
   /** Moderating Twitch chat: { op: 'timeout' | 'ban' | 'unban', userId, seconds? } | { op: 'delete', msgId } | { op: 'get-chat-settings' } | { op: 'chat-settings', settings } | { op: 'automod', msgId, allow } (server/engine/twitch-mod.js). */
   TWITCH_MOD: 'twitch_mod',
+  /** The home screen: { op: 'layouts', ids } (its layout buttons, each person's own) | { op: 'show', layoutId } (put one on screen) (server/engine/home.js). */
+  HOME: 'home',
   /** Questions from Discord: { settings } (server/engine/discord-questions.js). */
   DISCORD_QUESTIONS: 'discord_questions',
   /** Game requests: { op: 'settings' | 'read' | 'plan' | 'played' | 'dismiss' | 'reopen' | 'remove', … } (server/engine/game-requests.js). */

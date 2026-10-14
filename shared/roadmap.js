@@ -41,6 +41,17 @@ export const PLANS = [
       'Every feature of the app working with Kick, as far as Kick allows it.',
     ],
   },
+  {
+    version: '4.0.0',
+    name: 'The community update',
+    summary: 'Your viewers get a place of their own in the app: they sign in and see what your stream has for them.',
+    goals: [
+      'Viewers sign in with the account they watch on, and land on a page of their own.',
+      'Their level, points and rank, and the shop to spend their points in.',
+      'Polls, questions, game requests and giveaways from that page, as well as from chat.',
+      'Your schedule and what is coming next, in one place to share.',
+    ],
+  },
 ];
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;

@@ -302,7 +302,7 @@ test('YouTube, TikTok and OBS count as done once set up, not only while connecte
   assert.ok(view.includes('p.state({ status: system?.status, data: system?.data, connections: system?.connections })'));
   assert.ok(view.includes("state === 'on' || state === 'ready' ? 'bg-emerald-500/10 text-emerald-400'"), 'set up is not shown as done');
   const app = read('../../web/App.tsx');
-  assert.ok(app.includes('setupState({ status: system.status, data: system.data, connections: system.connections }'));
+  assert.ok(app.includes('setupState({ status: system.status, data: system.data, connections: system.connections, auth: system.auth }'));
   // The server says OBS was reached before, and when.
   const obs = read('../platforms/obs.js');
   assert.ok(obs.includes('creds.set({ ...creds.get(), lastConnectedAt: Date.now() });') && obs.includes('lastConnectedAt: Number(c.lastConnectedAt) || 0'));

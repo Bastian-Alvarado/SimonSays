@@ -88,8 +88,8 @@ export const MessageModMenu = ({ chat, ask, t }: { chat: any; ask: ModAsk; t: an
 };
 
 /** The chat's modes, switched from the dock. Read from Twitch when opened, as Twitch's own screens change them too. */
-export const ChatModes = ({ ask, t }: { ask: ModAsk; t: any }) => {
-  const [open, setOpen] = useState(false);
+export const ChatModes = ({ ask, t, inline = false }: { ask: ModAsk; t: any; inline?: boolean }) => {
+  const [open, setOpen] = useState(inline);
   const [modes, setModes] = useState<any>(null);
   const [said, setSaid] = useState('');
   const box = useRef<HTMLDivElement>(null);
@@ -97,10 +97,11 @@ export const ChatModes = ({ ask, t }: { ask: ModAsk; t: any }) => {
     if (!open) return undefined;
     setSaid('');
     ask({ op: 'get-chat-settings' }).then(setModes).catch((err) => setSaid(refusalWords(t, err) || String(err?.message || err)));
+    if (inline) return undefined;
     const away = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', away);
     return () => document.removeEventListener('mousedown', away);
-  }, [open, ask, t]);
+  }, [open, ask, t, inline]);
 
   const set = async (patch: any) => {
     setSaid('');
@@ -116,12 +117,14 @@ export const ChatModes = ({ ask, t }: { ask: ModAsk; t: any }) => {
   );
 
   return (
-    <div ref={box} className="relative" data-chat-modes>
-      <button type="button" onClick={() => setOpen((v) => !v)} title={t.chatModes || 'Chat modes'} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10" data-chat-modes-open>
-        <Shield size={13} />
-      </button>
+    <div ref={box} className="relative" data-chat-modes={inline ? 'inline' : 'button'}>
+      {!inline && (
+        <button type="button" onClick={() => setOpen((v) => !v)} title={t.chatModes || 'Chat modes'} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/10" data-chat-modes-open>
+          <Shield size={13} />
+        </button>
+      )}
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 z-50 w-60 rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden py-1">
+        <div className={inline ? 'py-1' : 'absolute right-0 bottom-full mb-2 z-50 w-60 rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden py-1'}>
           <p className="px-3 py-1 text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.chatModes || 'Chat modes'}</p>
           {!modes ? (
             <p className="px-3 py-2 text-[11px] text-zinc-500">{said || t.modsLoading || 'Loading…'}</p>
