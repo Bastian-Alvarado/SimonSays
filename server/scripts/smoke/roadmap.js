@@ -107,7 +107,7 @@ test('a newer release to update to is on the tree, and unreleased work that name
 });
 
 test('the planned major updates are the two named so far, nothing of the private edition\'s own', () => {
-  assert.deepEqual(R.PLANS.map((p) => [p.version, p.name]), [['2.0.0', 'The moderators update'], ['3.0.0', 'The kick update'], ['4.0.0', 'The community update']]);
+  assert.deepEqual(R.PLANS.map((p) => [p.version, p.name]), [['2.0.0', 'The moderators update'], ['3.0.0', 'The kick update'], ['4.0.0', 'The community update'], ['5.0.0', 'The creators update'], ['6.0.0', 'The easy install update'], ['7.0.0', 'The automation update'], ['8.0.0', 'The insights update'], ['9.0.0', 'The on-the-go update']]);
   for (const plan of R.PLANS) assert.ok(plan.summary && plan.goals?.length, `${plan.name} has nothing said about it`);
 });
 

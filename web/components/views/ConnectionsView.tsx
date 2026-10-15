@@ -155,7 +155,7 @@ interface ConnectionsViewProps {
   /** Whether the linked account let the app change the title and description. */
   youtubeCanEdit?: boolean;
   /** What the YouTube connection is doing: reading, waiting, out of allowance, failing. */
-  youtubeHealth?: { state: string; since?: number; everyMs?: number; nextCheckAt?: number; resetsAt?: number; message?: string } | null;
+  youtubeHealth?: { state: string; since?: number; everyMs?: number; streaming?: boolean; nextCheckAt?: number; resetsAt?: number; message?: string } | null;
   /** When the newest YouTube message in chat arrived, or 0. */
   youtubeLastMessageAt?: number;
   youtubeChannel?: { title?: string; avatar?: string } | null;
@@ -927,7 +927,7 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({
  * through — the one thing that proves it is working.
  */
 const YoutubeHealthLine = ({ health, lastMessageAt, t }: {
-  health: { state: string; everyMs?: number; nextCheckAt?: number; resetsAt?: number; message?: string };
+  health: { state: string; everyMs?: number; streaming?: boolean; nextCheckAt?: number; resetsAt?: number; message?: string };
   lastMessageAt: number;
   t: any;
 }) => {
@@ -952,7 +952,8 @@ const YoutubeHealthLine = ({ health, lastMessageAt, t }: {
   let detail = '';
   if (health.state === 'reading') {
     title = t.youtubeReading || 'Reading chat';
-    detail = `${t.youtubeEvery || 'Checks every'} ${Math.round((health.everyMs || 7000) / 1000)}s · ${
+    // Streamed: messages as they are sent. Otherwise looked at, every few seconds.
+    detail = `${health.streaming ? (t.youtubeAsSent || 'Messages arrive as they are sent') : `${t.youtubeEvery || 'Checks every'} ${Math.round((health.everyMs || 7000) / 1000)}s`} · ${
       lastMessageAt ? `${t.youtubeLastMessage || 'last message'} ${ago(lastMessageAt)}` : (t.youtubeNoMessagesYet || 'no messages yet')
     }`;
   } else if (health.state === 'waiting') {

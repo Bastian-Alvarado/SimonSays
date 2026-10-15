@@ -52,6 +52,55 @@ export const PLANS = [
       'Your schedule and what is coming next, in one place to share.',
     ],
   },
+  {
+    version: '5.0.0',
+    name: 'The creators update',
+    summary: 'A place to share what you make in SimonSays — and to take what others made.',
+    goals: [
+      'Share and download themes, layouts, pixel avatars and actions with other SimonSays users.',
+      'See each one before taking it, and what it needs to work (a platform, a sound, a font).',
+      'Later, plugins: new layer types and new action steps made by others.',
+    ],
+  },
+  {
+    version: '6.0.0',
+    name: 'The easy install update',
+    summary: 'SimonSays installs like any other program: no Node, no command line.',
+    goals: [
+      'A Windows installer, and the app in the tray beside the clock.',
+      'A first start that finds OBS on its own and walks through connecting your platforms.',
+      'Updates and backups that run by themselves.',
+    ],
+  },
+  {
+    version: '7.0.0',
+    name: 'The automation update',
+    summary: 'Actions grow up: what Streamer.bot does, without leaving the app.',
+    goals: [
+      'Variables that actions keep and change, and conditions on them.',
+      'Queues, so actions wait their turn, and one action that runs another.',
+      'Outside triggers: other apps and websites setting off actions through a link of their own.',
+    ],
+  },
+  {
+    version: '8.0.0',
+    name: 'The insights update',
+    summary: 'What your streams say about your stream: who comes, what holds them, and when to go live.',
+    goals: [
+      'When viewers come and go across a stream, on every platform together.',
+      'Which games and segments of the plan hold people, and the best times to go live.',
+      'Highlights and VOD chapters, posted for you.',
+    ],
+  },
+  {
+    version: '9.0.0',
+    name: 'The on-the-go update',
+    summary: 'SimonSays in your pocket, for streams away from the desk.',
+    goals: [
+      'The dashboard as an app to install on your phone, with a dock made for a phone.',
+      'For streams outside: where you are, your heart rate, and a warning when the stream is struggling.',
+    ],
+  },
 ];
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;

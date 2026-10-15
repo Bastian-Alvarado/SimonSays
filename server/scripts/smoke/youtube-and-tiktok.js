@@ -553,9 +553,11 @@ await new Promise((r) => setTimeout(r, 50));
 const ytReadingAfterTwitchStops = yt.getSettings().health.state;
 yt.stop();
 const chatReadsBefore = asked3.filter((u) => u.includes('/liveChat/messages?')).length;
+const chatStreamsBefore = asked3.filter((u) => u.includes('/liveChat/messages/stream?')).length;
 twitchSays(true);
 await Promise.all([yt.start(), yt.start()]);
 const chatReadsTwice = asked3.filter((u) => u.includes('/liveChat/messages?')).length - chatReadsBefore;
+const chatStreamsTwice = asked3.filter((u) => u.includes('/liveChat/messages/stream?')).length - chatStreamsBefore;
 yt.stop();
 // Waiting on Twitch, and then Twitch is gone altogether.
 ytLive = false;
@@ -608,6 +610,7 @@ test('a sign-in Google took back stays said while waiting on Twitch, rather than
 });
 
 test('two starts at once — Twitch going live while a look is under way — read the chat once, not twice', () => {
+  assert.equal(chatStreamsTwice, 1, `${chatStreamsTwice} streams were opened`);
   assert.equal(chatReadsTwice, 1, `the chat was read ${chatReadsTwice} times`);
 });
 
@@ -620,4 +623,130 @@ test('the Twitch stream starting and ending are heard the moment they happen, an
   for (const key of ['youtubePaused', 'youtubePausedHint', 'tiktokTwitchIdle', 'tiktokTwitchIdleHint', 'tiktokTwitchLive']) {
     assert.equal(strings.split(key + ':').length - 1, 2, key);
   }
+});
+
+// ------------------------------------- YouTube chat as it is sent, not looked at every seven seconds
+
+const ytStream = await import('../../platforms/youtube-stream.js');
+
+// The array arrives in pieces, cut anywhere: inside a string, after an escape, between elements.
+const streamedItems = [];
+const feedIt = ytStream.streamedArray((v) => streamedItems.push(v));
+const whole = '[{"items":[{"snippet":{"displayMessage":"a \\"quoted\\" {brace} ]"}}],"nextPageToken":"t1"}\r\n,{"items":[],"nextPageToken":"t2"}\r\n';
+for (let i = 0; i < whole.length; i += 7) feedIt(whole.slice(i, i + 7));
+let notAStream = null;
+try { ytStream.streamedArray(() => {})('{"items":[]}'); } catch (err) { notAStream = err.reason; }
+let refusedInStream = null;
+try {
+  await ytStream.readChatStream({
+    url: 'x', token: 't', onResponse: () => {},
+    fetchImpl: async () => ({ ok: true, status: 200, body: (async function* () { yield '[{"error":{"code":403,"message":"quota","errors":[{"reason":"quotaExceeded"}]}}]'; })() }),
+  });
+} catch (err) { refusedInStream = err.reason; }
+
+test('a streamed chat is read element by element, however it is cut, and what is not a stream or a refusal is said', () => {
+  assert.equal(streamedItems.length, 2, `${streamedItems.length} elements came out`);
+  assert.equal(streamedItems[0].items[0].snippet.displayMessage, 'a "quoted" {brace} ]');
+  assert.equal(streamedItems[1].nextPageToken, 't2');
+  assert.equal(notAStream, 'notAStream');
+  assert.equal(refusedInStream, 'quotaExceeded');
+  // Typed as the proto names them, read as the list names them.
+  assert.equal(ytStream.asListed({ snippet: { type: 'TEXT_MESSAGE_EVENT' } }).snippet.type, 'textMessageEvent');
+  assert.equal(ytStream.asListed({ snippet: { type: 'superChatEvent' } }).snippet.type, 'superChatEvent');
+});
+
+// Driven through the real module: a live broadcast, its chat streamed. Its waits made short for the test.
+yt.setStreamTimingForTests({ backoffMs: 20, settleMs: 0, idleMs: 250 });
+const ytStreamAsked = [];
+const ytHeard = [];
+const ytOnChat = (c) => { if (c.platform === 'youtube') ytHeard.push(c.msg); };
+bus.on(EVENTS.CHAT, ytOnChat);
+let ytStreamMode = 'stream';
+let ytConnections = 0;
+const textItem = (id, text, at) => ({ id, snippet: { type: 'TEXT_MESSAGE_EVENT', displayMessage: text, publishedAt: new Date(at).toISOString(), textMessageDetails: { messageText: text } }, authorDetails: { channelId: `UC-${id}`, displayName: `Viewer ${id}` } });
+const until = async (ok, ms = 3000) => { const end = Date.now() + ms; while (!ok() && Date.now() < end) await new Promise((r) => setTimeout(r, 10)); return ok(); };
+globalThis.fetch = async (url, init = {}) => {
+  const u = String(url);
+  ytStreamAsked.push(u);
+  const reply = (status, body) => ({ ok: status < 400, status, text: async () => JSON.stringify(body), json: async () => body });
+  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Rowan', thumbnails: { default: { url: 'x' } } } }] });
+  if (u.includes('/liveBroadcasts?')) return reply(200, { items: [{ id: 'v9', snippet: { liveChatId: 'c9' } }] });
+  if (u.includes('/liveChat/messages/stream?')) {
+    ytConnections += 1;
+    const n = ytConnections;
+    if (ytStreamMode === 'missing') return reply(404, { error: { code: 404, message: 'Not Found', errors: [{ reason: 'notFound' }] } });
+    // The network failing once: a moment's trouble, not a reason to stop streaming.
+    if (ytStreamMode === 'hiccup' && n === 1) throw new TypeError('fetch failed');
+    const now = Date.now();
+    const first = n === 1 || (ytStreamMode === 'hiccup' && n === 2);
+    const items = first ? [textItem('old', 'said before', now - 60_000), textItem('n1', 'hola youtube', now)] : [textItem('n1', 'hola youtube', now), textItem(`n${n}`, `again ${n}`, now)];
+    return {
+      ok: true,
+      status: 200,
+      body: (async function* () {
+        yield `[${JSON.stringify({ items, nextPageToken: `p${n}` })}`;
+        // Quiet: open, saying nothing more, until it is closed for being quiet.
+        if (ytStreamMode === 'quiet') await new Promise((resolve, reject) => init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+      })(),
+    };
+  }
+  if (u.includes('/liveChat/messages?')) return reply(200, { items: [], pollingIntervalMillis: 7000, nextPageToken: 'poll' });
+  return reply(200, { items: [] });
+};
+const streamUrls = () => ytStreamAsked.filter((u) => u.includes('/liveChat/messages/stream?'));
+const looks = () => ytStreamAsked.filter((u) => u.includes('/liveChat/messages?')).length;
+twitchSays(true);
+yt.stop();
+await yt.start();
+await until(() => streamUrls().length >= 2);
+const ytStreamHealth = yt.getSettings().health;
+const ytStreamUrls = streamUrls();
+// YouTube closing it within moments, time after time: back to looking.
+await until(() => yt.getSettings().health.streaming === false);
+const ytAfterQuickEnds = { health: yt.getSettings().health, looked: looks(), connections: ytConnections };
+// What this one broadcast's stream was heard to say (the runs after are broadcasts of their own).
+const ytHeardFirst = ytHeard.slice();
+yt.stop();
+// A stream refused outright: looking at once.
+const runMode = async (mode, settle) => {
+  ytStreamMode = mode; ytConnections = 0; ytStreamAsked.length = 0;
+  await yt.start();
+  await settle();
+  const out = { health: yt.getSettings().health, looked: looks(), connections: ytConnections, urls: streamUrls() };
+  yt.stop();
+  return out;
+};
+const ytRefusedStream = await runMode('missing', () => until(() => looks() >= 1));
+// The network failing once: opened again, still streaming.
+const ytHiccup = await runMode('hiccup', () => until(() => ytConnections >= 2).then(() => new Promise((r) => setTimeout(r, 30))));
+// Quiet for too long: closed and opened again from where it was, not counted as trouble.
+const ytQuiet = await runMode('quiet', () => until(() => ytConnections >= 4, 5000));
+bus.off?.(EVENTS.CHAT, ytOnChat);
+globalThis.fetch = realFetch3;
+yt.setStreamTimingForTests({ backoffMs: 2000, settleMs: 1500, idleMs: 120_000 });
+twitchSays(false);
+
+test('YouTube chat is streamed: new messages heard once, what came before skipped, picked up again where it left off', () => {
+  assert.ok(ytStreamUrls.length >= 2, `${ytStreamUrls.length} connections`);
+  assert.ok(ytHeard.includes('hola youtube'), `heard ${JSON.stringify(ytHeard)}`);
+  assert.ok(!ytHeard.includes('said before'), 'what was said before the stream started came through as new');
+  // Sent again on the next connection: still heard once.
+  assert.equal(ytHeardFirst.filter((m) => m === 'hola youtube').length, 1, `a message was heard twice: ${JSON.stringify(ytHeardFirst)}`);
+  assert.ok(ytStreamUrls[1].includes('pageToken=p1'), 'the second connection did not carry on from the first');
+  assert.equal(ytStreamHealth.streaming, true);
+});
+
+test('closed within moments again and again, or refused, it goes back to looking; a hiccup or a quiet chat does not', () => {
+  assert.equal(ytAfterQuickEnds.health.streaming, false, JSON.stringify(ytAfterQuickEnds));
+  assert.ok(ytAfterQuickEnds.looked >= 1, 'it did not look at the chat after giving up on the stream');
+  assert.ok(ytAfterQuickEnds.connections <= 4, `it kept reconnecting: ${ytAfterQuickEnds.connections} connections`);
+  assert.equal(ytRefusedStream.health.streaming, false);
+  assert.ok(ytRefusedStream.looked >= 1, 'a refused stream did not fall back to looking');
+  assert.equal(ytHiccup.health.streaming, true, `one network failure gave up on streaming: ${JSON.stringify(ytHiccup.health)}`);
+  assert.equal(ytHiccup.looked, 0, 'one network failure made it look instead');
+  assert.equal(ytQuiet.health.streaming, true, 'a quiet chat gave up on streaming');
+  assert.equal(ytQuiet.looked, 0, 'a quiet chat made it look instead');
+  assert.ok(ytQuiet.urls[1]?.includes('pageToken=p1'), 'a quiet connection was not opened again from where it was');
+  const strings = fs.readFileSync(new URL('../../web/constants.ts', SCRIPT_URL), 'utf8');
+  assert.equal(strings.split('    youtubeAsSent: ').length - 1, 2, 'youtubeAsSent is not in both languages');
 });

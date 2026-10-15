@@ -2,6 +2,11 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.2.1] — 2026-10-15
+
+- YouTube chat costs a fraction of the daily allowance: the app now keeps one connection open and YouTube sends messages as they are written, where before it asked every seven seconds — about 2,600 of the day’s 10,000 units an hour, so chat could stop after three or four hours of streaming. If YouTube refuses the connection, or keeps closing it within moments, the app goes back to asking every seven seconds for that broadcast. The Connections screen says which it is doing.
+- The Roadmap plans five more major updates: 5.0.0 The creators update, 6.0.0 The easy install update, 7.0.0 The automation update, 8.0.0 The insights update and 9.0.0 The on-the-go update, each with what it is planned to bring.
+
 ## [2.2.0] — 2026-10-15
 
 - Pixel avatars start plainly: with none yet, the tab offers three ways in — an example, a picture you already have (read in its own colours, the importer open), or an empty grid to draw — and a file, instead of a closed dropdown.

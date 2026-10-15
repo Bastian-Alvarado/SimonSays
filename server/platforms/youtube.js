@@ -40,6 +40,7 @@ import { isYoutubeCategory, youtubeCategoryName } from '../../shared/youtube-cat
 import { defaultNameColour } from '../../shared/platforms.js';
 import { twitchLive, onTwitchLive } from '../core/twitch-live.js';
 import { refusal } from '../core/refusal.js';
+import { readChatStream, asListed } from './youtube-stream.js';
 
 const log = createLogger('youtube');
 
@@ -145,6 +146,27 @@ let pageToken = null;
 */
 const MIN_POLL_MS = 7000;
 const VIEWER_POLL_MS = 30_000;
+/*
+  Better than looking at all: the chat as YouTube sends it, one connection
+  kept open (server/platforms/youtube-stream.js) at 5 units a connection,
+  where looking every seven seconds spent about 2,600 an hour. Closed by
+  YouTube, it is opened again from where it left off; refused, or closed
+  again and again within moments, this broadcast goes back to looking.
+*/
+const STREAM_PATH = '/liveChat/messages/stream';
+const QUICK_ENDS_ALLOWED = 3;
+/*
+  Closed sooner than quickMs is closed quickly; trouble waits backoffMs (times
+  how many in a row) before the next; nothing heard for idleMs and the
+  connection is taken as stalled and opened again; the first settleMs of a
+  connection from the start is the backlog. Changed only by tests.
+*/
+const STREAM_TIMING = { quickMs: 15_000, backoffMs: 2000, idleMs: 120_000, settleMs: 1500 };
+export function setStreamTimingForTests(next) { Object.assign(STREAM_TIMING, next); }
+let streamAbort = null;
+/** This broadcast's chat is looked at, not streamed: streaming did not work for it. */
+let streamOff = false;
+let quickEnds = 0;
 /*
   Not live: how often to look for a broadcast. It used to be every minute,
   and with the channel name read again each time that alone spent over a
@@ -584,9 +606,12 @@ async function startRun(mine) {
   videoId = found.videoId;
   pageToken = null;
   seenFirstPage = false;
+  streamOff = false;
+  quickEnds = 0;
+  heardIds.clear();
   setStatus('connected');
   log.info('live chat found — reading');
-  setHealth({ state: 'reading', since: Date.now(), everyMs: MIN_POLL_MS });
+  setHealth({ state: 'reading', since: Date.now(), everyMs: MIN_POLL_MS, streaming: true });
 
   /*
     Which category it went live in, read once, so the dock button says the
@@ -597,14 +622,17 @@ async function startRun(mine) {
     .then((found) => announceCategory((found?.items || [])[0]?.snippet?.categoryId))
     .catch((err) => log.warn('could not read the category:', err.message));
 
-  await pollChat(mine);
+  // Streamed, not waited on: the connection stays open as long as the chat goes on.
+  streamChat(mine).catch((err) => { if (mine === run) onFailure(err); });
   if (mine !== run) return;
-  viewerTimer = setInterval(() => pollViewers().catch(() => {}), VIEWER_POLL_MS);
-  await pollViewers().catch(() => {});
+  viewerTimer = setInterval(() => pollViewers(mine).catch(() => {}), VIEWER_POLL_MS);
+  await pollViewers(mine).catch(() => {});
 }
 
 export function stop() {
   run += 1;
+  streamAbort?.abort();
+  streamAbort = null;
   clearTimeout(chatTimer);
   clearInterval(viewerTimer);
   chatTimer = null;
@@ -639,6 +667,109 @@ function onFailure(err) {
   setHealth({ state: 'error', message: String(err.message || '').slice(0, 200), nextCheckAt: Date.now() + RETRY_MS });
   // Quietly, and keep trying: a broadcast ending is the ordinary case here.
   chatTimer = setTimeout(() => start().catch(onFailure), RETRY_MS);
+}
+
+/** Back to looking every seven seconds, for the rest of this broadcast, and saying why. */
+function lookInstead(mine, why) {
+  streamOff = true;
+  log.info(`reading chat as it is sent did not work (${why}) — looking every ${MIN_POLL_MS / 1000} s instead`);
+  setHealth({ ...health, everyMs: MIN_POLL_MS, streaming: false });
+  return pollChat(mine);
+}
+
+/*
+  What a failed connection says about the stream. Refused for what it is —
+  not found, not allowed, not a stream — is for good: looking instead.
+  Anything else — the network, YouTube busy (429, 5xx), a sign-in to renew
+  (401), a connection gone quiet — is a moment's trouble: opened again.
+*/
+const TROUBLE_STATUSES = new Set([401, 408, 429]);
+const forGood = (err) => err?.reason === 'notAStream' || (err?.status >= 400 && err?.status < 500 && !TROUBLE_STATUSES.has(err.status));
+
+/** The ids heard on this broadcast's stream, so a reconnect that sends one again is not news twice. */
+const heardIds = new Set();
+const heard = (id) => {
+  if (!id) return false;
+  if (heardIds.has(id)) return true;
+  heardIds.add(id);
+  if (heardIds.size > 2000) heardIds.delete(heardIds.values().next().value);
+  return false;
+};
+
+/** One connection to the chat, kept open until YouTube closes it; then the next. */
+async function streamChat(mine = run) {
+  if (!liveChatId || mine !== run) return undefined;
+  if (streamOff) return pollChat(mine);
+  const token = await accessToken();
+  if (mine !== run) return undefined;
+  // One connection is one call: spent whether or not it works, as every call is.
+  spend(unitsFor('GET', STREAM_PATH));
+  announceUsage();
+  const controller = new AbortController();
+  streamAbort = controller;
+  const opened = Date.now();
+  // With no place to carry on from, YouTube starts with what was said before: none of it is news.
+  const fromStart = !pageToken;
+  let ended = false;
+  let quiet = false;
+  let lastHeard = opened;
+  const idle = setInterval(() => {
+    if (Date.now() - lastHeard < STREAM_TIMING.idleMs) return;
+    quiet = true;
+    controller.abort();
+  }, Math.min(10_000, STREAM_TIMING.idleMs));
+  idle.unref?.();
+  let failure = null;
+  try {
+    await readChatStream({
+      url: `${API}${STREAM_PATH}?liveChatId=${encodeURIComponent(liveChatId)}&part=snippet,authorDetails${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+      token,
+      signal: controller.signal,
+      onResponse: (data) => {
+        if (mine !== run) return;
+        lastHeard = Date.now();
+        if (data?.nextPageToken) pageToken = data.nextPageToken;
+        for (const raw of data?.items || []) {
+          const item = asListed(raw);
+          // Before this connection opened, or arriving with the backlog in its first moments: not news.
+          if (fromStart && (Date.parse(item?.snippet?.publishedAt) < opened - 2000 || lastHeard - opened < STREAM_TIMING.settleMs)) { heard(item?.id); continue; }
+          if (heard(item?.id)) continue;
+          try { handleMessage(item); } catch (err) { log.warn(`a YouTube message could not be read: ${err.message}`); }
+        }
+        seenFirstPage = true;
+        if (data?.offlineAt) ended = true;
+      },
+    });
+  } catch (err) {
+    failure = err;
+  } finally {
+    clearInterval(idle);
+    controller.abort();
+    if (streamAbort === controller) streamAbort = null;
+  }
+  if (mine !== run) return undefined;
+  if (failure && !(quiet && failure.name === 'AbortError')) {
+    if (failure.name === 'AbortError') return undefined;
+    // The allowance spent, or the chat over: as when looking.
+    if (isQuota(failure) || ['liveChatEnded', 'liveChatNotFound', 'liveChatDisabled'].includes(failure.reason)) throw failure;
+    if (forGood(failure)) return lookInstead(mine, failure.message);
+  }
+  if (ended) {
+    const err = new Error('YouTube: the live chat has ended');
+    err.reason = 'liveChatEnded';
+    throw err;
+  }
+  /*
+    Opened again, from where it was. Trouble, or closed within moments, time
+    after time: something is wrong with it, and looking is surer. A quiet
+    connection closed here is not trouble.
+  */
+  const troubled = Boolean(failure && !quiet) || (!quiet && Date.now() - opened < STREAM_TIMING.quickMs);
+  quickEnds = troubled ? quickEnds + 1 : 0;
+  if (quickEnds >= QUICK_ENDS_ALLOWED) return lookInstead(mine, failure ? failure.message : `closed ${quickEnds} times within ${STREAM_TIMING.quickMs / 1000} s`);
+  if (failure && !quiet) log.debug(`YouTube chat connection dropped (${failure.message}) — opening it again`);
+  chatTimer = setTimeout(() => streamChat(mine).catch((e) => { if (mine === run) onFailure(e); }), quickEnds ? STREAM_TIMING.backoffMs * quickEnds : 250);
+  return undefined;
 }
 
 async function pollChat(mine = run) {
@@ -777,9 +908,11 @@ export function handleMessage(item) {
   }
 }
 
-async function pollViewers() {
+async function pollViewers(mine = run) {
   if (!videoId) return;
   const data = await api(`/videos?part=liveStreamingDetails&id=${encodeURIComponent(videoId)}`);
+  // Stopped meanwhile: what it says is of a run that is over.
+  if (mine !== run) return;
   const details = (data?.items || [])[0]?.liveStreamingDetails;
   if (!details) return;
   // Live until YouTube says the broadcast ended; one key at a time, the way TikTok reports its own.
