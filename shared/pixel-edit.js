@@ -28,7 +28,7 @@
  * changed in place, so the tab can keep the old one to undo to.
  */
 
-import { pixelGrid, PIXEL_SIZE, pixelCharOk, PIXEL_NAME } from './pixel-avatars.js';
+import { pixelGrid, PIXEL_SIZE, pixelCharOk, PIXEL_NAME, blankPixelAvatar } from './pixel-avatars.js';
 import { hexToHsl, hslToHex } from './avatar.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
@@ -1071,4 +1071,79 @@ export function pixelWarnings(pa) {
   const unused = pa.parts.filter((p) => !partUse(pa, p.char)).map((p) => p.id);
   if (unused.length) out.push({ code: 'unused-colours', parts: unused });
   return out;
+}
+
+/**
+ * What a new avatar still needs to come alive on stream, in the order to do
+ * it: something drawn, the head line between its head and body, a face for
+ * talking and one for blinking — and, for one that turns, its front view.
+ * Each { id, done }, for the editor's "Getting it ready" bar.
+ */
+export function pixelReadySteps(pa) {
+  const drawn = (rows) => (rows || []).some((r) => /[^.]/.test(r));
+  const filled = (name) => Boolean(pa.faces.find((f) => f.name === name)?.patches.some((p) => p.rows.some((r) => /[^.]/.test(r))));
+  const last = pa.split?.headLastRow ?? 99;
+  const steps = [
+    { id: 'drawn', done: drawn(pa.base) },
+    // Placed: something drawn on both sides of it, so a head moves on a body. At the very bottom it is set not to split (a prop, a head alone): nothing to place.
+    ...(last >= 99 ? [] : [{ id: 'head', done: drawn(pa.base.slice(0, last + 1)) && drawn(pa.base.slice(last + 1)) }]),
+    { id: 'talking', done: filled('talking') },
+    { id: 'blink', done: filled('blink') },
+  ];
+  if (pa.turn) steps.push({ id: 'front', done: drawn(pa.turn.front.base) });
+  return steps;
+}
+
+/**
+ * A new avatar with a simple character already drawn, to change rather than
+ * start from nothing: a round head on a body, eyes and a mouth, the head
+ * line under the head, and faces for talking, blinking and half a blink —
+ * alive on stream from the first save.
+ */
+export function starterPixelAvatar(id, name) {
+  const blank = blankPixelAvatar(id, name);
+  const grid = Array.from({ length: PIXEL_SIZE }, () => Array(PIXEL_SIZE).fill('.'));
+  // A shape, filled, with an outline wherever it meets the outside.
+  const shape = (inside, fill) => {
+    for (let y = 0; y < PIXEL_SIZE; y += 1) for (let x = 0; x < PIXEL_SIZE; x += 1) {
+      if (!inside(x, y)) continue;
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      grid[y][x] = edge ? 'O' : typeof fill === 'function' ? fill(x, y) : fill;
+    }
+  };
+  const rounded = (x0, y0, x1, y1, r) => (x, y) => {
+    if (x < x0 || x > x1 || y < y0 || y > y1) return false;
+    const cx = x < x0 + r ? x0 + r : x > x1 - r ? x1 - r : x;
+    const cy = y < y0 + r ? y0 + r : y > y1 - r ? y1 - r : y;
+    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+  };
+  // The body, its right side in shadow; then the head over it, hair on top.
+  shape(rounded(33, 55, 67, 98, 8), (x) => (x >= 60 ? 's' : 'S'));
+  const head = (x, y) => ((x - 50) / 22) ** 2 + ((y - 36) / 21) ** 2 <= 1;
+  shape(head, (x, y) => (y < 25 ? 'H' : x >= 64 ? 'p' : 'P'));
+  // Eyes, each with a shine; a small mouth.
+  const eyes = [[41, 33], [56, 33]];
+  for (const [ex, ey] of eyes) for (let dy = 0; dy < 5; dy += 1) for (let dx = 0; dx < 3; dx += 1) grid[ey + dy][ex + dx] = dx === 0 && dy === 0 ? 'W' : 'I';
+  for (let x = 48; x <= 52; x += 1) grid[46][x] = 'O';
+  let pa = { ...blank, base: grid.map((r) => r.join('')), split: { ...blank.split, headLastRow: 57 } };
+  const face = (faceName, cells) => {
+    const made = addFace(pa, { name: faceName });
+    pa = paint(made.avatar, { kind: 'face', name: made.name }, cells);
+  };
+  // Talking: the mouth open, dark inside.
+  const mouth = [];
+  for (let y = 45; y <= 49; y += 1) for (let x = 47; x <= 53; x += 1) {
+    const ring = y === 45 || y === 49 || x === 47 || x === 53;
+    if (ring && (y === 45 || y === 49) && (x === 47 || x === 53)) continue;
+    mouth.push([x, y, ring ? 'O' : 'p']);
+  }
+  face('talking', mouth);
+  // Blinking: the eyes skin again, a line where they shut; half: the top half lidded.
+  const lids = (rowsShut) => eyes.flatMap(([ex, ey]) => Array.from({ length: 5 * 3 }, (_, i) => {
+    const dx = i % 3; const dy = Math.floor(i / 3);
+    return [ex + dx, ey + dy, dy === rowsShut ? 'O' : dy < rowsShut ? 'P' : null];
+  }).filter((c) => c[2]));
+  face('blink', lids(3).concat(eyes.flatMap(([ex, ey]) => [0, 1, 2].map((dx) => [ex + dx, ey + 4, 'P']))));
+  face('blink-half', lids(2));
+  return pa;
 }

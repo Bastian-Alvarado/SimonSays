@@ -126,7 +126,7 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
   const [editorRound, setEditorRound] = useState(0);
   const leaving = () => !unsaved.current || window.confirm(t.pixelLeaveConfirm || 'There are changes not saved yet. Leave them?');
   const setSelectedId = (id: string) => { if (id === selectedId || leaving()) { unsaved.current = id === selectedId && unsaved.current; setSelected(id); } };
-  const setMode = (m: 'look' | 'draw') => { if (m === mode || !leaving()) return; unsaved.current = false; setModeNow(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* kept for this visit only */ } };
+  const setMode = (m: 'look' | 'draw') => { if (m === mode || !leaving()) return; unsaved.current = false; setModeNow(m); setPictureFor(''); try { localStorage.setItem(MODE_KEY, m); } catch { /* kept for this visit only */ } };
   const kit = avatars.find((a) => a.id === selectedId) || avatars[0] || null;
   useEffect(() => { if (kit) remember(kit.id); }, [kit?.id]);
   const [error, setError] = useState('');
@@ -145,6 +145,22 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
     } finally {
       setBusy(false);
     }
+  };
+
+  // A new one made from the start page, opened to draw — with a picture to bring in first, when started from one.
+  const [pictureFor, setPictureFor] = useState('');
+  // Started, and waiting for it to arrive: the start page stays up meanwhile, and a second press would make a second one.
+  const [starting, setStarting] = useState(false);
+  useEffect(() => { if (kit) setStarting(false); }, [kit?.id]);
+  const start = async (fromPicture: boolean, starter = false) => {
+    if (starting) return;
+    setStarting(true);
+    const made = await run({ op: 'create', name: newName.trim() || t.pixelStartNamePlaceholder || 'My avatar', ...(starter ? { starter: true } : {}) });
+    if (!made?.id) { setStarting(false); return; }
+    setNewName('');
+    setPictureFor(fromPicture ? made.id : '');
+    setModeNow('draw');
+    try { localStorage.setItem(MODE_KEY, 'draw'); } catch { /* kept for this visit only */ }
   };
 
   // The name is typed into its own copy and kept when the field is left.
@@ -255,7 +271,78 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
 
       {/* ------------------------------------------------- the one open, and the dropdown to choose another */}
       <div className="space-y-6" data-pixel-selected={kit?.id || ''}>
-        {!kit && <div className="glass-panel rounded-3xl border border-zinc-800 p-6 relative z-20">{picker}</div>}
+        {/* None yet: three plain ways to start, rather than a closed dropdown. */}
+        {!kit && (
+          <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-5 relative z-20" data-pixel-start>
+            <div className="space-y-1">
+              <h2 className="text-lg font-black text-white">{t.pixelStartTitle || 'Make your first pixel avatar'}</h2>
+              <p className="text-[11px] text-zinc-500 leading-relaxed">{t.pixelStartHint || 'Pick how to start. Everything can be changed afterwards, and nothing is on stream until you choose it on a layer.'}</p>
+            </div>
+            <label className="block max-w-md space-y-1">
+              <span className={tag}>{t.pixelStartName || 'Its name (you can change it later)'}</span>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} placeholder={t.pixelStartNamePlaceholder || 'My avatar'} className={box} data-pixel-start-name />
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 flex flex-col gap-3" data-pixel-start-example>
+                <Sparkles size={18} className="text-current-accent" />
+                <div className="space-y-1 flex-1">
+                  <span className="block text-[12px] font-bold text-zinc-100">{t.pixelStartExample || 'Start from an example'}</span>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">
+                    {HOUSE_CHARACTER
+                      ? (t.pixelStartExampleHintHouse || 'A finished avatar, with faces, outfits and hats, to change however you like.')
+                      : (t.pixelStartExampleHint || 'Finished avatars, with faces, outfits and hats, to change however you like. They are copies: the built-in avatar never changes.')}
+                  </p>
+                </div>
+                <button onClick={() => run({ op: 'restore-examples' })} disabled={busy} className={`${button} justify-center border-current-accent text-current-accent`} data-pixel-start-examples>
+                  <Sparkles size={12} /> {t.pixelStartExampleGo || 'Show me the examples'}
+                </button>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 flex flex-col gap-3" data-pixel-start-picture>
+                <ImageIcon size={18} className="text-current-accent" />
+                <div className="space-y-1 flex-1">
+                  <span className="block text-[12px] font-bold text-zinc-100">{t.pixelStartPicture || 'From a picture'}</span>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">{t.pixelStartPictureHint || 'Pixel art you already have, as a picture: it is read in pixel by pixel, in its own colours, and you carry on from there.'}</p>
+                </div>
+                <button onClick={() => start(true)} disabled={busy || starting} className={`${button} justify-center`} data-pixel-start-from-picture>
+                  <ImageIcon size={12} /> {t.pixelStartPictureGo || 'Choose a picture'}
+                </button>
+              </div>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 flex flex-col gap-3" data-pixel-start-blank>
+                <Plus size={18} className="text-current-accent" />
+                <div className="space-y-1 flex-1">
+                  <span className="block text-[12px] font-bold text-zinc-100">{t.pixelStartBlank || 'Draw it yourself'}</span>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">{t.pixelStartBlankHintStarter || 'A simple character to change — already talking and blinking — or an empty grid, 100 pixels a side.'}</p>
+                </div>
+                <button onClick={() => start(false, true)} disabled={busy || starting} className={`${button} justify-center`} data-pixel-start-starter>
+                  <Plus size={12} /> {t.pixelStartStarterGo || 'With a simple body'}
+                </button>
+                <button onClick={() => start(false)} disabled={busy || starting} className={`${button} justify-center`} data-pixel-start-draw>
+                  <Plus size={12} /> {t.pixelStartBlankGo || 'Empty grid'}
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] text-zinc-500">{t.pixelStartFileOr || 'Or one saved as a file:'}</span>
+              <label className={`${button} cursor-pointer`} title={t.pixelFromFileHint || 'A pixel avatar saved as a file, from here or another SimonSays'}>
+                <FileUp size={12} /> {t.pixelFromFile || 'Add from a file'}
+                <input
+                  type="file" accept=".json,application/json" className="hidden" data-pixel-start-file
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.currentTarget.value = '';
+                    if (!file) return;
+                    try {
+                      const avatar = avatarFromFile(await file.text(), `pa-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`);
+                      run({ op: 'save', avatar });
+                    } catch {
+                      setError(t.pixelNotAFile || 'That file is not a pixel avatar.');
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+        )}
         {kit && (
           <>
             {/* Above the panels after it: the dropdown opens over them. */}
@@ -444,7 +531,7 @@ export const PixelAvatarsView = ({ avatars, request, listAssets, uploadAsset, t 
             </div>
 
             {mode === 'draw' && (
-              <PixelEditor key={`${kit.id}:${editorRound}`} kit={kit} request={request} onDirty={(d) => { unsaved.current = d; }} listAssets={listAssets} uploadAsset={uploadAsset} t={t} />
+              <PixelEditor key={`${kit.id}:${editorRound}`} kit={kit} request={request} onDirty={(d) => { unsaved.current = d; }} listAssets={listAssets} uploadAsset={uploadAsset} startWithPicture={pictureFor === kit.id} onPictureStarted={() => setPictureFor('')} t={t} />
             )}
 
             {/* ------------------------------------------------------- galleries */}

@@ -2,6 +2,17 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.2.0] — 2026-10-15
+
+- Pixel avatars start plainly: with none yet, the tab offers three ways in — an example, a picture you already have (read in its own colours, the importer open), or an empty grid to draw — and a file, instead of a closed dropdown.
+- Drawing is quicker: the pencil and eraser come 1, 2 or 3 pixels wide ([ and ]), the right button rubs out with any drawing tool, Alt and a click picks a colour, Ctrl and the wheel zoom on the pixel pointed at, and Space (or the middle button) and a drag moves around the drawing. Each tool shows its key, and a Keys and mouse list (?) has them all.
+- The colours are right over the canvas: the one drawing with, the last ones chosen, and all of them a press away. The colours column now sits beside the canvas on a laptop too, not only on the widest screens.
+- The head line is moved by dragging it on the drawing, and the boxes kept the right way round when mirrored, and an outfit’s own face box, are drawn on the drawing, instead of typing row numbers and x0, y0, x1, y1.
+- A new pixel avatar can start with a simple character already drawn — a head on a body, talking and blinking — to change rather than start from nothing; or from an empty grid, as before.
+- “Getting it ready” over the drawing says what a new avatar still needs to come alive — drawn, the head line placed, a talking face, a blink, and the front view for one that turns — each a press away, with how many are left once it is put away.
+- The avatar is shown alive in a corner over the drawing while you draw, talking at a press; it moves to the other corner or out of the way.
+- The list of outfits, faces, extras, hats and things it does folds by group, with how many each has and a line on what it is for; a colour’s settings say what they do under them, not only on a hover.
+
 ## [2.1.2] — 2026-10-14
 
 - A stream no longer stays “live” for days when its end was missed — OBS crashing, its connection dropping or the app restarting mid-stream. A stream on is checked every few minutes: with OBS, whether it is still streaming; without OBS, whether Twitch still has the channel live; and with neither, a stream nothing has happened in for six hours is over from its last message. One found over long after it ended is kept as ending when it was last known to be on, not as days long, on home, the Streams screen and the recap.

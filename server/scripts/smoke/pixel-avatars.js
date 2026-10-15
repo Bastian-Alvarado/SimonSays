@@ -747,3 +747,131 @@ test('the dock plays it, refuses what no avatar does, and keeps such a button', 
   assert.equal(dockRefused, 'avatar_cannot_do');
   assert.ok(JSON.stringify(dockKept).includes('avatar_do:wave-hello'), JSON.stringify(dockKept).slice(0, 200));
 });
+
+test('with no pixel avatars, the tab starts with three plain ways in: an example, a picture, or drawing it', () => {
+  const view = read('../../web/components/views/PixelAvatarsView.tsx');
+  for (const s of ['data-pixel-start', 'data-pixel-start-examples', 'data-pixel-start-from-picture', 'data-pixel-start-draw', 'data-pixel-start-name', 'data-pixel-start-file']) assert.ok(view.includes(s), `${s} is not on the start page`);
+  // Started from a picture: opened to draw, the picture brought in its own colours.
+  assert.ok(view.includes("setPictureFor(fromPicture ? made.id : '');") && view.includes('startWithPicture={pictureFor === kit.id}'));
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  assert.ok(editor.includes('useState(startWithPicture)') && editor.includes('ownColours={startWithPicture}'));
+  assert.ok(read('../../web/components/pixel/PixelImport.tsx').includes('const [own, setOwn] = useState(startOwn);'));
+  const strings = read('../../web/constants.ts');
+  for (const key of ['pixelStartTitle', 'pixelStartHint', 'pixelStartExample', 'pixelStartExampleHint', 'pixelStartExampleHintHouse', 'pixelStartExampleGo', 'pixelStartPicture', 'pixelStartPictureHint', 'pixelStartPictureGo', 'pixelStartBlank', 'pixelStartBlankHintStarter', 'pixelStartBlankGo', 'pixelStartName', 'pixelStartNamePlaceholder']) {
+    assert.equal(strings.split(`    ${key}: `).length - 1, 2, `${key} is not in both languages`);
+  }
+});
+
+test('drawing is quicker: brush sizes, right click rubs out, Alt picks, Ctrl and the wheel zoom, Space drags about, keys shown', () => {
+  const canvas = read('../../web/components/pixel/PixelCanvas.tsx');
+  // Brushes of 1, 2 and 3 for the hand-drawn tools, the outline under the pointer as wide.
+  assert.ok(canvas.includes('export function brushCells(') && canvas.includes("const freehand = tool === 'pencil' || tool === 'eraser' || tool === 'restore';"));
+  assert.ok(canvas.includes('brushCells(at[0], at[1], size, W, H)') && canvas.includes('brushCells(x, y, size, W, H)'));
+  // The right button rubs out with the drawing tools, and no menu opens over the drawing.
+  assert.ok(canvas.includes("const v = right ? '_' : value;") && canvas.includes('onContextMenu={(e) => e.preventDefault()}'));
+  // Alt and a click picks the colour, whatever the tool.
+  assert.ok(canvas.includes('if (e.altKey && !right) {'));
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  // The wheel's listener is not passive, or the page would zoom instead.
+  assert.ok(editor.includes("el.addEventListener('wheel', onWheel, { passive: false });") && editor.includes('if (!(e.ctrlKey || e.metaKey) || !e.deltaY) return;'));
+  // Space only over the canvas, so it still presses buttons elsewhere; the middle button too.
+  assert.ok(editor.includes("if (k === ' ' && overCanvas.current) { e.preventDefault(); setSpaceHeld(true); return; }") && editor.includes('if (!(spaceHeld || e.button === 1) || !scroller.current) return;'));
+  for (const s of ["if (k === '[')", "if (k === ']')", "if (k === '+' || k === '=')", "if (k === '-' || k === '_')"]) assert.ok(editor.includes(s), `${s} is not a key`);
+  // Each tool shows its key; every key is listed in one place.
+  assert.ok(editor.includes('data-pixel-tool-key') && editor.includes('data-pixel-keys') && editor.includes('data-pixel-brush'));
+  // The colours at hand over the canvas, the last ones used first.
+  assert.ok(editor.includes('data-pixel-quick-colours') && editor.includes('const chooseColour = (c: string) =>'));
+  // The colours column sits beside the canvas from a laptop up, not only on the widest screens.
+  assert.ok(editor.includes('md:col-span-2 xl:col-span-1 xl:grid-cols-1') && !editor.includes('2xl:col-span-1'));
+  const strings = read('../../web/constants.ts');
+  for (const key of ['pixelBrushHint', 'pixelKeys', 'pixelKeysTools', 'pixelKeysRubOut', 'pixelKeysZoom', 'pixelKeysPan', 'pixelRecent', 'pixelAllColours', 'pixelFewerColours']) {
+    assert.equal(strings.split(`    ${key}: `).length - 1, 2, `${key} is not in both languages`);
+  }
+});
+
+test('the head line is dragged on the drawing, and boxes are drawn on it, instead of typing numbers', () => {
+  const canvas = read('../../web/components/pixel/PixelCanvas.tsx');
+  // Dragged, it shows where it is going and is handed over once, when let go: one step to undo.
+  assert.ok(canvas.includes('if (heading && drag.current) { setHeadDrag(headRowAt(e)); return; }') && canvas.includes('const row = headDragNow.current;') && canvas.includes('if (row !== null && row !== headLastRow) onHeadRow?.(row);'));
+  assert.ok(canvas.includes('if (boxing) { if (ax !== bx || ay !== by) onPickBox?.([Math.min(ax, bx), Math.min(ay, by), Math.max(ax, bx), Math.max(ay, by)]); return; }'), 'a click makes a box');
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  assert.ok(!editor.includes('placeholder="x0, y0, x1, y1"'), 'a box is still typed in as numbers');
+  assert.ok(!editor.includes('data-pixel-head-row') && !editor.includes('data-pixel-front-head-row'), 'the head line is still a slider');
+  for (const s of ['data-pixel-head-move', 'data-pixel-mirror-keep-draw', 'data-pixel-own-face-box', 'data-pixel-setting-on-canvas']) assert.ok(editor.includes(s), `${s} is gone`);
+  // Opening something else ends it.
+  assert.ok(editor.includes('useEffect(() => { setHeadMoving(headNext.current); headNext.current = false; setBoxPick(null); }, [where]);'));
+  const strings = read('../../web/constants.ts');
+  assert.equal(strings.split('    pixelMirrorKeepHint: ').length - 1, 0, 'the old typed-box hint is still in the words');
+  for (const key of ['pixelHeadMove', 'pixelHeadLineHint', 'pixelHeadMoveHint', 'pixelKeepBoxDraw', 'pixelKeepBoxHint', 'pixelMirrorKeepHintBox', 'pixelOwnFaceBoxDraw', 'pixelOwnFaceBoxHint', 'pixelDone']) {
+    assert.equal(strings.split(`    ${key}: `).length - 1, 2, `${key} is not in both languages`);
+  }
+});
+
+test('a new avatar can start with a simple character, alive from the first save: talking, blinking, the head line under its head', () => {
+  const pa = edit.starterPixelAvatar('pa-starter', 'Starter');
+  // The server keeps it as it is: a drawing it can draw.
+  assert.ok(pixel.cleanPixelAvatar(pa), 'the starter is not an avatar the server keeps');
+  assert.deepEqual(pa.faces.map((f) => f.name), ['talking', 'blink', 'blink-half']);
+  assert.deepEqual(edit.pixelWarnings(pa), [], 'the starter has something worth a look before it is touched');
+  assert.ok(edit.pixelReadySteps(pa).every((s) => s.done), 'the starter is not ready to come alive');
+  // Talking opens the mouth; blinking shuts the eyes.
+  const rest = pixel.pixelGrid(pa, {});
+  assert.notDeepEqual(pixel.pixelGrid(pa, { faces: ['talking'] }), rest);
+  assert.notDeepEqual(pixel.pixelGrid(pa, { faces: ['blink'] }), rest);
+  // Asked for by the start page; without it, empty as before.
+  const made = ask({ op: 'create', name: 'With a body', starter: true });
+  assert.ok(made.id, `the starter was refused: ${made.refused} ${made.why}`);
+  const kept2 = all().find((a) => a.id === made.id);
+  assert.ok(kept2, `not in the list: ${all().length} avatars, ${JSON.stringify(made)}`);
+  assert.equal(kept2.faces.length, 3);
+  assert.ok(kept2.base.some((r) => /[^.]/.test(r)));
+  const madeEmpty = ask({ op: 'create', name: 'Empty' });
+  const empty = all().find((a) => a.id === madeEmpty.id);
+  assert.ok(empty, `the empty one is not in the list: ${JSON.stringify(madeEmpty)}`);
+  assert.ok(empty.base.every((r) => /^\.+$/.test(r)) && empty.faces.length === 0);
+  ask({ op: 'delete', id: made.id });
+  ask({ op: 'delete', id: empty.id });
+});
+
+test('getting it ready: drawn, the head line between head and body, a talking face, a blink — and the front view for one that turns', () => {
+  let pa = pixel.blankPixelAvatar('pa-steps', 'Steps');
+  const done = () => Object.fromEntries(edit.pixelReadySteps(pa).map((s) => [s.id, s.done]));
+  assert.deepEqual(done(), { drawn: false, head: false, talking: false, blink: false });
+  // Drawn only above the line: drawn, but nothing moves as a body yet.
+  pa = edit.paint(pa, { kind: 'base' }, [[50, 10, 'O']]);
+  assert.deepEqual(done(), { drawn: true, head: false, talking: false, blink: false });
+  pa = edit.paint(pa, { kind: 'base' }, [[50, 90, 'O']]);
+  assert.equal(done().head, true);
+  // A face made but empty is not done; drawn in, it is.
+  pa = edit.addFace(pa, { name: 'talking' }).avatar;
+  assert.equal(done().talking, false);
+  pa = edit.paint(pa, { kind: 'face', name: 'talking' }, [[50, 40, 'O']]);
+  assert.equal(done().talking, true);
+  pa = edit.setTurns(pa, true);
+  assert.ok('front' in done(), 'one that turns is not asked for its front view');
+  // Set not to split (a prop, a head alone): no head line to place, so nothing nags about it.
+  assert.ok(!('head' in Object.fromEntries(edit.pixelReadySteps({ ...pa, split: { ...pa.split, headLastRow: 99 } }).map((x) => [x.id, x.done]))), 'one set not to split is asked to place its head line');
+  for (const ex of examples.pixelAvatarExamples()) assert.ok(edit.pixelReadySteps(ex).every((x) => x.done), `the example ${ex.id} is not ready, so its editor nags`);
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  for (const s of ['data-pixel-ready', 'data-pixel-ready-step', 'data-pixel-ready-hide', 'data-pixel-ready-open', 'data-pixel-ready-done']) assert.ok(editor.includes(s), `${s} is gone`);
+  // Said done only for one that was not ready when it was opened.
+  assert.ok(editor.includes('const readyAtOpen = useRef(stepsLeft === 0);') && editor.includes('!readyAtOpen.current'));
+});
+
+test('the list folds by group with counts, the preview sits over the drawing, and the settings say what they do', () => {
+  const editor = read('../../web/components/pixel/PixelEditor.tsx');
+  for (const id of ['outfits', 'faces', 'extras', 'hats', 'actions']) assert.ok(editor.includes(`<Group id="${id}"`), `the ${id} group is not foldable`);
+  // The group of what is opened unfolds by itself.
+  assert.ok(editor.includes('useEffect(() => { if (openGroup && closedGroups.includes(openGroup)) toggleGroup(openGroup); }, [where]);'));
+  // Clicks go through the preview to the drawing; its own buttons still take them.
+  assert.ok(editor.includes('pointer-events-none absolute top-2') && editor.includes('pointer-events-auto flex border-t'));
+  for (const s of ['data-pixel-pip-talk', 'data-pixel-pip-move', 'data-pixel-pip-hide', 'data-pixel-pip-show']) assert.ok(editor.includes(s), `${s} is gone`);
+  // Under each setting, what it does; no longer only a tooltip.
+  assert.ok(!editor.includes("title={t.pixelPartCarriedHint") && editor.includes('<span className="block text-zinc-600">{t.pixelPartCarriedHint'));
+  const view = read('../../web/components/views/PixelAvatarsView.tsx');
+  assert.ok(view.includes("start(false, true)") && view.includes('...(starter ? { starter: true } : {})'));
+  const strings = read('../../web/constants.ts');
+  for (const key of ['pixelGroupOutfitsHint', 'pixelGroupFacesHint', 'pixelGroupExtrasHint', 'pixelGroupHatsHint', 'pixelGroupActionsHint', 'pixelSpecialList', 'pixelReadyTitle', 'pixelReadyLeft', 'pixelReadyDone', 'pixelStepDrawn', 'pixelStepHead', 'pixelStepTalking', 'pixelStepBlink', 'pixelStepFront', 'pixelPipTalk', 'pixelPipShow', 'pixelPartEffect', 'pixelPartOpacityNow', 'pixelStartStarterGo', 'pixelStartBlankHintStarter']) {
+    assert.equal(strings.split(`    ${key}: `).length - 1, 2, `${key} is not in both languages`);
+  }
+});

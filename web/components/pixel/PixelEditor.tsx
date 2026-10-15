@@ -14,7 +14,7 @@
  * the canvas. On the right, the colours, what the thing being drawn is
  * called and does, and the avatar alive with it on, as it will be on stream.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useDragOrder, DragGrip } from '../../hooks/useDragOrder';
 import { moveToGap, landedAt } from '../../../shared/list-order.js';
 import { Pencil, Eraser, Undo2, Redo2, PaintBucket, Pipette, Minus, Square, BoxSelect, RotateCcw, ZoomIn, ZoomOut, Grid3x3, FlipHorizontal, Save, Plus, Trash2, AlertTriangle, Play, Copy, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
@@ -30,14 +30,14 @@ import { PixelCanvas, type PixelTool, type PixelFloating } from './PixelCanvas';
 import { liftBox, vacateBox, stampRows, flipRows, remapRows, coloursOf, drawnMiddle, addShades, pixelWarnings } from '../../../shared/pixel-edit.js';
 import { X } from 'lucide-react';
 import { nearestPart } from '../../../shared/pixel-import.js';
-import { SquareDashedMousePointer, FlipVertical2, FlipHorizontal2, Scissors, ClipboardPaste, Check } from 'lucide-react';
+import { SquareDashedMousePointer, FlipVertical2, FlipHorizontal2, Scissors, ClipboardPaste, Check, Keyboard, Eye } from 'lucide-react';
 import { LivingAvatar } from '../AvatarLayer';
 import { composed, patchBoxes, paint, regionPatch, isWhole, addPart, removePart, partUse, addFace, addExtra, addOutfit, removeItem, setItem, addDrawnHat, paintHat, placeHat, resizeHat, addHatColour, setHatColour, removeHatColour, hatColourUse, hatPicture } from '../../../shared/pixel-edit.js';
 import type { PixelLayer } from './PixelCanvas';
 import { PIXEL_SPECIAL_FACES } from '../../../shared/pixel-avatars.js';
 import { pixelFaceName, pixelOutfitName, pixelExtraName, pixelActionLabel } from '../pixelNames';
 import { addAction, framesOf, addFrame, removeFrame, moveFrame, setFrame, startOutfitFrames, framePixels, setTurns, addFrontFace, removeFrontFace, setTurn, setOwnFace, setOwnFaceBox, outfitChecklist, layPatches } from '../../../shared/pixel-edit.js';
-import { addFrontOutfit, addFrontExtra, removeFrontVersion } from '../../../shared/pixel-edit.js';
+import { addFrontOutfit, addFrontExtra, removeFrontVersion, pixelReadySteps } from '../../../shared/pixel-edit.js';
 import { pixelFaceCrop } from '../pixelNames';
 import { refusalWords, fill } from '../../words';
 import type { PixelAvatarDef } from '../../types';
@@ -70,6 +70,10 @@ interface Props {
   /** The uploads, for a reference picture to draw from. */
   listAssets?: () => Promise<any[]>;
   uploadAsset?: (file: File) => Promise<any>;
+  /** Opened to bring in a picture straight away, in the picture's own colours: a new avatar started from one. */
+  startWithPicture?: boolean;
+  /** Told once it has: opened again later, it opens as usual. */
+  onPictureStarted?: () => void;
   t: any;
 }
 
@@ -89,7 +93,43 @@ let clipboard: { rows: string[]; x: number; y: number; colours: Record<string, s
 type Floating = PixelFloating & { target: any };
 const floatBox = (f: PixelFloating) => [f.x, f.y, f.x + (f.rows[0]?.length || 1) - 1, f.y + f.rows.length - 1];
 
-export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t }: Props) => {
+/* A group of the list on the left: its name and how many, folded shut or open, with a line on what it is for. */
+const Group = ({ id, title, count, hint, open, onToggle, children }: { id: string; title: string; count: number; hint: string; open: boolean; onToggle: () => void; children: React.ReactNode }) => (
+  <div className="space-y-1" data-pixel-group={id}>
+    <button onClick={onToggle} aria-expanded={open} className="w-full flex items-center gap-1 text-left group" data-pixel-group-toggle={id}>
+      <ChevronRight size={10} className={`shrink-0 text-zinc-600 transition-transform ${open ? 'rotate-90' : ''}`} />
+      <span className={`${tag} flex-1 group-hover:text-zinc-300`}>{title}</span>
+      <span className="text-[9px] text-zinc-600" data-pixel-group-count>{count}</span>
+    </button>
+    {open && (
+      <>
+        <p className="text-[9px] text-zinc-600 leading-relaxed pl-3.5">{hint}</p>
+        {children}
+      </>
+    )}
+  </div>
+);
+const GROUPS_KEY = 'pixelAvatars.closedGroups';
+
+/*
+  Where the head ends: moved by dragging the dashed line on the drawing, or
+  a row at a time — above it moves as the head when it breathes and turns.
+*/
+const HeadLine = ({ row, moving, setMoving, set, t }: { row: number; moving: boolean; setMoving: (v: boolean) => void; set: (row: number) => void; t: any }) => (
+  <div className="space-y-1.5" data-pixel-head-line>
+    <span className={tag}>{fill(t.pixelHeadEnds || 'The head ends at row {n}', { n: row })}</span>
+    <p className="text-[9px] text-zinc-600 leading-relaxed">{t.pixelHeadLineHint || 'The dashed blue line on the drawing. Above it moves as the head when it breathes and turns.'}</p>
+    <div className="flex gap-1">
+      <button onClick={() => setMoving(!moving)} className={`${small} flex-1 ${moving ? 'border-sky-500 text-sky-300' : ''}`} data-pixel-head-move>
+        {moving ? (t.pixelDone || 'Done') : (t.pixelHeadMove || 'Move it on the drawing')}
+      </button>
+      <button onClick={() => set(row - 1)} disabled={row <= 10} className={small} title={t.pixelHeadUp || 'One row up'} data-pixel-head-up>−</button>
+      <button onClick={() => set(row + 1)} disabled={row >= 99} className={small} title={t.pixelHeadDown || 'One row down'} data-pixel-head-down>+</button>
+    </div>
+  </div>
+);
+
+export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, startWithPicture = false, onPictureStarted, t }: Props) => {
   const [draft, setDraft] = useState<PixelAvatarDef>(kit);
   const [dirty, setDirtyState] = useState(false);
   const [past, setPast] = useState<PixelAvatarDef[]>([]);
@@ -141,15 +181,44 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
   const [actionName, setActionName] = useState('');
   // Which way the preview faces, for one that turns: left to itself, or held one way to look at it.
   const [facing, setFacing] = useState<'left' | 'front' | 'right' | null>(null);
-  const [keepBox, setKeepBox] = useState('');
   // Bringing in a drawn picture, onto whatever is being drawn.
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState(startWithPicture);
+  // Told after it opened, too: the new avatar can arrive before word of how it was started.
+  useEffect(() => { if (startWithPicture) { setImporting(true); onPictureStarted?.(); } }, [startWithPicture]);
   // A reference picture to draw from, remembered for this avatar in this browser; and dragging it about rather than drawing.
   const [reference, setReference] = useReference(kit.id);
   const referenceImage = useReferenceImage(reference?.src);
   const [referencing, setReferencing] = useState(false);
   const [movingReference, setMovingReference] = useState(false);
   const [hatNew, setHatNew] = useState(false);
+  // How wide the pencil and eraser draw: 1, 2 or 3 pixels.
+  const [brush, setBrush] = useState(1);
+  // The colours chosen last, newest first, beside the canvas.
+  const [recent, setRecent] = useState<string[]>([]);
+  const [allColours, setAllColours] = useState(false);
+  const chooseColour = (c: string) => { setChar(c); setRecent((r) => [c, ...r.filter((x) => x !== c)].slice(0, 10)); };
+  // Setting something on the drawing rather than drawing: the head line moved, or a box drawn (kept the right way round, an outfit's own face).
+  const [headMoving, setHeadMoving] = useState(false);
+  const [boxPick, setBoxPick] = useState<'keep' | 'own-face' | null>(null);
+  // Space held over the canvas, or the middle button: dragging moves around the drawing instead.
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const overCanvas = useRef(false);
+  const scroller = useRef<HTMLDivElement>(null);
+  const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  // Where the pointer was over the drawing when zoomed by the wheel, kept there as it grows.
+  const zoomAnchor = useRef<{ fx: number; fy: number; cx: number; cy: number } | null>(null);
+  const [showKeys, setShowKeys] = useState(false);
+  // The small preview over the drawing: in which corner, or put away — remembered in this browser — and talking or not.
+  const [pip, setPipNow] = useState<'right' | 'left' | 'off'>(() => { try { const v = localStorage.getItem('pixelAvatars.pip'); return v === 'left' || v === 'off' ? v : 'right'; } catch { return 'right'; } });
+  const setPipWhere = (v: 'right' | 'left' | 'off') => { setPipNow(v); try { localStorage.setItem('pixelAvatars.pip', v); } catch { /* kept for this visit only */ } };
+  const [pipTalk, setPipTalk] = useState(false);
+  // The groups of the list folded shut, remembered in this browser.
+  const [closedGroups, setClosedGroups] = useState<string[]>(() => { try { const v = JSON.parse(localStorage.getItem(GROUPS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } });
+  const toggleGroup = (id: string) => setClosedGroups((now) => {
+    const next = now.includes(id) ? now.filter((g) => g !== id) : [...now, id];
+    try { localStorage.setItem(GROUPS_KEY, JSON.stringify(next)); } catch { /* kept for this visit only */ }
+    return next;
+  });
 
   const setDirty = (v: boolean) => { setDirtyState(v); onDirty?.(v); };
   // What is kept changed elsewhere, and nothing here is unsaved: start from it.
@@ -218,14 +287,32 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
     setDraft(kit); setPast([]); setFuture([]); setDirty(false); setFloat(null); setSelection(null);
   };
 
+  // Bigger or smaller by a step: the avatar's grid, or a drawn hat's own (whichever is open, as the last drawing said).
+  const hatPicNow = useRef(false);
+  const zoomNow = useRef(6);
+  const zoomBy = (step: number) => {
+    if (hatPicNow.current) setHatZoom((z) => Math.max(3, Math.min(24, z + step)));
+    else setZoom((z) => Math.max(3, Math.min(14, z + step)));
+  };
+
   // Shortcuts, while nothing is being typed into.
-  const keys = useRef({ undo, redo, save, setTool });
-  keys.current = { undo, redo, save, setTool };
+  const keys = useRef({ undo, redo, save, setTool, zoomBy });
+  keys.current = { undo, redo, save, setTool, zoomBy };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
       if (typing) return;
       const k = e.key.toLowerCase();
+      // Space over the canvas: hold it and drag to move around (not a page scroll, not a button press).
+      if (k === ' ' && overCanvas.current) { e.preventDefault(); setSpaceHeld(true); return; }
+      if (k === 'escape') { setHeadMoving(false); setBoxPick(null); }
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (k === '[') { setBrush((b) => Math.max(1, b - 1)); return; }
+        if (k === ']') { setBrush((b) => Math.min(3, b + 1)); return; }
+        if (k === '+' || k === '=') { keys.current.zoomBy(1); return; }
+        if (k === '-' || k === '_') { keys.current.zoomBy(-1); return; }
+        if (k === '?') { setShowKeys((v) => !v); return; }
+      }
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); if (e.shiftKey) keys.current.redo(); else keys.current.undo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); keys.current.redo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); keys.current.save(); return; }
@@ -245,9 +332,39 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
       const tools: Record<string, PixelTool> = { b: 'pencil', p: 'pencil', e: 'eraser', r: 'restore', g: 'fill', i: 'picker', l: 'line', u: 'rect', x: 'region', m: 'select' };
       if (tools[k]) keys.current.setTool(tools[k]);
     };
+    const onKeyUp = (e: KeyboardEvent) => { if (e.key === ' ') setSpaceHeld(false); };
+    const onBlur = () => setSpaceHeld(false);
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); window.removeEventListener('blur', onBlur); };
   }, []);
+  // Ctrl (or ⌘) and the wheel over the drawing: bigger or smaller, about the pixel pointed at. A listener of its own, since stopping the page zooming needs one that is not passive.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return undefined;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !e.deltaY) return;
+      e.preventDefault();
+      // Already as big or small as it goes: nothing changes, so nothing is kept to put back.
+      const step = e.deltaY < 0 ? 1 : -1;
+      const [lo, hi] = hatPicNow.current ? [3, 24] : [3, 14];
+      if (zoomNow.current + step < lo || zoomNow.current + step > hi) return;
+      const r = el.getBoundingClientRect();
+      const cx = e.clientX - r.left; const cy = e.clientY - r.top;
+      zoomAnchor.current = { fx: (el.scrollLeft + cx) / el.scrollWidth, fy: (el.scrollTop + cy) / el.scrollHeight, cx, cy };
+      keys.current.zoomBy(step);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+  useLayoutEffect(() => {
+    const a = zoomAnchor.current; const el = scroller.current;
+    zoomAnchor.current = null;
+    if (!a || !el) return;
+    el.scrollLeft = a.fx * el.scrollWidth - a.cx;
+    el.scrollTop = a.fy * el.scrollHeight - a.cy;
+  }, [zoom, hatZoom]);
   // Leaving the page with changes not saved asks first.
   useEffect(() => {
     if (!dirty) return undefined;
@@ -262,6 +379,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
     avatar's grid with the hat faint over it.
   */
   const hatPic = tgt.kind === 'hat' ? hatPicture(draft, tgt.name) as { rows: string[]; parts: { id: string; char: string; color: string; name: string }[]; art: { x: number; y: number; size: number; palette: string[]; rows: string[] } } | null : null;
+  hatPicNow.current = Boolean(hatPic);
+  zoomNow.current = hatPic ? hatZoom : zoom;
   const drawnHat = (tgt.kind === 'hat' || tgt.kind === 'extra') ? draft.extras.find((e) => e.name === (tgt as any).name && e.art) || null : null;
   useEffect(() => {
     if (tgt.kind !== 'hat' || !hatPic) return;
@@ -326,6 +445,10 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
     selectAll: () => { putDown(); setTool('select'); setSelection([0, 0, (rows[0]?.length || 100) - 1, rows.length - 1]); },
     done: () => { putDown(); setSelection(null); },
   };
+  // Something else opened: moving the head line or drawing a box ends with it.
+  // (Unless it was opened to move the head line: a step of getting it ready.)
+  const headNext = useRef(false);
+  useEffect(() => { setHeadMoving(headNext.current); headNext.current = false; setBoxPick(null); }, [where]);
   // Something new being drawn, or another tool: what floats goes down where it came from, and the box goes.
   useEffect(() => {
     const f = floatRef.current;
@@ -376,6 +499,34 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
   useEffect(() => { if (tgt.kind !== 'frame') setCanvasPlay(false); }, [tgt.kind]);
 
   const warnings = useMemo(() => pixelWarnings(draft) as any[], [draft]);
+  /*
+    Getting it ready: what a new avatar still needs to come alive, each a
+    press away. Put away for this avatar in this browser; once it is all
+    done, said once — not for one that was ready when it was opened.
+  */
+  const steps = useMemo(() => pixelReadySteps(draft) as { id: string; done: boolean }[], [draft]);
+  const stepsLeft = steps.filter((s) => !s.done).length;
+  const readyKey = `pixelAvatars.readyHidden.${kit.id}`;
+  const [readyHidden, setReadyHiddenNow] = useState(() => { try { return localStorage.getItem(readyKey) === '1'; } catch { return false; } });
+  const setReadyHidden = (v: boolean) => { setReadyHiddenNow(v); try { if (v) localStorage.setItem(readyKey, '1'); else localStorage.removeItem(readyKey); } catch { /* kept for this visit only */ } };
+  const readyAtOpen = useRef(stepsLeft === 0);
+  const goStep = (id: string) => {
+    if (id === 'drawn') { pick({ kind: 'base' }); return; }
+    if (id === 'head') {
+      if (tgt.kind === 'base') setHeadMoving(true); else { headNext.current = true; setStayFront(false); setTarget({ kind: 'base' }); }
+      return;
+    }
+    if (id === 'front') { setStayFront(true); setTarget({ kind: 'front' }); return; }
+    // A talking face or a blink: opened, or made and opened.
+    if (draft.faces.some((f) => f.name === id)) pick({ kind: 'face', name: id }); else addOne('face', id);
+  };
+  const stepWords: Record<string, [string, string]> = {
+    drawn: [t.pixelStepDrawn || 'Draw it', t.pixelStepDrawnHint || 'The drawing itself, as it stands at rest.'],
+    head: [t.pixelStepHead || 'Place the head line', t.pixelStepHeadHint || 'Above the line moves as the head when it breathes and turns.'],
+    talking: [t.pixelStepTalking || 'A talking face', t.pixelStepTalkingHint || 'The mouth open: shown while you talk.'],
+    blink: [t.pixelStepBlink || 'A blink', t.pixelStepBlinkHint || 'The eyes shut: it blinks now and then.'],
+    front: [t.pixelStepFront || 'The front view', t.pixelStepFrontHint || 'It turns: how it looks from the front.'],
+  };
   const part = draft.parts.find((p) => p.char === char) || null;
   const hoverPart = hover && !hatPic ? draft.parts.find((p) => p.char === rows[hover[1]]?.[hover[0]]) : null;
   const canRestore = tgt.kind !== 'base' && tgt.kind !== 'hat';
@@ -454,6 +605,15 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
   const hasSide = exists(sideTarget);
   const hasFront = Boolean(frontTarget && exists(frontTarget));
   const isOpen = (kind: string, name?: string) => sideTarget.kind === kind && (name === undefined || (sideTarget as any).name === name);
+  // The group holding what is opened unfolds by itself (a warning's "Show me", a step of getting it ready).
+  const sideExtra = sideTarget.kind === 'extra' ? draft.extras.find((e) => e.name === sideTarget.name) : null;
+  const openGroup = sideTarget.kind === 'outfit' || sideTarget.kind === 'own-face' || sideTarget.kind === 'own-glasses' ? 'outfits'
+    : sideTarget.kind === 'face' ? 'faces'
+      : sideTarget.kind === 'hat' || sideExtra?.hat || sideExtra?.art ? 'hats'
+        : sideTarget.kind === 'extra' ? 'extras'
+          : sideTarget.kind === 'frame' ? 'actions' : '';
+  useEffect(() => { if (openGroup && closedGroups.includes(openGroup)) toggleGroup(openGroup); }, [where]);
+  const groupOpen = (id: string) => !closedGroups.includes(id);
   // Started from the front: a face empty, an outfit as the front view is, an extra empty.
   const startFront = (tg: PixelTarget) => {
     const next = tg.kind === 'front-face' ? addFrontFace(draft, tg.name) : tg.kind === 'front-outfit' ? addFrontOutfit(draft, tg.name) : tg.kind === 'front-extra' ? addFrontExtra(draft, tg.name) : draft;
@@ -522,17 +682,29 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
         <div className="flex flex-wrap gap-1" data-pixel-tools>
           {toolList.map(([id, icon, title]) => (
             <button key={id} onClick={() => setTool(id)} title={title} data-pixel-tool={id}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg border ${tool === id ? 'border-current-accent text-current-accent bg-current-accent/10' : 'border-zinc-800 text-zinc-400 hover:text-white'}`}>
+              className={`relative w-8 h-8 flex items-center justify-center rounded-lg border ${tool === id ? 'border-current-accent text-current-accent bg-current-accent/10' : 'border-zinc-800 text-zinc-400 hover:text-white'}`}>
               {icon}
+              {/* Its key, in the corner: the shortcut seen, not only in the tooltip. */}
+              <span className="absolute bottom-0 right-0.5 text-[7px] font-black leading-none text-zinc-600" aria-hidden data-pixel-tool-key>{title.match(/\(([A-Z])\)$/)?.[1]}</span>
             </button>
           ))}
         </div>
+        {(tool === 'pencil' || tool === 'eraser' || tool === 'restore') && (
+          <div className="flex items-center gap-0.5" title={t.pixelBrushHint || 'How wide it draws ([ and ])'} data-pixel-brush>
+            {[1, 2, 3].map((n) => (
+              <button key={n} onClick={() => setBrush(n)} data-pixel-brush-size={n}
+                className={`w-7 h-8 flex items-center justify-center rounded-lg border ${brush === n ? 'border-current-accent text-current-accent bg-current-accent/10' : 'border-zinc-800 text-zinc-500 hover:text-white'}`}>
+                <span className="bg-current rounded-[1px]" style={{ width: 2 + n * 3, height: 2 + n * 3 }} />
+              </button>
+            ))}
+          </div>
+        )}
         <span className="w-px h-6 bg-zinc-800" />
         <button onClick={undo} disabled={!past.length} title={`${t.pixelUndo || 'Undo'} (Ctrl+Z)`} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30" data-pixel-undo><Undo2 size={13} /></button>
         <button onClick={redo} disabled={!future.length} title={`${t.pixelRedo || 'Redo'} (Ctrl+Y)`} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30" data-pixel-redo><Redo2 size={13} /></button>
         <span className="w-px h-6 bg-zinc-800" />
-        <button onClick={() => (hatPic ? setHatZoom((z) => Math.max(3, z - 1)) : setZoom((z) => Math.max(3, z - 1)))} title={t.pixelZoomOut || 'Smaller'} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white"><ZoomOut size={13} /></button>
-        <button onClick={() => (hatPic ? setHatZoom((z) => Math.min(24, z + 1)) : setZoom((z) => Math.min(14, z + 1)))} title={t.pixelZoomIn || 'Bigger'} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white"><ZoomIn size={13} /></button>
+        <button onClick={() => zoomBy(-1)} title={`${t.pixelZoomOut || 'Smaller'} (−)`} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white" data-pixel-zoom-out><ZoomOut size={13} /></button>
+        <button onClick={() => zoomBy(1)} title={`${t.pixelZoomIn || 'Bigger'} (+)`} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white" data-pixel-zoom-in><ZoomIn size={13} /></button>
         <button onClick={() => setGrid((g) => !g)} title={t.pixelGrid || 'Grid'} className={`w-8 h-8 flex items-center justify-center rounded-lg border ${grid ? 'border-zinc-600 text-zinc-200' : 'border-zinc-800 text-zinc-500'}`}><Grid3x3 size={13} /></button>
         <button onClick={() => setReferencing((v) => !v)} title={t.pixelReference || 'Reference picture'} className={`w-8 h-8 flex items-center justify-center rounded-lg border ${referencing || reference?.shown ? 'border-sky-400 text-sky-300' : 'border-zinc-800 text-zinc-500 hover:text-white'}`} data-pixel-reference-open><ImageIcon size={13} /></button>
         <button onClick={() => setImporting((v) => !v)} title={t.pixelImport || 'Bring in a drawn picture'} className={`w-8 h-8 flex items-center justify-center rounded-lg border ${importing ? 'border-current-accent text-current-accent' : 'border-zinc-800 text-zinc-500 hover:text-white'}`} data-pixel-import-open><ImagePlus size={13} /></button>
@@ -544,8 +716,17 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           </span>
         )}
         <button onClick={() => selOps.current.paste?.()} disabled={!clipboard} title={`${t.pixelPaste || 'Paste'} (Ctrl+V)`} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30" data-pixel-paste><ClipboardPaste size={13} /></button>
+        {pip === 'off' && (
+          <button onClick={() => setPipWhere('right')} title={t.pixelPipShow || 'Show it alive over the drawing'} className="w-8 h-8 flex items-center justify-center rounded-lg border border-zinc-800 text-zinc-500 hover:text-white" data-pixel-pip-show><Eye size={13} /></button>
+        )}
+        <button onClick={() => setShowKeys((v) => !v)} title={`${t.pixelKeys || 'Keys and mouse'} (?)`} className={`w-8 h-8 flex items-center justify-center rounded-lg border ${showKeys ? 'border-current-accent text-current-accent' : 'border-zinc-800 text-zinc-500 hover:text-white'}`} data-pixel-keys-open><Keyboard size={13} /></button>
         <span className="text-[10px] text-zinc-600 font-mono min-w-[7rem]" data-pixel-hover>{hover ? `${hover[0]}, ${hover[1]}${hoverPart ? ` · ${hoverPart.name}` : ''}` : ''}</span>
         <div className="flex-1" />
+        {readyHidden && stepsLeft > 0 && (
+          <button onClick={() => setReadyHidden(false)} className={`${small} border-current-accent/50 text-current-accent`} title={t.pixelReadyOpen || 'Getting it ready'} data-pixel-ready-open>
+            {fill(t.pixelReadyLeft || '{n} to do', { n: stepsLeft })}
+          </button>
+        )}
         {warnings.length > 0 && (
           <button onClick={() => setShowWarnings((v) => !v)} className={`${small} ${showWarnings ? 'border-amber-500 text-amber-300' : 'text-amber-400'}`} title={t.pixelWarnings || 'Worth a look'} data-pixel-warnings-open><AlertTriangle size={11} /> {warnings.length}</button>
         )}
@@ -585,6 +766,56 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
         </div>
       )}
       {error && <p className="flex items-center gap-2 text-[11px] text-amber-400" data-pixel-editor-error><AlertTriangle size={13} /> {error}</p>}
+      {!readyHidden && stepsLeft > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-current-accent/40 bg-current-accent/5 px-3 py-2" data-pixel-ready>
+          <span className="text-[9px] font-black uppercase tracking-widest text-current-accent mr-1">{fill(t.pixelReadyTitle || 'Getting it ready · {done} of {n}', { done: steps.length - stepsLeft, n: steps.length })}</span>
+          {steps.map((s, i) => (
+            <button key={s.id} onClick={() => goStep(s.id)} title={stepWords[s.id]?.[1]} data-pixel-ready-step={s.id} data-done={s.done ? '1' : '0'}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] ${s.done ? 'border-zinc-800 text-zinc-500 line-through decoration-zinc-600' : 'border-current-accent/60 text-zinc-100 hover:bg-current-accent/10'}`}>
+              {s.done ? <Check size={10} className="text-emerald-400" /> : <span className="text-[9px] font-black text-current-accent">{i + 1}</span>}
+              {stepWords[s.id]?.[0]}
+            </button>
+          ))}
+          <span className="flex-1" />
+          <button onClick={() => setReadyHidden(true)} className="p-1 text-zinc-500 hover:text-white" title={t.pixelReadyHide || 'Put this away'} data-pixel-ready-hide><X size={12} /></button>
+        </div>
+      )}
+      {!readyHidden && stepsLeft === 0 && !readyAtOpen.current && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-700/50 bg-emerald-950/20 px-3 py-2 text-[10px] text-emerald-200" data-pixel-ready-done>
+          <Check size={12} className="text-emerald-400" />
+          <span className="flex-1">{t.pixelReadyDone || 'It is ready to come alive: save it, then choose it as “Drawn as” on a Pixel avatar layer in Overlays.'}</span>
+          <button onClick={() => setReadyHidden(true)} className="p-1 text-emerald-300/70 hover:text-white" data-pixel-ready-done-hide><X size={12} /></button>
+        </div>
+      )}
+      {showKeys && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3" data-pixel-keys>
+          <div className="flex items-center gap-2 pb-2">
+            <span className={`${tag} flex-1`}>{t.pixelKeys || 'Keys and mouse'}</span>
+            <button onClick={() => setShowKeys(false)} className="p-1 text-zinc-500 hover:text-white"><X size={12} /></button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-x-6 gap-y-1">
+            {([
+              ['B · E · G · L · U', t.pixelKeysTools || 'Pencil, eraser, fill, line, box'],
+              ['I · Alt + click', t.pixelKeysPick || 'Pick a colour from the drawing'],
+              ['M', t.pixelKeysSelect || 'Select, to move, copy or flip'],
+              ['[ · ]', t.pixelKeysBrush || 'Thinner or wider pencil and eraser'],
+              [t.pixelKeysRight || 'Right click', t.pixelKeysRubOut || 'Rub out, with any drawing tool'],
+              ['+ · − · Ctrl + wheel', t.pixelKeysZoom || 'Bigger or smaller'],
+              [t.pixelKeysSpace || 'Space + drag · middle button', t.pixelKeysPan || 'Move around the drawing'],
+              ['Ctrl + Z · Ctrl + Y', t.pixelKeysUndo || 'Undo, redo'],
+              ['Ctrl + C · X · V', t.pixelKeysCopy || 'Copy, cut, paste: into another face or avatar too'],
+              [t.pixelKeysArrows || 'Arrows · Enter', t.pixelKeysNudge || 'Nudge what is selected, put it down'],
+              ['Ctrl + S', t.pixelKeysSave || 'Save'],
+              ['?', t.pixelKeysThis || 'Show or hide this'],
+            ] as [string, string][]).map(([k, what]) => (
+              <div key={k} className="flex items-baseline gap-2 text-[10px]">
+                <span className="shrink-0 font-mono text-zinc-300">{k}</span>
+                <span className="text-zinc-500">{what}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* With the whole width of the screen, the colours and what goes with them sit beside the canvas from a laptop up. */}
       <div className="grid grid-cols-1 md:grid-cols-[11rem_minmax(0,1fr)] xl:grid-cols-[11rem_minmax(0,1fr)_15rem] gap-4 items-start">
@@ -593,8 +824,7 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           {/* One list for both views: Side | Front over the canvas says which one each is drawn in. */}
           <button onClick={() => pick({ kind: 'base' })} className={item(isOpen('base'))} data-pixel-target="base">{t.pixelTheDrawing || 'The drawing'}</button>
           <button onClick={() => setTarget({ kind: 'setup' })} className={item(tgt.kind === 'setup')} data-pixel-target="setup">{t.pixelSetUp || 'Set up: colour and eyes'}</button>
-          <div className="space-y-1">
-            <span className={tag}>{t.avatarCostume || 'Outfits'}</span>
+          <Group id="outfits" title={t.avatarCostume || 'Outfits'} count={draft.outfits.length} hint={t.pixelGroupOutfitsHint || 'The whole drawing redrawn: pyjamas, a costume. Chat can ask for one.'} open={groupOpen('outfits')} onToggle={() => toggleGroup('outfits')}>
             {draft.outfits.map((o) => (
               <button key={o.name} onClick={() => pick({ kind: 'outfit', name: o.name })} className={item(isOpen('outfit', o.name))} data-pixel-target={`outfit:${o.name}`}>{pixelOutfitName(draft, o.name, t)}{frontDot('outfit', o.name)}</button>
             ))}
@@ -603,9 +833,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                 onKeyDown={(e) => { if (e.key === 'Enter') addOne('outfit'); }} />
               <button onClick={() => addOne('outfit')} className={small} title={t.pixelNewOutfitHint || 'A copy of the drawing (or of the outfit open now) to draw over'} data-pixel-add-outfit><Plus size={11} /></button>
             </div>
-          </div>
-          <div className="space-y-1">
-            <span className={tag}>{t.avatarFace || 'Faces'}</span>
+          </Group>
+          <Group id="faces" title={t.avatarFace || 'Faces'} count={draft.faces.length} hint={t.pixelGroupFacesHint || 'Drawn over the face. Some it uses by itself: talking, blinking, sleeping.'} open={groupOpen('faces')} onToggle={() => toggleGroup('faces')}>
             <div className="max-h-56 overflow-y-auto space-y-0.5 pr-1">
               {/* Its faces, and any drawn only from the front. */}
               {[...draft.faces.map((f) => f.name), ...(draft.turn?.front.faces || []).map((f) => f.name).filter((n) => !draft.faces.some((f) => f.name === n))].map((name) => (
@@ -618,17 +847,19 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
               <button onClick={() => addOne('face')} className={small} data-pixel-add-face><Plus size={11} /></button>
             </div>
             {missingSpecial.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-1" data-pixel-special>
+              <div className="space-y-1 pt-1">
+              <span className="block text-[9px] text-zinc-600">{t.pixelSpecialList || 'Faces it uses by itself, not made yet:'}</span>
+              <div className="flex flex-wrap gap-1" data-pixel-special>
                 {missingSpecial.map((f) => (
                   <button key={f} onClick={() => addOne('face', f)} className="px-1.5 py-0.5 rounded border border-dashed border-zinc-700 text-[9px] text-zinc-500 hover:text-zinc-200" title={t.pixelSpecialHint || 'A face the avatar uses by itself'} data-pixel-add-special={f}>
                     + {pixelFaceName(draft, f, t)}
                   </button>
                 ))}
               </div>
+              </div>
             )}
-          </div>
-          <div className="space-y-1">
-            <span className={tag}>{t.pixelExtras || 'Extras'}</span>
+          </Group>
+          <Group id="extras" title={t.pixelExtras || 'Extras'} count={draft.extras.filter((e) => !e.art && !e.hat).length} hint={t.pixelGroupExtrasHint || 'Small things drawn over it, switched on and off: blush, a mic.'} open={groupOpen('extras')} onToggle={() => toggleGroup('extras')}>
             {draft.extras.filter((e) => !e.art && !e.hat).map((e) => (
               <button key={e.name} onClick={() => pick({ kind: 'extra', name: e.name })} className={item(isOpen('extra', e.name))} data-pixel-target={`extra:${e.name}`}>{pixelExtraName(draft, e.name, t)}{frontDot('extra', e.name)}</button>
             ))}
@@ -638,10 +869,9 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
               <button onClick={() => addOne('extra')} className={small} data-pixel-add-extra><Plus size={11} /></button>
             </div>
             <label className="flex items-center gap-1.5 text-[10px] text-zinc-500"><input type="checkbox" checked={hatNew} onChange={(e) => setHatNew(e.target.checked)} className="accent-current-accent" /> {t.pixelIsHat || 'It is a hat (one at a time)'}</label>
-          </div>
-          <div className="space-y-1">
+          </Group>
+          <Group id="hats" title={t.pixelHatsList || 'Hats'} count={draft.extras.filter((e) => e.hat || e.art).length} hint={t.pixelGroupHatsHint || 'Worn one at a time, over the head.'} open={groupOpen('hats')} onToggle={() => toggleGroup('hats')}>
             {/* Every hat, whichever kind: drawn on the avatar's own grid (an extra worn one at a time), or a picture of its own. */}
-            <span className={tag}>{t.pixelHatsList || 'Hats'}</span>
             {draft.extras.filter((e) => e.hat || e.art).map((e) => (e.art ? (
               <button key={e.name} onClick={() => pick({ kind: 'hat', name: e.name })} className={item(isOpen('hat', e.name) || isOpen('extra', e.name))} data-pixel-target={`hat:${e.name}`}>{pixelExtraName(draft, e.name, t)}{frontDot('extra', e.name)}</button>
             ) : (
@@ -652,9 +882,8 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                 onKeyDown={(e) => { if (e.key === 'Enter') addHat(); }} />
               <button onClick={addHat} className={small} title={t.pixelNewHatHint || 'A picture of its own, with its own colours and pixel size, worn over the head'} data-pixel-add-hat><Plus size={11} /></button>
             </div>
-          </div>
-          <div className="space-y-1">
-            <span className={tag}>{t.pixelActions || 'Things it does'}</span>
+          </Group>
+          <Group id="actions" title={t.pixelActions || 'Things it does'} count={draft.actions.length} hint={t.pixelGroupActionsHint || 'Short animations: chat words, actions and alerts set them off.'} open={groupOpen('actions')} onToggle={() => toggleGroup('actions')}>
             {draft.actions.map((a) => (
               <button key={a.name} onClick={() => goFrame(a.name, a.outfits[''] ? '' : Object.keys(a.outfits)[0] ?? '', 0)} className={item(tgt.kind === 'frame' && tgt.action === a.name)} data-pixel-target={`action:${a.name}`}>{pixelActionLabel(draft, a.name, t)}</button>
             ))}
@@ -663,7 +892,7 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                 onKeyDown={(e) => { if (e.key === 'Enter') newAction(); }} />
               <button onClick={newAction} className={small} data-pixel-add-action><Plus size={11} /></button>
             </div>
-          </div>
+          </Group>
         </div>
 
         {/* ------------------------------------------------------- the canvas */}
@@ -698,7 +927,7 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
               listAssets={listAssets} uploadAsset={uploadAsset} onClose={() => { setReferencing(false); setMovingReference(false); }} t={t}
             />
           )}
-          {importing && <PixelImport draft={draft} target={tgt} onApply={commit} onClose={() => setImporting(false)} t={t} />}
+          {importing && <PixelImport draft={draft} target={tgt} onApply={commit} onClose={() => setImporting(false)} ownColours={startWithPicture} t={t} />}
           {selBox && (
             <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950/60 px-2 py-1.5" data-pixel-selection-bar>
               <span className="text-[10px] text-zinc-400 font-mono" data-pixel-selection-size>{selBox[2] - selBox[0] + 1} × {selBox[3] - selBox[1] + 1}{floating ? ` · ${t.pixelFloating || 'picked up'}` : ''}</span>
@@ -714,7 +943,77 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           {tool === 'select' && !selBox && (
             <p className="text-[10px] text-zinc-500">{t.pixelSelectHint || 'Drag a box to select. Drag inside it to move it, arrows nudge it (Shift: 5), Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste — into another face, frame or avatar too.'}</p>
           )}
-          <div className="overflow-auto max-h-[75vh] rounded-lg">
+          {/* The colours at hand, right over the canvas: the one drawing with, the last few chosen, and all of them a press away. */}
+          <div className="flex flex-wrap items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2 py-1.5" data-pixel-quick-colours>
+            {hatPic ? (
+              hatPic.art.palette.map((c, i) => (
+                <button key={i} onClick={() => { setHatChar(String.fromCharCode(97 + i)); if (tool === 'picker' || tool === 'eraser') setTool('pencil'); }} title={c}
+                  className={`w-5 h-5 rounded border ${hatChar === String.fromCharCode(97 + i) ? 'border-white ring-1 ring-white' : 'border-zinc-800'}`} style={{ background: c }} />
+              ))
+            ) : (
+              <>
+                {part && (
+                  <span className="flex items-center gap-1.5 pr-2 mr-1 border-r border-zinc-800" data-pixel-quick-current>
+                    <span className="w-6 h-6 rounded border border-white ring-1 ring-white" style={{ background: part.color, opacity: part.opacity ?? 1 }} />
+                    <span className="text-[10px] text-zinc-300 max-w-[8rem] truncate">{part.name}</span>
+                  </span>
+                )}
+                {(() => {
+                  // Few colours: all of them here. Many: the last ones chosen, and the rest when asked.
+                  const few = draft.parts.length <= 20;
+                  const shown = few || allColours ? draft.parts : recent.map((c) => draft.parts.find((p) => p.char === c)).filter(Boolean) as typeof draft.parts;
+                  return (
+                    <>
+                      {!few && !allColours && shown.length > 0 && <span className="text-[9px] text-zinc-600 mr-0.5">{t.pixelRecent || 'Last used'}</span>}
+                      {shown.map((p) => (
+                        <button key={p.id} onClick={() => { chooseColour(p.char); if (tool === 'picker' || tool === 'eraser' || tool === 'restore') setTool('pencil'); }} title={p.name} data-pixel-quick-part={p.id}
+                          className={`w-5 h-5 rounded border ${char === p.char ? 'border-white ring-1 ring-white' : 'border-zinc-800'}`} style={{ background: p.color, opacity: p.opacity ?? 1 }} />
+                      ))}
+                      {!few && (
+                        <button onClick={() => setAllColours((v) => !v)} className={`${small} ml-1`} data-pixel-quick-all>
+                          {allColours ? (t.pixelFewerColours || 'Fewer') : fill(t.pixelAllColours || 'All {n} colours', { n: draft.parts.length })}
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
+            )}
+          </div>
+          {(headMoving || boxPick) && (
+            <div className="flex items-center gap-2 rounded-lg border border-sky-700/60 bg-sky-950/20 px-2 py-1.5 text-[10px] text-sky-200" data-pixel-setting-on-canvas>
+              <span className="flex-1">
+                {headMoving ? (t.pixelHeadMoveHint || 'Drag on the drawing to move the head line. Above it moves as the head.')
+                  : boxPick === 'keep' ? (t.pixelKeepBoxHint || 'Drag a box over the writing: it stays the right way round when the avatar is mirrored.')
+                    : (t.pixelOwnFaceBoxHint || 'Drag a box over where this outfit’s own face goes.')}
+              </span>
+              <button onClick={() => { setHeadMoving(false); setBoxPick(null); }} className={`${small} border-sky-700 text-sky-200`} data-pixel-setting-done><Check size={11} /> {t.pixelDone || 'Done'}</button>
+            </div>
+          )}
+          <div className="relative" data-pixel-canvas-wrap>
+          <div
+            ref={scroller}
+            className="overflow-auto max-h-[75vh] rounded-lg"
+            data-pixel-scroller
+            onPointerEnter={() => { overCanvas.current = true; }}
+            onPointerLeave={() => { overCanvas.current = false; setSpaceHeld(false); }}
+            // Space held, or the middle button: drag to move around rather than draw.
+            onPointerDownCapture={(e) => {
+              if (!(spaceHeld || e.button === 1) || !scroller.current) return;
+              e.preventDefault(); e.stopPropagation();
+              pan.current = { x: e.clientX, y: e.clientY, left: scroller.current.scrollLeft, top: scroller.current.scrollTop };
+              try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* moved without capture */ }
+            }}
+            onPointerMoveCapture={(e) => {
+              const p = pan.current; const el = scroller.current;
+              if (!p || !el) return;
+              e.stopPropagation();
+              el.scrollLeft = p.left - (e.clientX - p.x);
+              el.scrollTop = p.top - (e.clientY - p.y);
+            }}
+            onPointerUpCapture={(e) => { if (pan.current) { e.stopPropagation(); pan.current = null; } }}
+            onPointerCancelCapture={() => { pan.current = null; }}
+          >
             <PixelCanvas
               rows={rows} parts={hatPic ? hatPic.parts : draft.parts} tool={tool} char={hatPic ? hatChar : char} zoom={hatPic ? hatZoom : zoom} grid={grid} mirror={mirror} boxes={boxes}
               headLastRow={hatPic ? null : (tgt.kind === 'front' || tgt.kind === 'front-face' || tgt.kind === 'front-outfit' || tgt.kind === 'front-extra') ? draft.turn?.front.headLastRow ?? null : draft.split?.headLastRow ?? null} canRestore={canRestore} under={under} over={over}
@@ -730,7 +1029,16 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
               }}
               onStroke={(cells) => commit(hatPic ? paintHat(draft, (tgt as any).name, cells) : paint(draft, tgt.kind === 'setup' ? { kind: 'base' } : tgt, cells))}
               onRegion={(b) => commit(regionPatch(draft, tgt, b))}
-              onPick={(c) => { if (hatPic) setHatChar(c); else setChar(c); setTool('pencil'); }}
+              onPick={(c) => { if (hatPic) setHatChar(c); else chooseColour(c); setTool('pencil'); }}
+              brush={brush}
+              panning={spaceHeld}
+              onHeadRow={headMoving && !hatPic && (tgt.kind === 'base' || tgt.kind === 'front')
+                ? (row) => commit(tgt.kind === 'front' ? setTurn(draft, { frontHeadLastRow: row }) as PixelAvatarDef : { ...draft, split: { ...draft.split, headLastRow: row } })
+                : undefined}
+              onPickBox={boxPick === 'keep' && draft.turn ? (b) => commit(setTurn(draft, { mirrorKeep: [...draft.turn!.mirrorKeep, b] }) as PixelAvatarDef)
+                : boxPick === 'own-face' && openOutfit?.ownFace ? (b) => commit(setOwnFaceBox(draft, openOutfit.name, { region: b }) as PixelAvatarDef)
+                  : undefined}
+              marks={tgt.kind === 'base' && draft.turn ? draft.turn.mirrorKeep : openOutfit?.ownFace ? [openOutfit.ownFace.region] : []}
               mirrorAxis={hatPic ? null : mirrorAxis}
               selection={selection} floating={floating}
               onSelect={(box) => { selOps.current.putDown?.(); setSelection(box); }}
@@ -738,6 +1046,26 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
               onPutDown={() => selOps.current.putDown?.()}
               onHover={setHover}
             />
+          </div>
+          {/*
+            The avatar alive, in a corner over the drawing, so what is drawn
+            is seen moving without scrolling to the preview. Clicks go
+            through it to the drawing; its buttons talk, move it to the other
+            corner, or put it away.
+          */}
+          {pip !== 'off' && (
+            <div className={`pointer-events-none absolute top-2 ${pip === 'left' ? 'left-2' : 'right-2'} w-28 rounded-xl border border-zinc-700 bg-zinc-950/85 shadow-xl overflow-hidden`} data-pixel-pip={pip}>
+              <div className="aspect-square p-1.5">
+                <LivingAvatar kit={draft} expression={previewFace} costume={previewOutfit} extras={previewExtras} glance={Boolean(draft.eyes || draft.turn)} twinkle={Boolean(draft.eyes)} action={playing} facing={draft.turn ? facing : null}
+                  speaking={pipTalk || (tgt.kind === 'front-face' && tgt.name === 'talking')} />
+              </div>
+              <div className="pointer-events-auto flex border-t border-zinc-800">
+                <button onClick={() => setPipTalk((v) => !v)} className={`flex-1 py-1 text-[8px] font-black uppercase tracking-widest ${pipTalk ? 'text-current-accent' : 'text-zinc-500 hover:text-white'}`} data-pixel-pip-talk>{t.pixelPipTalk || 'Talk'}</button>
+                <button onClick={() => setPipWhere(pip === 'left' ? 'right' : 'left')} className="px-1.5 text-zinc-500 hover:text-white" title={t.pixelPipMove || 'To the other corner'} data-pixel-pip-move>{pip === 'left' ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}</button>
+                <button onClick={() => setPipWhere('off')} className="px-1.5 text-zinc-500 hover:text-white" title={t.pixelPipHide || 'Hide the preview'} data-pixel-pip-hide><X size={11} /></button>
+              </div>
+            </div>
+          )}
           </div>
           <p className="text-[10px] text-zinc-600 leading-relaxed">
             {tgt.kind === 'setup' ? (t.pixelSetupCanvasHint || 'The drawing, to point at while setting it up: the numbers at the top say which pixel is under the pointer.')
@@ -810,7 +1138,10 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                   <>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[10px] text-zinc-500">{t.pixelOwnFaceBox || 'Its box'}</span>
-                      <input value={ownBox} onChange={(e) => setOwnBox(e.target.value)} onBlur={() => { const n = ownBox.split(/[^\d]+/).filter(Boolean).map(Number); if (n.length === 4) commit(setOwnFaceBox(draft, openOutfit.name, { region: n })); }} className={`${box} w-32`} placeholder="x0, y0, x1, y1" data-pixel-own-face-box />
+                      <button onClick={() => { setHeadMoving(false); setBoxPick(boxPick === 'own-face' ? null : 'own-face'); }}
+                        className={`${small} ${boxPick === 'own-face' ? 'border-sky-500 text-sky-300' : ''}`} title={ownBox} data-pixel-own-face-box>
+                        <BoxSelect size={11} /> {t.pixelOwnFaceBoxDraw || 'Draw its box'}
+                      </button>
                       <span className="text-[10px] text-zinc-500">{t.pixelLashesTo || 'Lashes to row'}</span>
                       <input type="number" min={0} max={99} value={openOutfit.lashesTo ?? ''} placeholder={String(draft.eyes?.lashes?.[1] ?? '')} onChange={(e) => commit(setOwnFaceBox(draft, openOutfit.name, { lashesTo: e.target.value === '' ? null : Number(e.target.value) }))} className={`${box} w-16`} data-pixel-own-face-lashes />
                     </div>
@@ -899,7 +1230,7 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
         </div>
 
         {/* ---------------------------------------- colours, settings, preview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:col-span-2 2xl:col-span-1 2xl:grid-cols-1 gap-4 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:col-span-2 xl:col-span-1 xl:grid-cols-1 gap-4 items-start" data-pixel-side-column>
           {hatPic && (
             <div className="space-y-2" data-pixel-hat-palette>
               <span className={tag}>{t.pixelHatColours || 'The hat’s colours'}</span>
@@ -934,7 +1265,7 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
             <span className={tag}>{t.pixelColours || 'Colours'}</span>
             <div className="flex flex-wrap gap-1">
               {draft.parts.map((p) => (
-                <button key={p.id} onClick={() => { setChar(p.char); if (tool === 'picker' || tool === 'eraser' || tool === 'restore') setTool('pencil'); }} title={p.name} data-pixel-part={p.id}
+                <button key={p.id} onClick={() => { chooseColour(p.char); if (tool === 'picker' || tool === 'eraser' || tool === 'restore') setTool('pencil'); }} title={p.name} data-pixel-part={p.id}
                   className={`w-6 h-6 rounded border ${char === p.char ? 'border-white ring-1 ring-white' : 'border-zinc-800'}`}
                   style={{ background: p.color, opacity: p.opacity ?? 1 }} />
               ))}
@@ -945,19 +1276,28 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                   <input type="color" value={part.color} onChange={(e) => commit({ ...draft, parts: draft.parts.map((p) => (p.id === part.id ? { ...p, color: e.target.value } : p)) })} className="w-7 h-7 bg-transparent border border-zinc-800 rounded cursor-pointer" data-pixel-part-colour />
                   <input value={part.name} maxLength={40} onChange={(e) => setDraft({ ...draft, parts: draft.parts.map((p) => (p.id === part.id ? { ...p, name: e.target.value } : p)) })} onBlur={() => setDirty(true)} className={box} data-pixel-part-name />
                 </div>
-                <label className="flex items-center gap-1.5 text-[9px] text-zinc-400" title={t.pixelPartCarriedHint || 'Always with the body, even where it reaches past the head, and in front of the head — as a sword on the back'}>
-                  <input type="checkbox" checked={draft.split.carried.includes(part.id)} onChange={(e) => commit(setPart(draft, part.id, { carried: e.target.checked }))} className="accent-current-accent" data-pixel-part-carried /> {t.pixelPartCarried || 'Carried, not worn'}
+                {/* What each setting does, said under it rather than only on a hover. */}
+                <label className="flex items-start gap-1.5 text-[9px] text-zinc-400">
+                  <input type="checkbox" checked={draft.split.carried.includes(part.id)} onChange={(e) => commit(setPart(draft, part.id, { carried: e.target.checked }))} className="accent-current-accent mt-0.5" data-pixel-part-carried />
+                  <span>{t.pixelPartCarried || 'Carried, not worn'}<span className="block text-zinc-600">{t.pixelPartCarriedHint || 'Always with the body, even where it reaches past the head, and in front of the head — as a sword on the back'}</span></span>
                 </label>
-                <label className="flex items-center gap-1.5 text-[9px] text-zinc-400" title={t.pixelPartOverHatHint || 'Marks that float by the head — z’s, tears, a "!" — that a tall hat would hide'}>
-                  <input type="checkbox" checked={draft.overHat.includes(part.id)} onChange={(e) => commit(setPart(draft, part.id, { overHat: e.target.checked }))} className="accent-current-accent" data-pixel-part-over-hat /> {t.pixelPartOverHat || 'Drawn over a hat'}
+                <label className="flex items-start gap-1.5 text-[9px] text-zinc-400">
+                  <input type="checkbox" checked={draft.overHat.includes(part.id)} onChange={(e) => commit(setPart(draft, part.id, { overHat: e.target.checked }))} className="accent-current-accent mt-0.5" data-pixel-part-over-hat />
+                  <span>{t.pixelPartOverHat || 'Drawn over a hat'}<span className="block text-zinc-600">{t.pixelPartOverHatHint || 'Marks that float by the head — z’s, tears, a "!" — that a tall hat would hide'}</span></span>
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <select value={part.effect || ''} onChange={(e) => commit(setPart(draft, part.id, { effect: e.target.value }))} className={box} data-pixel-part-effect>
-                    <option value="">{t.pixelEffectNone || 'Still'}</option>
-                    <option value="float">{t.pixelEffectFloat || 'Drifts, as sleep z’s'}</option>
-                    <option value="pop">{t.pixelEffectPop || 'Pops up, as a startle'}</option>
-                  </select>
-                  <input type="range" min={0.1} max={1} step={0.05} value={part.opacity ?? 1} onChange={(e) => commit(setPart(draft, part.id, { opacity: Number(e.target.value) }))} title={t.pixelPartOpacity || 'How see-through'} className="w-full accent-current-accent" data-pixel-part-opacity />
+                  <label className="space-y-0.5 block">
+                    <span className="block text-[9px] text-zinc-500">{t.pixelPartEffect || 'How it moves'}</span>
+                    <select value={part.effect || ''} onChange={(e) => commit(setPart(draft, part.id, { effect: e.target.value }))} className={box} data-pixel-part-effect>
+                      <option value="">{t.pixelEffectNone || 'Still'}</option>
+                      <option value="float">{t.pixelEffectFloat || 'Drifts, as sleep z’s'}</option>
+                      <option value="pop">{t.pixelEffectPop || 'Pops up, as a startle'}</option>
+                    </select>
+                  </label>
+                  <label className="space-y-0.5 block">
+                    <span className="block text-[9px] text-zinc-500">{fill(t.pixelPartOpacityNow || 'See-through: {n}%', { n: Math.round((1 - (part.opacity ?? 1)) * 100) })}</span>
+                    <input type="range" min={0.1} max={1} step={0.05} value={part.opacity ?? 1} onChange={(e) => commit(setPart(draft, part.id, { opacity: Number(e.target.value) }))} title={t.pixelPartOpacity || 'How see-through'} className="w-full accent-current-accent" data-pixel-part-opacity />
+                  </label>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[9px] text-zinc-600">{fill(t.pixelPartUse || '{n} pixels', { n: usedHere })}</span>
@@ -1051,11 +1391,9 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
           )}
           {tgt.kind === 'base' && (
             <div className="space-y-2 rounded-xl border border-zinc-800 p-3">
-              <label className="block space-y-1">
-                <span className={tag}>{fill(t.pixelHeadEnds || 'The head ends at row {n}', { n: draft.split?.headLastRow ?? 99 })}</span>
-                <input type="range" min={10} max={99} value={draft.split?.headLastRow ?? 99}
-                  onChange={(e) => commit({ ...draft, split: { ...draft.split, headLastRow: Number(e.target.value) } })} className="w-full accent-current-accent" data-pixel-head-row />
-              </label>
+              <HeadLine row={draft.split?.headLastRow ?? 99} moving={headMoving} setMoving={setHeadMoving}
+                set={(row) => commit({ ...draft, split: { ...draft.split, headLastRow: row } })} t={t} />
+
               <label className="flex items-center gap-1.5 text-[10px] text-zinc-400">
                 <input type="checkbox" checked={Boolean(draft.turn)} onChange={(e) => { if (e.target.checked || window.confirm(t.pixelTurnOffConfirm || 'Stop it turning? Its front view goes.')) commit(setTurns(draft, e.target.checked)); }} className="accent-current-accent" data-pixel-turns />
                 {t.pixelTurns || 'It turns to face whoever talks in the call (needs a front view)'}
@@ -1077,24 +1415,21 @@ export const PixelEditor = ({ kit, request, onDirty, listAssets, uploadAsset, t 
                         <button onClick={() => commit(setTurn(draft, { mirrorKeep: draft.turn!.mirrorKeep.filter((_, j) => j !== i) }))} className={small}><Trash2 size={10} /></button>
                       </div>
                     ))}
-                    <div className="flex gap-1">
-                      <input value={keepBox} onChange={(e) => setKeepBox(e.target.value)} placeholder="x0, y0, x1, y1" className={box} data-pixel-mirror-keep-new />
-                      <button
-                        onClick={() => { const n = keepBox.split(/[^\d]+/).filter(Boolean).map(Number); if (n.length === 4) { commit(setTurn(draft, { mirrorKeep: [...draft.turn!.mirrorKeep, n] })); setKeepBox(''); } }}
-                        className={small} data-pixel-mirror-keep-add
-                      ><Plus size={11} /></button>
-                    </div>
-                    <span className="block text-[9px] text-zinc-600">{t.pixelMirrorKeepHint || 'The pixel numbers show at the top of the canvas as you point.'}</span>
+                    <button onClick={() => { setHeadMoving(false); setBoxPick(boxPick === 'keep' ? null : 'keep'); }}
+                      className={`${small} w-full ${boxPick === 'keep' ? 'border-sky-500 text-sky-300' : ''}`} data-pixel-mirror-keep-draw>
+                      <BoxSelect size={11} /> {t.pixelKeepBoxDraw || 'Draw a box over the writing'}
+                    </button>
+                    <span className="block text-[9px] text-zinc-600">{t.pixelMirrorKeepHintBox || 'Writing on the avatar, like a name on a shirt, would read backwards when it faces the other way. The blue boxes on the drawing stay as drawn.'}</span>
                   </div>
                 </>
               )}
             </div>
           )}
           {tgt.kind === 'front' && draft.turn && (
-            <label className="block space-y-1 rounded-xl border border-zinc-800 p-3">
-              <span className={tag}>{fill(t.pixelHeadEnds || 'The head ends at row {n}', { n: draft.turn.front.headLastRow })}</span>
-              <input type="range" min={10} max={99} value={draft.turn.front.headLastRow} onChange={(e) => commit(setTurn(draft, { frontHeadLastRow: Number(e.target.value) }))} className="w-full accent-current-accent" data-pixel-front-head-row />
-            </label>
+            <div className="rounded-xl border border-zinc-800 p-3" data-pixel-front-head>
+              <HeadLine row={draft.turn.front.headLastRow} moving={headMoving} setMoving={setHeadMoving}
+                set={(row) => commit(setTurn(draft, { frontHeadLastRow: row }) as PixelAvatarDef)} t={t} />
+            </div>
           )}
           {tgt.kind === 'front-face' && (
             <button onClick={() => { if (window.confirm(t.pixelRemoveItemConfirm || 'Take this out of the avatar?')) { commit(removeFrontFace(draft, tgt.name)); setTarget({ kind: 'front' }); } }} className={`${small} w-full hover:text-rose-400 hover:border-rose-900`} data-pixel-front-face-remove><Trash2 size={11} /> {t.delete || 'Delete'}</button>

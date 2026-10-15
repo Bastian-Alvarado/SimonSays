@@ -22,6 +22,7 @@ import { refusal } from '../core/refusal.js';
 import { createLogger } from '../core/logger.js';
 import { cleanPixelAvatar, blankPixelAvatar } from '../../shared/pixel-avatars.js';
 import { pixelAvatarExamples, pixelAvatarExample } from '../../shared/pixel-avatar-examples.js';
+import { starterPixelAvatar } from '../../shared/pixel-edit.js';
 
 const log = createLogger('pixel-avatars');
 
@@ -187,7 +188,9 @@ export function control(payload = {}) {
   }
   if (op === 'create') {
     if (getPixelAvatars().length >= MAX_PIXEL_AVATARS) throw refusal('pixel_avatar_full', `there are already ${MAX_PIXEL_AVATARS} pixel avatars`);
-    return put(kept(blankPixelAvatar(newId(), String(payload.name ?? '').trim() || 'New avatar')));
+    // Empty, or with a simple character drawn to start from.
+    const make = payload.starter ? starterPixelAvatar : blankPixelAvatar;
+    return put(kept(make(newId(), String(payload.name ?? '').trim() || 'New avatar')));
   }
   const avatar = find(payload.id);
   if (op === 'restore-examples') {

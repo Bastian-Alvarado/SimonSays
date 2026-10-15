@@ -27,6 +27,8 @@ interface Props {
   /** The avatar with the picture placed on it. */
   onApply: (next: PixelAvatarDef) => void;
   onClose: () => void;
+  /** Brought in its own colours from the start: a new avatar has none of its own yet to match. */
+  ownColours?: boolean;
   t: any;
 }
 
@@ -37,7 +39,7 @@ const box = 'w-full bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1.5
 const small = 'flex items-center justify-center gap-1 px-2 py-1 rounded-md border border-zinc-800 text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-white hover:border-zinc-600 disabled:opacity-40';
 const hex = (d: ArrayLike<number>, k: number) => `#${[d[k], d[k + 1], d[k + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 
-export const PixelImport = ({ draft, target, onApply, onClose, t }: Props) => {
+export const PixelImport = ({ draft, target, onApply, onClose, ownColours: startOwn = false, t }: Props) => {
   const [img, setImg] = useState<Img | null>(null);
   const [src, setSrc] = useState('');
   const [region, setRegion] = useState({ x: 0, y: 0, w: 1, h: 1 });
@@ -45,7 +47,7 @@ export const PixelImport = ({ draft, target, onApply, onClose, t }: Props) => {
   const [shift, setShift] = useState({ x: 0, y: 0 });
   const [background, setBackground] = useState<string | null>(null);
   const [tolerance, setTolerance] = useState(14);
-  const [own, setOwn] = useState(false);
+  const [own, setOwn] = useState(startOwn);
   const [at, setAt] = useState({ x: 0, y: 0 });
   const [clear, setClear] = useState(false);
   const [picking, setPicking] = useState(false);
