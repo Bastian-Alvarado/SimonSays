@@ -198,6 +198,12 @@ const ownerKeyInUrl = await http(`/api/snapshot?key=${encodeURIComponent(ownerKe
 const pageSnapshot = await http(`/api/snapshot?key=${encodeURIComponent(pageKey)}`);
 const pageAssets = await http(`/api/assets?key=${encodeURIComponent(pageKey)}`);
 const meAnon = await http('/auth/me');
+// The details for a bug report (Settings → About, server/engine/diagnostics.js): the streamer's alone, and
+// without the streamer's login where a warning names it (twitch.js says "could not load Twitch profile for <login>").
+(await import('../../core/logger.js')).createLogger('twitch').warn('could not load Twitch profile for streamer: Twitch Helix 401');
+const ownerDiagnostics = await http('/api/diagnostics', { headers: { Cookie: ownerCookie } });
+const anonDiagnostics = await http('/api/diagnostics');
+const pageDiagnostics = await http(`/api/diagnostics?key=${encodeURIComponent(pageKey)}`);
 
 const anonConn = await connect();
 const evilConn = await connect({ headers: { Origin: 'https://evil.example', Cookie: ownerCookie } });
@@ -253,6 +259,16 @@ const modSnapshot = await modConn.ask(C2S.GET_SNAPSHOT, {});
 const modApi = await http('/api/snapshot', { headers: { Cookie: modCookie } });
 const modAssets = await http('/api/assets', { headers: { Cookie: modCookie } });
 const modMe = await http('/auth/me', { headers: { Cookie: modCookie } });
+const modDiagnostics = await http('/api/diagnostics', { headers: { Cookie: modCookie } });
+
+test('the details for a bug report go to the streamer only: not to a moderator, an OBS page or nobody', () => {
+  assert.equal(ownerDiagnostics.status, 200);
+  assert.ok(ownerDiagnostics.body.text.includes('Sign-in: on'));
+  assert.ok(ownerDiagnostics.body.text.includes('could not load Twitch profile for [account]: Twitch Helix 401'), 'the login the app knows, taken out');
+  assert.deepEqual([anonDiagnostics.status, anonDiagnostics.body.code], [401, 'signin_needed']);
+  assert.deepEqual([pageDiagnostics.status, pageDiagnostics.body.code], [403, 'signin_not_allowed']);
+  assert.deepEqual([modDiagnostics.status, modDiagnostics.body.code], [403, 'signin_not_allowed']);
+});
 
 test('a moderator of the channel signs in with their own Twitch, for a week, and their token is kept for asking Twitch again', () => {
   assert.equal(modIn.body.role, 'mod');

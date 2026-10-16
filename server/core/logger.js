@@ -13,6 +13,10 @@ const threshold = LEVELS[config.logLevel] ?? LEVELS.info;
 
 const RING_SIZE = 500;
 const ring = [];
+// Warnings and errors kept apart as well: on a busy stream the 500 above turn over in hours with every
+// command and event, and a report of what went wrong (server/engine/diagnostics.js) must not lose them.
+const PROBLEMS_SIZE = 50;
+const problems = [];
 
 const subscribers = new Set();
 
@@ -30,6 +34,10 @@ function emit(level, scope, args) {
 
   ring.push(entry);
   if (ring.length > RING_SIZE) ring.shift();
+  if (level === 'warn' || level === 'error') {
+    problems.push(entry);
+    if (problems.length > PROBLEMS_SIZE) problems.shift();
+  }
 
   const stamp = new Date(entry.ts).toISOString().slice(11, 19);
   const tag = `[${stamp}] ${level.toUpperCase().padEnd(5)} ${scope}`;
@@ -64,6 +72,8 @@ export function createLogger(scope) {
 }
 
 export const getRecentLogs = (limit = 200) => ring.slice(-limit);
+/** The latest warnings and errors since the server started, however busy the log has been since. */
+export const getRecentProblems = (limit = PROBLEMS_SIZE) => problems.slice(-limit);
 export const onLog = (fn) => {
   subscribers.add(fn);
   return () => subscribers.delete(fn);

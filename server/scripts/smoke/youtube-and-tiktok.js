@@ -686,7 +686,8 @@ globalThis.fetch = async (url, init = {}) => {
       body: (async function* () {
         yield `[${JSON.stringify({ items, nextPageToken: `p${n}` })}`;
         // Quiet: open, saying nothing more, until it is closed for being quiet.
-        if (ytStreamMode === 'quiet') await new Promise((resolve, reject) => init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+        // (After a hiccup it stays open too, as a connection that works does: closing at once would be trouble of its own.)
+        if (ytStreamMode === 'quiet' || ytStreamMode === 'hiccup') await new Promise((resolve, reject) => init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
       })(),
     };
   }

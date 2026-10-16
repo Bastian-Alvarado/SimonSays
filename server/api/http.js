@@ -17,7 +17,7 @@ import { config } from '../config.js';
 import { fontFamilyName } from '../../shared/chat-style.js';
 import { ASSET_KINDS as KINDS } from '../../shared/asset-kinds.js';
 import { createLogger } from '../core/logger.js';
-import { getRecentLogs } from '../core/logger.js';
+import { getRecentLogs, getRecentProblems } from '../core/logger.js';
 import { bus, EVENTS, normaliseChat, normaliseEvent } from '../core/bus.js';
 import { queueDepths } from '../core/queue.js';
 import * as engine from '../engine/index.js';
@@ -29,6 +29,7 @@ import * as obs from '../platforms/obs.js';
 import * as spotify from '../platforms/spotify.js';
 import * as youtube from '../platforms/youtube.js';
 import { VERSION } from '../../shared/version.js';
+import { diagnosticsReport } from '../engine/diagnostics.js';
 import * as auth from './auth.js';
 
 const log = createLogger('http');
@@ -262,6 +263,40 @@ async function handleApi(req, res, url) {
         },
         queues: queueDepths(),
       });
+
+    // The details for a bug report (Settings → About), as text the streamer reads and pastes themselves.
+    // The streamer's alone: a moderator's sign-in never gets past the gate above (MOD_API), nor an OBS page's.
+    case 'GET /api/diagnostics': {
+      // Who the streamer is on each platform, as the app knows it: taken out of the warnings wherever named
+      // ("could not load Twitch profile for <login>"). OBS's host only when it is a name: a number goes by the
+      // address rules, and "localhost" says nothing.
+      const tw = twitch.getCredentials();
+      const dc = discord.getStatus();
+      const obsHost = obs.getCredentials().host;
+      const known = [
+        tw.channel, tw.login, tw.botLogin, tw.userId, tw.user?.display_name, tw.botUser?.display_name, tw.botUser?.id, tw.clientId,
+        tiktok.getCredentials().username,
+        youtube.getSettings().channel?.title,
+        dc.guildId, dc.channelId, dc.botUserId, dc.clientId,
+        /^([\d.]+|localhost)$/i.test(obsHost || '') ? '' : obsHost,
+      ];
+      return json(res, 200, {
+        text: diagnosticsReport({
+          platforms: {
+            twitch: twitch.getStatus(),
+            youtube: youtube.getStatus(),
+            tiktok: tiktok.getStatus(),
+            discord: dc,
+            obs: obs.getStatus(),
+            spotify: spotify.getStatus(),
+          },
+          logs: getRecentProblems(),
+          known,
+          signIn: auth.isEnabled(),
+          startedAt,
+        }),
+      });
+    }
 
     case 'GET /api/snapshot':
       return json(res, 200, engine.snapshot());

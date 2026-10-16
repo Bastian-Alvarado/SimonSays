@@ -111,6 +111,13 @@ test('the planned major updates are the two named so far, nothing of the private
   for (const plan of R.PLANS) assert.ok(plan.summary && plan.goals?.length, `${plan.name} has nothing said about it`);
 });
 
+test('the kick update says up front that Kick needs a public address of your own, and that nothing goes through anybody else\'s server', () => {
+  // The streamer's decision (2026-10-16): Kick sends its events only to an address on the internet, and they
+  // come to the streamer's own, never through a relay of the people who make SimonSays.
+  const kick = R.PLANS.find((p) => p.version === '3.0.0');
+  assert.ok(kick.goals.some((g) => g.includes('public address or domain') && g.includes('never through anybody else’s server')));
+});
+
 // The bump, on a copy: the work in progress becomes the release, in both changelogs.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ss-roadmap-bump-'));
 const PUBLIC_LOG = 'public-edition/overrides/CHANGELOG.md';

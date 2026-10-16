@@ -1,0 +1,48 @@
+name: Bug report
+description: Something in SimonSays doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report it. ¿Prefieres escribir en español? Usa el formulario **Reporte de error**.
+
+        Found a way into somebody's dashboard, keys or accounts? Please don't post it here: report it privately on the **Security** tab.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      description: The steps, if you know them. "It happens sometimes" helps too.
+      placeholder: |
+        1. Open Overlays
+        2. Pick the Chat layer
+        3. …
+  - type: textarea
+    id: details
+    attributes:
+      label: Details from the app
+      description: |
+        In SimonSays, open **Settings → About → Report a problem**, press **Copy details for a bug report** and paste them here. They say the version, your system, which platforms are connected and the latest errors, with keys, passwords and your accounts' names taken out; read them before you send, and take out anything you'd rather not share.
+        If the app doesn't start, write the version you downloaded (the top of CHANGELOG.md) and your system instead.
+      render: text
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where does SimonSays run?
+      options:
+        - Windows
+        - Linux
+        - An Android phone (Termux)
+        - Somewhere else
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: A screenshot or a short video helps a lot. Never post keys, passwords or your owner key.

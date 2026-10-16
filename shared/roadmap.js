@@ -39,6 +39,7 @@ export const PLANS = [
     goals: [
       'Kick chat and events alongside your other platforms.',
       'Every feature of the app working with Kick, as far as Kick allows it.',
+      'For advanced setups: Kick sends chat and events only to an address on the internet, so it needs a public address or domain of your own. They come straight to you, never through anybody else’s server.',
     ],
   },
   {
@@ -47,6 +48,7 @@ export const PLANS = [
     summary: 'Your viewers get a place of their own in the app: they sign in and see what your stream has for them.',
     goals: [
       'Viewers sign in with the account they watch on, and land on a page of their own.',
+      'TikTok viewers sign in with TikTok too, through TikTok’s official Login Kit.',
       'Their level, points and rank, and the shop to spend their points in.',
       'Polls, questions, game requests and giveaways from that page, as well as from chat.',
       'Your schedule and what is coming next, in one place to share.',

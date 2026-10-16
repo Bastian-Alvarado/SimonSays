@@ -11,6 +11,7 @@ import { Button } from '../Button';
 import { VERSION } from '../../../shared/version.js';
 import { fill, refusalWords } from '../../words';
 import { UpdatesPanel, type UpdatesState } from '../UpdatesPanel';
+import { BugReportPanel } from '../BugReportPanel';
 import { SignInPanel } from '../SignInPanel';
 
 interface SettingsViewProps {
@@ -270,6 +271,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {owner && updates?.enabled && updatesAct && (
           <UpdatesPanel updates={updates} act={updatesAct} language={language} light={activeTheme.id === 'light'} t={t} />
         )}
+        {owner && <BugReportPanel language={language} light={activeTheme.id === 'light'} t={t} />}
       </section>
     </div>
   );

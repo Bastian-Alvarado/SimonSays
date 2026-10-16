@@ -2,6 +2,14 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.2.2] — 2026-10-16
+
+- The Roadmap’s 4.0.0 The community update plans TikTok viewers signing in with TikTok, through its official Login Kit.
+- The Roadmap’s 3.0.0 The kick update says it will need a public address or domain: Kick sends chat and events only to an address on the internet, and they come straight to you.
+- Settings → About → Report a problem copies the details a bug report needs (version, system, platform states, latest errors) with keys and your accounts’ names taken out, and shows them to read and change before you paste them anywhere.
+- Bug report forms on GitHub, in English and Spanish, and SECURITY.md for reporting a way in privately.
+- The README downloads SimonSays.zip from the latest release, points to the website, and no longer says macOS.
+
 ## [2.2.1] — 2026-10-15
 
 - YouTube chat costs a fraction of the daily allowance: the app now keeps one connection open and YouTube sends messages as they are written, where before it asked every seven seconds — about 2,600 of the day’s 10,000 units an hour, so chat could stop after three or four hours of streaming. If YouTube refuses the connection, or keeps closing it within moments, the app goes back to asking every seven seconds for that broadcast. The Connections screen says which it is doing.

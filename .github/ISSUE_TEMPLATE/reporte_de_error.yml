@@ -1,0 +1,48 @@
+name: Reporte de error
+description: Algo en SimonSays no funciona como debería.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo de reportarlo. Prefer English? Use the **Bug report** form.
+
+        ¿Encontraste una forma de entrar al panel, las claves o las cuentas de alguien? Por favor no lo publiques aquí: repórtalo en privado en la pestaña **Security**.
+  - type: textarea
+    id: what
+    attributes:
+      label: ¿Qué pasó?
+      description: Qué hiciste, qué esperabas y qué pasó en su lugar.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Cómo hacer que vuelva a pasar
+      description: Los pasos, si los sabes. "Pasa a veces" también ayuda.
+      placeholder: |
+        1. Abre Overlays
+        2. Elige la capa del chat
+        3. …
+  - type: textarea
+    id: details
+    attributes:
+      label: Datos de la app
+      description: |
+        En SimonSays, abre **Ajustes → Acerca de → Reportar un problema**, pulsa **Copiar datos para el reporte de error** y pégalos aquí. Dicen la versión, tu sistema, qué plataformas están conectadas y los últimos errores, sin claves, contraseñas ni los nombres de tus cuentas; léelos antes de enviarlos y quita lo que prefieras no compartir.
+        Si la app no arranca, escribe la versión que descargaste (al principio de CHANGELOG.md) y tu sistema.
+      render: text
+  - type: dropdown
+    id: where
+    attributes:
+      label: ¿Dónde corre SimonSays?
+      options:
+        - Windows
+        - Linux
+        - Un teléfono Android (Termux)
+        - En otro lugar
+  - type: textarea
+    id: more
+    attributes:
+      label: Algo más
+      description: Una captura o un video corto ayudan mucho. Nunca publiques claves, contraseñas ni tu clave de dueño.

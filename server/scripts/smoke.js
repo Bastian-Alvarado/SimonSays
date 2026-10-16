@@ -109,6 +109,7 @@ await import('./smoke/roadmap.js');
 await import('./smoke/user-themes.js');
 await import('./smoke/guides.js');
 await import('./smoke/version.js');
+await import('./smoke/diagnostics.js');
 await import('./smoke/translations.js');
 await import('./smoke/tidy.js');
 await import('./smoke/events-dock.js');

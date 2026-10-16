@@ -65,6 +65,10 @@ Only what a feature you turn on needs, sent straight to that service:
 
 Each service handles what it receives under its own privacy policy.
 
+The details for a bug report (Settings → About → Report a problem) are not
+sent anywhere: they are copied for you to read, change and paste yourself,
+with keys, passwords, your accounts' names and your folders taken out.
+
 ## Cookies
 
 One, and only once somebody signs in: `ss_session`, which says which

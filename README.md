@@ -67,13 +67,14 @@ value is mainly SimonSays itself.
 
 About half an hour from nothing to a first stream. The app also walks you
 through all of this itself, on its home screen and in **Guides**, in English
-and Spanish — this is the same path, written down.
+and Spanish — this is the same path, written down. The SimonSays website,
+linked under **About** on this page, has it step by step with pictures for
+Windows, Linux and Android phones, also in English and Spanish.
 
 ### What you need
 
-- **A computer to run it on.** The one that runs OBS is simplest. Windows,
-  macOS or Linux; a spare PC or an old Android phone on your network works
-  too.
+- **A computer to run it on.** The one that runs OBS is simplest. Windows
+  or Linux; a spare PC or an old Android phone on your network works too.
 - **[Node.js](https://nodejs.org) 22 or newer.** Take the LTS installer and
   keep its defaults. To check, open a terminal and run `node -v`.
 - **[OBS Studio](https://obsproject.com) 28 or newer**, for the overlays.
@@ -82,9 +83,10 @@ and Spanish — this is the same path, written down.
 
 ### 1. Download it
 
-On GitHub, press **Code → Download ZIP** and unzip it somewhere that stays
-put, like `Documents\SimonSays`. Or, with git, copy the address under
-**Code** and run `git clone` with it.
+Download **[SimonSays.zip](../../releases/latest/download/SimonSays.zip)**,
+the latest release, and unzip it somewhere that stays put, like
+`Documents\SimonSays`. Or, with git, copy the address under **Code** and run
+`git clone` with it.
 
 ### 2. Install it
 
@@ -190,6 +192,12 @@ stream from their own dock, without touching what's yours. The
   Windows firewall on private networks (Windows asks the first time).
 - **Anything else:** **Guides** has a "when it doesn't work" list for every
   platform.
+- **Still stuck, or found a bug?** Open an issue here (**Bug report**, or
+  **Reporte de error** in Spanish). **Settings → About → Report a problem**
+  copies what it needs — the version, your system, which platforms are
+  connected and the latest errors, with keys and your accounts' names taken out — for you to read and paste.
+  A way into somebody's dashboard or accounts goes privately instead: see
+  [SECURITY.md](SECURITY.md).
 
 ### Keys in a file, if you prefer
 
