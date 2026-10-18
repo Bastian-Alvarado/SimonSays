@@ -26,6 +26,7 @@ import {
   CHAT_LAYOUTS, TIMESTAMP_POSITIONS, BADGE_POSITIONS, AVATAR_SHAPES,
 } from '../../shared/chat-style.js';
 import { useCustomFonts } from '../hooks/useCustomFonts';
+import { NAME_COLOUR_SOURCES, nameColourSource } from '../../shared/name-colours.js';
 import { FontUploadButton } from './FontUploadButton';
 
 const TwitchIcon = ({ size = 24, className = '' }) => (
@@ -212,13 +213,15 @@ interface SectionsOptions {
   reset: ResetWords;
   /** Where this browser remembers which sections of this menu are open. */
   storageKey: string;
+  /** A chat layer: Name colours as a choice of the look's, the platform's or their own, rather than the dock's switch. */
+  nameChoice?: boolean;
 }
 
 /**
  * The sections both chat menus have, each already in its fold, and `fold` for
  * a menu's own. A menu lays them out in its own order, with its own between.
  */
-export function useChatSections({ values, patch, t, draws, reset, storageKey }: SectionsOptions) {
+export function useChatSections({ values, patch, t, draws, reset, storageKey, nameChoice = false }: SectionsOptions) {
   const v = values || {};
   const set = (key: string) => (value: any) => patch({ [key]: value });
   const clear = (key: string) => () => patch({ [key]: '' });
@@ -271,7 +274,17 @@ export function useChatSections({ values, patch, t, draws, reset, storageKey }: 
     ) : (
       <Note data-chat-marks-note>{t.chatRetroMarks || 'Retro marks the platform with a coloured dot and draws no rank badges.'}</Note>
     )}
-    <Switch label={t.usernameColors || 'Name colours'} on={Boolean(v.colorUsername)} onChange={set('colorUsername')} />
+    {nameChoice ? (
+      /*
+        A chat layer: the look's colour, the platform's, or the person's own.
+        colorUsername goes with it (on for their own), for what still reads it.
+      */
+      <Choice label={t.usernameColors || 'Name colours'} value={nameColourSource(v)}
+        options={NAME_COLOUR_SOURCES.map((s: string) => ({ value: s, label: ({ layout: t.nameColoursLayout || 'Layout', platform: t.nameColoursPlatform || 'Platform', own: t.nameColoursOwn || 'Their own' } as Record<string, string>)[s] }))}
+        onChange={(s: string) => patch({ nameColours: s, colorUsername: s === 'own' })} />
+    ) : (
+      <Switch label={t.usernameColors || 'Name colours'} on={Boolean(v.colorUsername)} onChange={set('colorUsername')} />
+    )}
     <Switch label={t.userAvatars || 'Avatars'} on={Boolean(v.showAvatars)} onChange={set('showAvatars')} />
     {draws.slots && v.showAvatars && (
       <Under>

@@ -7,7 +7,7 @@ import {
   Layout, Package, MessageSquare, ListOrdered, MessageCircleQuestion, Menu, X, Terminal, Share2, Zap, Monitor, Bell, Settings as SettingsIcon, GitBranch, ShieldCheck, Tag, 
   Wifi, WifiOff, LogOut, Send, Bot, User, Check, Eye, EyeOff, Ghost, Link as LinkIcon, Loader2, Copy, ExternalLink,
   HelpCircle, Info, AlertTriangle, List, ChevronDown, Shield, Trash2, Clock, MousePointerClick, DoorOpen, GripHorizontal, Trophy, Newspaper, Coins, History
-, Smile, LayoutGrid, Sword, Gem, Star, Video, Radio, Layers, Gamepad2, Palette, Users, BarChart3, Gift, Headphones, Megaphone, Mic, Sparkles, Inbox, Cast, BookOpen
+, Smile, LayoutGrid, Sword, Gem, Star, Video, Radio, Layers, Gamepad2, Palette, Users, BarChart3, Gift, Headphones, Megaphone, Mic, Sparkles, Inbox, Cast, BookOpen, Tv
 } from 'lucide-react';
 import { NavSections, StatusRow, NavSearch, SearchButton, ScreenTabs, PhoneBar, type NavSection, type SearchEntry } from './components/NavMenu';
 import { useReloadAfterUpdate } from './components/UpdatesPanel';
@@ -67,8 +67,11 @@ const lastYoutubeMessageAt = (messages: any[]) => {
 import { SendToPicker } from './components/SendToPicker';
 import { refusalWords, fill } from './words';
 import { DockTabs, DockTab } from './components/DockTabs';
-import { ScreenControls, HoldAwake } from './components/ScreenControls';
+import { ScreenControls, HoldAwake, isTouchScreen } from './components/ScreenControls';
 import { useSideways } from './hooks/useSideways';
+import { DockPlayer } from './components/DockPlayer';
+import { DockStreamInfo } from './components/DockStreamInfo';
+import { DockBelow } from './components/DockBelow';
 import type { GuidesTab } from './components/views/GuidesView';
 /** The guides module, fetched by the dashboard when it opens (see `guides` below). */
 type GuidesModule = typeof import('../shared/guides.js');
@@ -194,6 +197,23 @@ const PROFILE_GROUP_FOR_VIEW: Record<string, string> = {
 */
 const PAGE_MODES = ['dashboard', 'alerts', 'dock-actions', 'timer', 'countdown', 'viewers', 'canvas', 'omnibar', 'spotify', 'overlay', 'dock'];
 const APP_PATHS = ['/', '/index.html'];
+
+/** A window wide enough at a desk (not a phone) to put the dock's stream beside its panels. */
+const WIDE_DESK_QUERY = '(min-width: 900px) and (min-aspect-ratio: 4/3) and (hover: hover)';
+function useWideDesk() {
+  const [on, setOn] = useState(() => { try { return window.matchMedia(WIDE_DESK_QUERY).matches; } catch { return false; } });
+  useEffect(() => {
+    let q: MediaQueryList;
+    try { q = window.matchMedia(WIDE_DESK_QUERY); } catch { return undefined; }
+    const update = () => setOn(q.matches);
+    q.addEventListener('change', update);
+    return () => q.removeEventListener('change', update);
+  }, []);
+  return on;
+}
+/** The wide dock: the tabs across the top, then the stream, its handle and the panels in a row. */
+const DOCK_WIDE_CSS = `[data-dock-layout="wide"] { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+[data-dock-layout="wide"] > [data-dock="tabs"] { grid-column: 1 / -1; }`;
 
 export default function App() {
   // --- Initialize "The Brain" ---
@@ -702,6 +722,85 @@ export default function App() {
     { id: 'events', label: t.dockTabEvents || 'Events', icon: List },
   ];
   const panel = DOCK_TABS.some((x) => x.id === dockTab) ? dockTab : 'chat';
+  /*
+    What each of the dock's other panels draws, by its tab: the tab on the right, and
+    the panel under the stream beside it (DockBelow), are the same thing; under the
+    stream the deck is fitted to its short, wide box (DockDeck fitted).
+  */
+  const dockPanelBody = (id: string, under = false) => {
+    switch (id) {
+      case 'actions': return (
+      <DockDeck
+        grid={system.data.dockGrid}
+        remember="dock_page_tab"
+        fitted={under}
+        buttons={system.data.dockButtons}
+        streamActions={system.data.streamActions}
+        runDockAction={system.actions.runDockAction}
+        stats={(system.data as any).stats}
+        columns={system.data.dockGrid.columns}
+        rows={system.data.dockGrid.rows}
+        compact
+        t={t}
+      />
+      );
+      case 'events': return (
+      <EventFeed
+        compact
+        events={(system.data as any).viewerEvents || []}
+        totals={(system.data as any).eventTotals}
+        run={system.actions.events}
+        shoutout={(login: string) => system.actions.twitchExtras({ op: 'shoutout', target: login })}
+        language={system.settings.language}
+        t={t}
+      />
+      );
+      case 'questions': return (
+      <DockQuestions
+        questions={(system.data as any).questions}
+        setStatus={system.actions.setQuestionStatus}
+        show={system.actions.showQuestion}
+        control={system.actions.questions}
+        t={t}
+      />
+      );
+      case 'plan': return (
+      <DockPlan
+        plan={(system.data as any).plan}
+        planGoto={system.actions.planGoto}
+        runDockAction={system.actions.runDockAction}
+        t={t}
+      />
+      );
+      default: return null;
+    }
+  };
+  /*
+    The stream in the dock (components/DockPlayer.tsx): off unless switched on,
+    and switched on this device only, so a moderator can watch on a phone and
+    not at a desk where the stream is on another screen.
+  */
+  const [watching, setWatching] = useState(() => { try { return localStorage.getItem('dock_watch') === 'on'; } catch { return false; } });
+  const flipWatching = () => setWatching((on) => {
+    try { localStorage.setItem('dock_watch', on ? 'off' : 'on'); } catch { /* kept for this visit only */ }
+    return !on;
+  });
+  /*
+    A wide window at a desk, watching: the stream beside the panels, as on a
+    phone held sideways, instead of a band across the top. A band as wide as a
+    desk monitor is at most half the height, so most of its width was bars
+    and the deck under it sat small in the middle. The tabs stay on top.
+  */
+  const dockWide = useWideDesk() && watching && !dockSideways;
+  const watchLabel = t.dockWatch || 'Watch the stream here (this device only)';
+  const watchButton = (
+    <button
+      type="button" onClick={flipWatching} aria-pressed={watching} title={watchLabel} aria-label={watchLabel} data-dock-watch={watching ? 'on' : 'off'}
+      className={`${dockSideways ? 'w-9 h-9' : 'flex-none px-2 py-1'} shrink-0 rounded-md flex items-center justify-center transition-all ${watching ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'}`}
+    >
+      <Tv size={dockSideways ? 16 : 11} />
+    </button>
+  );
 
   const handleAcknowledgeInsecure = (blocked: boolean) => { if (!blocked) { window.location.reload(); } else { setHasInsecureBlocked(false); localStorage.setItem('insecure_content_acknowledged', 'true'); setShowInsecureModal(false); } };
 
@@ -974,8 +1073,15 @@ export default function App() {
   */
   if (mode === 'overlay') return <style>{'body, html { background: transparent !important; }'}</style>;
 
-  if (mode === 'dock') { return ( <div className={`min-h-dvh font-sans ${system.settings.transparentBackground ? 'bg-transparent' : ''} overflow-hidden`} style={{ backgroundColor: system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor }}> <style>{` body, html { background-color: ${system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor} !important; ${system.settings.transparentBackground ? 'background-image: none !important;' : ''} height: 100%; overflow: hidden; } `}</style> {accentStyles}<div className={`flex ${dockSideways ? 'flex-row gap-2' : 'flex-col'} h-dvh p-2 relative`}> <HoldAwake /> {pickerState && (<><div className="fixed inset-0 z-[9990] bg-transparent" onClick={() => setPickerState(null)} /><EmojiPicker style={{ top: pickerState.top, left: pickerState.left }} onSelect={(emoji: string) => setMessageInput(insertAtCursor(chatInputRef.current, messageInput, emoji))} onClose={() => setPickerState(null)} /></>)}
-      {mode === 'dock' && <DockTabs tabs={DOCK_TABS} active={panel} onPick={setDockTab} vertical={dockSideways} footer={dockSideways ? <ScreenControls t={t} /> : null} />}
+  if (mode === 'dock') { return ( <div className={`min-h-dvh font-sans ${system.settings.transparentBackground ? 'bg-transparent' : ''} overflow-hidden`} style={{ backgroundColor: system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor }}> <style>{` body, html { background-color: ${system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor} !important; ${system.settings.transparentBackground ? 'background-image: none !important;' : ''} height: 100%; overflow: hidden; } `}</style> {accentStyles}<div className={`${dockWide ? '' : `flex ${dockSideways ? 'flex-row gap-2' : 'flex-col'}`} h-dvh p-2 relative`} data-dock-layout={dockWide ? 'wide' : dockSideways ? 'sideways' : 'upright'}> {dockWide && <style>{DOCK_WIDE_CSS}</style>} <HoldAwake /> {pickerState && (<><div className="fixed inset-0 z-[9990] bg-transparent" onClick={() => setPickerState(null)} /><EmojiPicker style={{ top: pickerState.top, left: pickerState.left }} onSelect={(emoji: string) => setMessageInput(insertAtCursor(chatInputRef.current, messageInput, emoji))} onClose={() => setPickerState(null)} /></>)}
+      {mode === 'dock' && <DockTabs tabs={DOCK_TABS} active={panel} onPick={setDockTab} vertical={dockSideways} footer={dockSideways ? <ScreenControls t={t} /> : null} extra={dockSideways ? watchButton : <>{watchButton}{isTouchScreen() && <ScreenControls t={t} row />}</>} extraWidth={isTouchScreen() ? 104 : 40} />}
+      {mode === 'dock' && watching && (
+        <DockPlayer channel={system.connections.twitchChannel} beside={dockSideways || dockWide} topRoom={dockWide ? 56 : 16} t={t}>
+          {/* Beside the panels, the room under the picture: the stream's line, and another tab when it fits. */}
+          {(dockSideways || dockWide) && <DockStreamInfo streamNow={(system.data as any).streamNow} stats={(system.data as any).stats} t={t} />}
+          {(dockSideways || dockWide) && <DockBelow tabs={DOCK_TABS} body={(id) => dockPanelBody(id, true)} t={t} />}
+        </DockPlayer>
+      )}
       {/* The panels, in a column of their own: beside the tabs when the phone is sideways, under them otherwise. */}
       <div className="flex-1 min-w-0 min-h-0 flex flex-col">
       {/* No alerts here: the dock is chat. Alerts belong to the alerts page and the alerts layer on a layout. */} <div className="flex-1 min-h-0 flex relative" style={mode === 'dock' && panel !== 'chat' ? { display: 'none' } : undefined}><div className="flex-1 overflow-y-auto flex flex-col-reverse relative scroll-smooth" ref={chatScrollRef} onScroll={onChatScroll} style={{ gap: `${system.settings.messageGap}px` }}> {<ChatStyle settings={system.settings} />} {/* The placeholders are for somebody looking at the dock. On stream they were a caption nobody asked for, in English, and "Connecting…" took the place of the whole chat whenever the page loaded or the server restarted. */}{(mode === 'dock' && system.status.twitch === 'disconnected' && system.status.tiktok === 'disconnected' && system.status.discord === 'disconnected' && system.status.youtube !== 'connected') ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <div className="w-12 h-12 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4 border border-zinc-700/50"> <WifiOff size={24} className="text-zinc-500" /> </div> <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.connecting}</p> </div> ) : (mode === 'dock' && system.data.chatMessages.length === 0) ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <Loader2 className="w-8 h-8 text-current-accent animate-spin mb-4" /> <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.noMessages}</p> </div> ) : ( system.data.chatMessages.map((chat, idx) => renderChatMessageHelper(chat, idx)) )} </div> {mode === 'dock' && !chatPinned && (
@@ -986,52 +1092,22 @@ export default function App() {
       )}</div>
       {mode === 'dock' && panel === 'actions' && (
         <div className="flex-1 min-h-0 overflow-y-auto" data-dock="panel" data-dock-panel="actions">
-          <DockDeck
-            grid={system.data.dockGrid}
-            remember="dock_page_tab"
-            buttons={system.data.dockButtons}
-            streamActions={system.data.streamActions}
-            runDockAction={system.actions.runDockAction}
-            stats={(system.data as any).stats}
-            columns={system.data.dockGrid.columns}
-            rows={system.data.dockGrid.rows}
-            compact
-            t={t}
-          />
+          {dockPanelBody('actions')}
         </div>
       )}
       {mode === 'dock' && panel === 'events' && (
         <div className="flex-1 min-h-0 flex flex-col p-1" data-dock="panel" data-dock-panel="events">
-          <EventFeed
-            compact
-            events={(system.data as any).viewerEvents || []}
-            totals={(system.data as any).eventTotals}
-            run={system.actions.events}
-            shoutout={(login: string) => system.actions.twitchExtras({ op: 'shoutout', target: login })}
-            language={system.settings.language}
-            t={t}
-          />
+          {dockPanelBody('events')}
         </div>
       )}
       {mode === 'dock' && panel === 'questions' && (
         <div className="flex-1 min-h-0 overflow-y-auto" data-dock="panel" data-dock-panel="questions">
-          <DockQuestions
-            questions={(system.data as any).questions}
-            setStatus={system.actions.setQuestionStatus}
-            show={system.actions.showQuestion}
-            control={system.actions.questions}
-            t={t}
-          />
+          {dockPanelBody('questions')}
         </div>
       )}
       {mode === 'dock' && panel === 'plan' && (
         <div className="flex-1 min-h-0 overflow-y-auto" data-dock="panel" data-dock-panel="plan">
-          <DockPlan
-            plan={(system.data as any).plan}
-            planGoto={system.actions.planGoto}
-            runDockAction={system.actions.runDockAction}
-            t={t}
-          />
+          {dockPanelBody('plan')}
         </div>
       )}
       {mode === 'dock' && panel === 'chat' && ( <div className="mt-2 pt-3 border-t border-white/10 flex flex-col"> <div className="mb-2"><AutomodQueue held={(system.data as any).automodHeld || []} ask={system.actions.twitchMod} t={t} /></div> <div className="flex items-center gap-2 px-1 mb-1.5"> <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 opacity-60">{t.sendingAs}:</span>{system.status.twitchBot === 'connected' ? ( <div className="flex bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800 shadow-sm"> <button onClick={() => system.settings.setSenderRole('main')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'main' ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {chatT.mainAccount} </button> <button onClick={() => system.settings.setSenderRole('bot')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'bot' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.botAccount} </button> </div> ) : ( <span className="text-[8px] font-black uppercase tracking-widest text-current-accent opacity-60"> {chatT.mainAccount} {chatTwitchUser?.display_name ? `(${chatTwitchUser.display_name})` : ''} </span> )} <SendToPicker value={(system.settings as any).sendTo} set={(system.settings as any).setSendTo} authorised={Boolean((system.connections as any).youtubeAuthorised)} live={Boolean((system.connections as any).youtubeLive)} unitsUsed={(system.data as any).stats?.youtubeUnitsUsed} t={t} /> <div className="ml-auto flex items-center gap-1"><ChatModes ask={system.actions.twitchMod} t={t} />

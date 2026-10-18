@@ -41,12 +41,19 @@ interface Props {
   vertical?: boolean;
   /** Under the tabs in the column: the full-screen and keep-awake buttons. */
   footer?: React.ReactNode;
+  /**
+   * A switch that is not a tab, at the end of the bar (under the tabs in the
+   * column): the stream player's, which shows above whichever tab is open.
+   */
+  extra?: React.ReactNode;
+  /** About how wide the extra is, for whether every tab keeps its word: one button, or three on a phone. */
+  extraWidth?: number;
 }
 
 /** About how wide a tab is with its word: the letters, and the icon and padding around them. */
 const widthWithWord = (tab: DockTab) => tab.label.length * 7 + 36 + (tab.count ? 16 : 0);
 
-export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null }: Props) => {
+export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null, extra = null, extraWidth = 40 }: Props) => {
   /*
     Whether every tab has room for its word. Five tabs in a dock of the usual
     width cut every word to two letters and an ellipsis, which is worse than
@@ -56,7 +63,7 @@ export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null
   */
   const bar = useRef<HTMLDivElement>(null);
   const [roomy, setRoomy] = useState(true);
-  const needed = tabs.reduce((sum, tab) => sum + widthWithWord(tab), 0);
+  const needed = tabs.reduce((sum, tab) => sum + widthWithWord(tab), 0) + (extra ? extraWidth : 0);
   useEffect(() => {
     const el = bar.current;
     if (!el) return undefined;
@@ -68,7 +75,7 @@ export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null
   }, [needed]);
 
   if (vertical) {
-    if (tabs.length < 2 && !footer) return null;
+    if (tabs.length < 2 && !footer && !extra) return null;
     return (
       <div className="w-11 shrink-0 flex flex-col items-center gap-1 bg-zinc-900/80 p-1 rounded-lg border border-zinc-800" data-dock="tabs" data-dock-tabs-side>
         {tabs.length > 1 && tabs.map((tab) => {
@@ -91,12 +98,13 @@ export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null
             </button>
           );
         })}
+        {extra}
         {footer && <div className="mt-auto">{footer}</div>}
       </div>
     );
   }
 
-  if (tabs.length < 2) return null;
+  if (tabs.length < 2 && !extra) return null;
 
   return (
     <div
@@ -132,6 +140,7 @@ export const DockTabs = ({ tabs, active, onPick, vertical = false, footer = null
           </button>
         );
       })}
+      {extra}
     </div>
   );
 };

@@ -445,7 +445,8 @@ test('another dock panel is an entry in a list, not a rearrangement', () => {
   */
   const bar = fs.readFileSync(new URL('../../web/components/DockTabs.tsx', SCRIPT_URL), 'utf8');
   assert.ok(bar.includes('tabs: DockTab[]'), 'the bar no longer takes its tabs as data');
-  assert.ok(bar.includes('if (tabs.length < 2) return null;'),
+  // …unless the bar has something else to carry: the stream player's switch (DockPlayer).
+  assert.ok(bar.includes('if (tabs.length < 2 && !extra) return null;'),
     'a dock with one panel still spends room on a switch');
   for (const part of ['data-dock="tabs"', 'data-dock="tab"', 'data-dock-tab=']) {
     assert.ok(bar.includes(part), 'the switch does not name ' + part);

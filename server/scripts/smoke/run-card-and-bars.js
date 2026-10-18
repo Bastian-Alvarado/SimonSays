@@ -102,8 +102,8 @@ test('a screen a phone can open is sized to what the phone shows, not to 100vh',
   */
   const app = fs.readFileSync(new URL('../../web/App.tsx', SCRIPT_URL), 'utf8');
   const dock = app.slice(app.indexOf("if (mode === 'dock') { return ("));
-  // Upright a column, sideways a row (the tabs at the side), and either way the height on screen.
-  assert.ok(/flex \$\{dockSideways \? 'flex-row gap-2' : 'flex-col'\} h-dvh/.test(dock.slice(0, 2000)), 'the chat dock is sized to 100vh again');
+  // Upright a column, sideways a row (the tabs at the side), wide at a desk a grid (DOCK_WIDE_CSS), and every way the height on screen.
+  assert.ok(/flex \$\{dockSideways \? 'flex-row gap-2' : 'flex-col'\}`?\}? h-dvh/.test(dock.slice(0, 2000)), 'the chat dock is sized to 100vh again');
   const grid = app.slice(app.indexOf("if (mode === 'dock-actions')"));
   // Scrolling upright, filling the screen exactly sideways — the height on screen either way.
   assert.ok(grid.slice(0, 2500).includes("className={`h-dvh bg-[#0a0a0a] font-sans ${dockSideways ? 'overflow-hidden p-2' : 'overflow-auto p-3'}`}"), 'the button grid is sized to 100vh again');

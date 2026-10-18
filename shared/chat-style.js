@@ -135,6 +135,8 @@ export const CHAT_DEFAULTS = {
   showPlatformIcons: true,
   showRankBadges: true,
   colorUsername: true,
+  // A chat layer's name colours: '' goes by colorUsername (shared/name-colours.js).
+  nameColours: '',
   // The page behind the dock. A chat layer sits on a layout, which has a background of its own.
   transparentBackground: false,
   dockBackgroundColor: '#09090b',

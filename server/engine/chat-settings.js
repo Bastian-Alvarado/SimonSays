@@ -21,6 +21,7 @@ import {
   safeFontName,
 } from '../../shared/chat-style.js';
 import { cleanCss, MAX_CHAT_CSS } from '../../shared/clean-css.js';
+import { NAME_COLOUR_SOURCES } from '../../shared/name-colours.js';
 import { currentLook } from '../../shared/looks-history.js';
 
 /** The chat themes the renderer can actually draw. */
@@ -90,6 +91,13 @@ export function cleanChatSettings(incoming, prev) {
     showPlatformIcons: incoming?.showPlatformIcons !== false,
     showRankBadges: incoming?.showRankBadges !== false,
     colorUsername: incoming?.colorUsername !== false,
+    /*
+      How a chat layer colours its names (shared/name-colours.js): the look's,
+      the platform's, or their own. '' where none was chosen, which goes by
+      colorUsername as before; kept when the caller does not mention it.
+    */
+    nameColours: NAME_COLOUR_SOURCES.includes(incoming?.nameColours) ? incoming.nameColours
+      : (incoming && 'nameColours' in incoming ? '' : (NAME_COLOUR_SOURCES.includes(prev?.nameColours) ? prev.nameColours : '')),
     transparentBackground: incoming?.transparentBackground === true,
     dockBackgroundColor: colour(incoming?.dockBackgroundColor, prev.dockBackgroundColor),
 

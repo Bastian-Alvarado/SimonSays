@@ -17,6 +17,11 @@
  * rest: folded so its rows sit side by side and the buttons can grow into the
  * width, or — if the Dock Actions screen says so — two pages next to each
  * other at their usual shape.
+ *
+ * The deck under the stream in the dock (DockBelow) is laid out the same way
+ * wherever it is (fitted): a wide, short box under a 16:9 picture at a desk
+ * is the same problem as a phone held sideways, and the tall shape squeezed
+ * into it made the buttons tiny.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { DockActionsGrid } from './DockActionsGrid';
@@ -33,6 +38,8 @@ type Props = Omit<GridProps, 'page' | 'pages' | 'preview' | 'arrange'> & {
   remember: string;
   /** Under the page buttons when the phone is sideways: the full-screen and keep-awake buttons, on a deck of its own. */
   railExtras?: React.ReactNode;
+  /** Measured and folded as on a phone held sideways, whatever the screen: the deck under the stream (DockBelow). */
+  fitted?: boolean;
 };
 
 /** The size of an element, kept up to date: a ref to put on it, and its width and height. */
@@ -52,10 +59,11 @@ function useBoxSize<T extends HTMLElement>() {
 
 const SWIPE = 50;
 
-export const DockDeck = ({ grid, remember, railExtras, ...gridProps }: Props) => {
+export const DockDeck = ({ grid, remember, railExtras, fitted = false, ...gridProps }: Props) => {
   const { t, compact } = gridProps;
   const pages = pageCount(grid);
-  const sideways = useSideways();
+  // Laid out for a short, wide box: a phone held sideways, or wherever it was asked to be (fitted).
+  const sideways = useSideways() || fitted;
   // Two pages at a time, sideways, when the Dock Actions screen asks for it and there is a second page to show.
   const paired = sideways && sidewaysMode(grid) === 'pages' && pages > 1;
   const [box, boxSize] = useBoxSize<HTMLDivElement>();

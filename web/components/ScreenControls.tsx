@@ -11,9 +11,10 @@
  * home network it is not offered.
  *
  * Whether to keep it awake is this device's choice, remembered, and held by
- * <HoldAwake /> on the dock's pages whichever way up the phone is — the
- * button only shows sideways, but turning the phone upright should not let
- * it sleep. It is asked for again whenever the page comes back into view: the
+ * <HoldAwake /> on the dock's pages whichever way up the phone is. The two
+ * stand in the tab column held sideways, and (since the stream can be watched
+ * in the dock) in the tab bar held upright too, on a phone only: a desk or an
+ * OBS dock has no browser bar to hide. It is asked for again whenever the page comes back into view: the
  * browser lets go of it every time the page is hidden.
  */
 import React, { useEffect, useState } from 'react';
@@ -88,18 +89,26 @@ function useFullscreen() {
   return { on, toggle };
 }
 
-/** The two buttons, stacked, for a rail at the side of the screen. */
-export const ScreenControls = ({ t }: { t: any }) => {
+/** A phone or tablet, by touch rather than by size: where the upright tab bar offers the two. */
+export const isTouchScreen = () => {
+  try { return window.matchMedia('(hover: none) and (pointer: coarse)').matches; } catch { return false; }
+};
+
+/** The two buttons: stacked for a rail at the side of the screen, or side by side (row) at the end of the tab bar. */
+export const ScreenControls = ({ t, row = false }: { t: any; row?: boolean }) => {
   const full = useFullscreen();
   const awake = useAwakeWanted();
   const showFull = canFullscreen();
   const showAwake = canKeepAwake();
   if (!showFull && !showAwake) return null;
-  const base = 'w-9 h-9 shrink-0 flex items-center justify-center rounded-lg border transition-colors';
+  const base = row
+    ? 'flex-none px-2 py-1 shrink-0 flex items-center justify-center rounded-md border transition-colors'
+    : 'w-9 h-9 shrink-0 flex items-center justify-center rounded-lg border transition-colors';
+  const size = row ? 11 : 16;
   const fullWords = full.on ? (t.screenFullscreenOff || 'Leave full screen') : (t.screenFullscreenOn || 'Full screen');
   const awakeWords = awake ? (t.screenAwakeOff || 'Let the screen sleep') : (t.screenAwakeOn || 'Keep the screen on');
   return (
-    <div className="flex flex-col items-center gap-1.5" data-screen-controls>
+    <div className={row ? 'flex items-center gap-0.5 shrink-0' : 'flex flex-col items-center gap-1.5'} data-screen-controls={row ? 'row' : 'column'}>
       {showFull && (
         <button
           onClick={full.toggle}
@@ -107,7 +116,7 @@ export const ScreenControls = ({ t }: { t: any }) => {
           title={fullWords} aria-label={fullWords} aria-pressed={full.on}
           data-screen-fullscreen
         >
-          {full.on ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          {full.on ? <Minimize2 size={size} /> : <Maximize2 size={size} />}
         </button>
       )}
       {showAwake && (
@@ -117,7 +126,7 @@ export const ScreenControls = ({ t }: { t: any }) => {
           title={awakeWords} aria-label={awakeWords} aria-pressed={awake}
           data-screen-awake
         >
-          {awake ? <Sun size={16} /> : <Moon size={16} />}
+          {awake ? <Sun size={size} /> : <Moon size={size} />}
         </button>
       )}
     </div>

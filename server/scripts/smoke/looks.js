@@ -226,9 +226,14 @@ test('no look offers a knob for what a layer sets on it itself', () => {
   const dir = new URL('../../web/components/', SCRIPT_URL);
   const fed = new Set();
   for (const file of fs.readdirSync(dir).filter((n) => n.endsWith('.tsx'))) {
-    for (const m of fs.readFileSync(new URL(file, dir), 'utf8').matchAll(/\['(--[a-z][a-z0-9-]*)' as any\]/g)) fed.add(m[1]);
+    for (const m of fs.readFileSync(new URL(file, dir), 'utf8').matchAll(/\['(--[a-z][a-z0-9-]*)' as any\]/g)) {
+      // Set on one chat name only (ChatMessageRow, a chosen name colour): there it overrides the look's accent ink on purpose.
+      if (file === 'ChatMessageRow.tsx' && m[1] === '--on-accent') continue;
+      fed.add(m[1]);
+    }
   }
   assert.ok(fed.has('--goal-pct') && fed.has('--countdown-text') && fed.has('--voice-glow'), `only found ${[...fed].join(', ')}`);
+  assert.ok(fs.readFileSync(new URL('ChatMessageRow.tsx', dir), 'utf8').includes("['--on-accent' as any]: inkFor(nameColour)"), 'the name-only ink is set somewhere else now');
   const offered = ALL_PRESETS.flatMap((p) => readFields(p.css, p.motionCss || '').filter((f) => fed.has(f.name)).map((f) => `${p.id}: ${f.name}`));
   assert.deepEqual(offered, []);
 });

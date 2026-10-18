@@ -244,3 +244,84 @@ test('the dock\'s page offers only what does something on the dock, each choice 
   // Pop out lives with the link, not floating over the preview.
   assert.ok(DOCK_SETTINGS.includes('data-dock-popout') && !DOCK_SCREEN.includes("window.open(dockUrl"), 'pop out is still over the preview');
 });
+
+test('the stream in the dock: Twitch\'s own player, off until switched on, on one device at a time, never pictures from OBS', () => {
+  const player = read('../../web/components/DockPlayer.tsx');
+  const app = read('../../web/App.tsx');
+  const tabs = read('../../web/components/DockTabs.tsx');
+  // Straight from Twitch to the phone, with this page as the parent Twitch checks; muted, as a phone asks a tap for sound.
+  assert.ok(player.includes('https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${encodeURIComponent(host)}&muted=true&autoplay=true'));
+  assert.ok(player.includes('twitchPlayerUrl(channel, window.location.hostname)'));
+  assert.ok(!/GetSourceScreenshot|screenshot/i.test(player), 'the streamer chose no OBS pictures: no load on the computer or the server');
+  // Twitch plays only on https: a note where it can't, rather than Twitch's error; and a note with no channel.
+  assert.ok(player.includes('!window.isSecureContext ?') && player.includes('const note = !channel ?') && player.includes('const player = note ? say(note) :'));
+  // Its own space, at least 300 tall upright, beside the tabs sideways; never over the panels.
+  assert.ok(player.includes("'w-full shrink-0 mb-2 aspect-video min-h-[min(300px,50dvh)] max-h-[50dvh]'"));
+  // Sideways: always 16:9 (no bars), as wide as the moderator dragged it on this device, unless the height runs out first.
+  assert.ok(player.includes("? 'w-full shrink-0 aspect-video'") && player.includes('data-dock-side'));
+  assert.ok(player.includes("const SPLIT_KEY = 'dock_watch_split';") && player.includes('data-dock-player-handle') && player.includes('setPointerCapture'));
+  assert.ok(player.includes("return beside ? <>{column(player)}{handle}</> : player;"));
+  // Under the picture, beside the panels: the stream's line always (its room kept in the width), and another tab when it fits.
+  assert.ok(player.includes('calc((100dvh - ${topRoom + UNDER_ROOM}px) * 16 / 9))') && player.includes('export const UNDER_ROOM = 36;'));
+  assert.ok(app.includes('<DockStreamInfo streamNow={(system.data as any).streamNow} stats={(system.data as any).stats} t={t} />'));
+  assert.ok(app.includes('<DockBelow tabs={DOCK_TABS} body={(id) => dockPanelBody(id, true)} t={t} />'));
+  const below = read('../../web/components/DockBelow.tsx');
+  assert.ok(below.includes('export const MIN_HEIGHT = 120;') && below.includes('setFits(el.clientHeight >= MIN_HEIGHT)'), 'no sliver of a panel under a full-height picture');
+  assert.ok(below.includes("tabs.filter((tab) => tab.id !== 'chat')") && below.includes("const KEY = 'dock_below';"), 'any tab but the chat, chosen per device');
+  // The deck under the stream is laid out for its short, wide box at a desk too, as on a phone held sideways; the tab's own deck is not.
+  const deck = read('../../web/components/DockDeck.tsx');
+  assert.ok(deck.includes('const sideways = useSideways() || fitted;') && app.includes('fitted={under}') && app.includes('body={(id) => dockPanelBody(id, true)}'));
+  const info = read('../../web/components/DockStreamInfo.tsx');
+  assert.ok(info.includes("(s.youtubeLive ? Number(s.youtubeViewers) || 0 : 0)") && info.includes('className="h-7 shrink-0'), 'the home screen’s count, in a line that never moves the player');
+  // A wide desk window too: the stream beside the panels under the tabs, not a band of bars across the top.
+  assert.ok(app.includes("const dockWide = useWideDesk() && watching && !dockSideways;") && app.includes("'(min-width: 900px) and (min-aspect-ratio: 4/3) and (hover: hover)'"));
+  assert.ok(app.includes('[data-dock-layout="wide"] > [data-dock="tabs"] { grid-column: 1 / -1; }'));
+  // Full screen and keep-awake upright too, on a phone (no browser bar to hide at a desk or in OBS).
+  assert.ok(app.includes('{isTouchScreen() && <ScreenControls t={t} row />}'));
+  assert.ok(read('../../web/components/ScreenControls.tsx').includes("data-screen-controls={row ? 'row' : 'column'}"));
+  // Off unless this device was switched on; the switch sits by the tabs, upright and sideways.
+  assert.ok(app.includes("localStorage.getItem('dock_watch') === 'on'"));
+  assert.ok(app.includes('extra={dockSideways ? watchButton : <>{watchButton}') && app.includes("<DockPlayer channel={system.connections.twitchChannel} beside={dockSideways || dockWide} topRoom={dockWide ? 56 : 16} t={t}>") && app.includes("{mode === 'dock' && watching && ("));
+  assert.ok(tabs.includes('{extra}') && tabs.includes('if (tabs.length < 2 && !extra) return null;'));
+});
+
+test('a name with no colour of its own, or with name colours off, is its platform’s in the dock: Twitch the accent, TikTok white, Discord a washed-out blue, YouTube a brighter red', () => {
+  const css = read('../../shared/dock-chat-css.js');
+  assert.ok(css.includes('--name-twitch: var(--accent);'));
+  for (const p of ['tiktok', 'discord', 'youtube']) assert.ok(css.includes(`--name-${p}: \${N.${p}};`), p);
+  // One list for the dock and every chat layer (shared/name-colours.js).
+  const names = read('../../shared/name-colours.js');
+  for (const [p, c] of [['tiktok', '#ffffff'], ['discord', '#8fa3e6'], ['youtube', '#ff4d4d']]) assert.ok(names.includes(`${p}: '${c}',`), p);
+  for (const p of ['twitch', 'tiktok', 'discord', 'youtube']) assert.ok(css.includes(`[data-chat-platform="${p}"] { --name-own: var(--name-${p}); }`), p);
+  // Their own colour still first, when name colours are on and they have one.
+  assert.ok(css.includes('background: var(--chat-user-color, var(--name-own));'));
+  const row = read('../../web/components/ChatMessageRow.tsx');
+  assert.equal(row.split('data-chat="row" data-chat-platform={chat.platform}').length - 1, 6, 'every kind of row says its platform');
+});
+
+const nameColours = await import('../../../shared/name-colours.js');
+const chatSettings = await import('../../engine/chat-settings.js');
+
+test('a chat layer colours its names by the look, the platform or their own, and a saved look that only knows its accent follows too', () => {
+  const { nameColourSource: src, nameColourFor: colour } = nameColours;
+  // Unchosen, the old switch decides: on is their own, off the look's.
+  assert.deepEqual([src({ colorUsername: true }), src({ colorUsername: false }), src({ colorUsername: false, nameColours: 'platform' })], ['own', 'layout', 'platform']);
+  assert.equal(colour('layout', 'tiktok', '#123456'), '', 'the look decides');
+  assert.equal(colour('platform', 'tiktok', '#123456'), '#ffffff', 'the platform even over their own');
+  assert.equal(colour('platform', 'twitch', '#123456'), '', 'Twitch keeps the look\u2019s accent');
+  assert.equal(colour('own', 'twitch', '#123456'), '#123456');
+  assert.equal(colour('own', 'youtube', ''), '#ff4d4d', 'no colour of their own: the platform\u2019s');
+  const row = read('../../web/components/ChatMessageRow.tsx');
+  // On the name alone, the accent and its ink become the chosen colour: SimonSays Casual's chip is var(--overlay-accent).
+  assert.ok(row.includes("...(nameColour ? { ['--overlay-accent' as any]: nameColour,"));
+  assert.ok(row.includes("...(nameColour ? { ['--chat-user-color' as any]: nameColour } : {}),"));
+  assert.ok(!row.includes('settings.colorUsername'), 'every theme goes by the chosen colour, not the old switch');
+  // The choice is a chat layer's; the dock keeps its switch.
+  assert.ok(read('../../web/components/ChatLayerPanel.tsx').includes('nameChoice: true,'));
+  assert.ok(read('../../web/components/ChatSettingParts.tsx').includes("onChange={(s: string) => patch({ nameColours: s, colorUsername: s === 'own' })}"));
+  // Kept by the server, a wrong one refused, and not lost by a save that does not mention it.
+  const d = chatSettings.DEFAULT_CHAT;
+  assert.equal(chatSettings.cleanChatSettings({ ...d, nameColours: 'platform' }, d).nameColours, 'platform');
+  assert.equal(chatSettings.cleanChatSettings({ ...d, nameColours: 'rainbow' }, d).nameColours, '');
+  assert.equal(chatSettings.cleanChatSettings({ fontSize: 20 }, { ...d, nameColours: 'own' }).nameColours, 'own');
+});

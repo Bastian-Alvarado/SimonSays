@@ -76,6 +76,7 @@ export const ChatLayerPanel = ({ config, patch, others, shareEverywhere, t }: Pr
     draws: { marks: v.chatTheme !== 'retro', slots: custom },
     reset: { word: t.chatThemeReset || 'Theme', hint: t.chatThemeResetHint || 'Back to what the look does by itself' },
     storageKey: 'chat_layer_sections',
+    nameChoice: true,
   });
 
   const looks: Record<string, [string, string]> = {

@@ -173,7 +173,7 @@ test('on a phone held sideways the tabs and page buttons stand at the sides, and
   // A touch screen, wider than tall, and short: not a tablet, not a wide OBS dock with a mouse.
   assert.ok(hook.includes("'(orientation: landscape) and (max-height: 600px) and (hover: none) and (pointer: coarse)'"));
   const deck = read('../../web/components/DockDeck.tsx');
-  assert.ok(deck.includes('const sideways = useSideways();') && deck.includes('data-dock-pager-at="side"'), 'the page buttons stay over or under the grid sideways');
+  assert.ok(deck.includes('const sideways = useSideways() || fitted;') && deck.includes('data-dock-pager-at="side"'), 'the page buttons stay over or under the grid sideways');
   assert.ok(deck.includes('<DockActionsGrid {...gridProps} page={page} pages={pages} fit={boxSize} />'), 'the grid is not given the box to fill');
   assert.ok(deck.includes("const paired = sideways && sidewaysMode(grid) === 'pages' && pages > 1;"));
   const grid = read('../../web/components/DockActionsGrid.tsx');

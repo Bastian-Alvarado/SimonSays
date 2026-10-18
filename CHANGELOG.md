@@ -2,6 +2,14 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.3.0] — 2026-10-18
+
+- The dock can show the stream: a TV button by its tabs puts Twitch’s own player at the top (beside the tabs on a phone held sideways), switched on per device and off until you do. The picture comes straight from Twitch, so it costs your computer and the server nothing.
+- Held sideways, or in a wide window at a desk, the stream sits beside the panels at 16:9 with no bars, and a handle between them sets how wide it is (remembered per device); held upright, the dock’s tab bar has the full-screen and keep-awake buttons on a phone too.
+- Under the stream, beside the panels: a line with how long you have been live, the title and category, and how many are watching; and, where there is room, a second panel (Actions, Plan, Questions or Events, picked per device), so the chat on the right and the deck under the stream show at once. The deck there folds into a wide grid on a desk too, so its buttons stay big in a short space.
+- In the dock, a name with no colour of its own (or with name colours off) takes its platform’s: Twitch the accent, TikTok white, Discord a washed-out blue, YouTube a brighter red.
+- A chat layer’s Name colours is now a choice: the layout’s, the platform’s (as in the dock) or their own (else the platform’s), and it works on looks that only know their accent, such as SimonSays Casual’s.
+
 ## [2.2.2] — 2026-10-16
 
 - The Roadmap’s 4.0.0 The community update plans TikTok viewers signing in with TikTok, through its official Login Kit.

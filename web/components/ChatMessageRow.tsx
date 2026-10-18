@@ -22,6 +22,7 @@ import { ChatMessage } from '../types';
 import { CHAT_RANKS, TRANSLATIONS } from '../constants';
 import { PLATFORMS } from '../../shared/platforms.js';
 import { inkFor } from '../../shared/chat-style.js';
+import { nameColourFor, nameColourSource } from '../../shared/name-colours.js';
 import { parseMessageWithEmotes } from '../utils';
 import { ScopedStyle } from './ScopedStyle';
 // Copied from App rather than shared: eight files in this codebase declare
@@ -291,12 +292,20 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
       defaults that read them sit in the stylesheet at no specificity at all,
       so anything written about them wins.
     */
+    /*
+      What colour the name is: the look's own (layout), its platform's, or
+      the person's own and else the platform's (shared/name-colours.js). The
+      chat layer chooses; the dock keeps its switch (on: their own; off: the
+      look's, and the dock's look goes by platform itself).
+    */
+    const nameSource = nameColourSource(settings as any);
+    const nameColour = nameColourFor(nameSource, chat.platform, chat.color);
     const vars: React.CSSProperties = {
       ['--chat-font-size' as any]: `${settings.fontSize}px`,
       ['--chat-username-size' as any]: `${settings.usernameFontSize}px`,
-      // Left unset when username colours are off, so each theme’s own class
+      // Left unset when the name goes by the look, so each theme’s own class
       // stays in charge rather than losing to an empty value.
-      ...(settings.colorUsername && chat.color ? { ['--chat-user-color' as any]: chat.color } : {}),
+      ...(nameColour ? { ['--chat-user-color' as any]: nameColour } : {}),
       /*
         For a look that draws each rank its own way — the dock's Marathon —
         rather than outlining the line: the colour picked for the rank this
@@ -306,7 +315,7 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
         each colour, and the rank colour as an edge for a look that draws the
         edge as an image. Nothing reads these otherwise.
       */
-      ...(settings.colorUsername && inkFor(chat.color) ? { ['--chat-user-ink' as any]: inkFor(chat.color) } : {}),
+      ...(nameColour && inkFor(nameColour) ? { ['--chat-user-ink' as any]: inkFor(nameColour) } : {}),
       ...(rankPicked ? {
         ['--chat-rank-picked' as any]: rankPicked,
         ['--chat-rank-edge' as any]: `linear-gradient(${rankPicked}, ${rankPicked})`,
@@ -341,6 +350,14 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
         ? ({ none: 'none', upper: 'uppercase', lower: 'lowercase' } as const)[settings.usernameCase]
         : undefined,
       textShadow: outline,
+      /*
+        A look that never reads --chat-user-color (a saved stylesheet such as
+        SimonSays Casual's: its chip is var(--overlay-accent), its words
+        var(--on-accent)) still gets the chosen colour: on the name alone its
+        accent is that colour, with the ink that reads on it. The row's own
+        edge and the rank colours stay the look's.
+      */
+      ...(nameColour ? { ['--overlay-accent' as any]: nameColour, ...(inkFor(nameColour) ? { ['--on-accent' as any]: inkFor(nameColour) } : {}) } : {}),
     };
 
     /*
@@ -386,7 +403,7 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
         <span
           onClick={() => onMention(chat.user)}
           title={t.replyTo}
-          className={`cursor-pointer hover:underline font-bold truncate ${settings.colorUsername ? '' : 'text-zinc-100'}`} data-chat="user"
+          className={`cursor-pointer hover:underline font-bold truncate ${nameSource !== 'layout' ? '' : 'text-zinc-100'}`} data-chat="user"
           style={userStyle}
         >
           {chat.user}{inline ? (settings.nameSeparator || '') : ''}
@@ -407,7 +424,7 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
 
       if (inline) {
         return (
-          <div key={chat.id} className={`group flex items-baseline gap-1.5 p-2 rounded-xl hover:bg-white/5 ${animClass}`} data-chat="row" data-chat-kind="custom" data-chat-rank={rank || undefined} style={rowWithRank}>
+          <div key={chat.id} className={`group flex items-baseline gap-1.5 p-2 rounded-xl hover:bg-white/5 ${animClass}`} data-chat="row" data-chat-platform={chat.platform} data-chat-kind="custom" data-chat-rank={rank || undefined} style={rowWithRank}>
             {avatar}
             {timeLeft && time}
             {marksFirst && marks}
@@ -420,7 +437,7 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
       }
 
       return (
-        <div key={chat.id} className={`group flex items-start gap-3 p-3 rounded-2xl hover:bg-white/5 ${animClass}`} data-chat="row" data-chat-kind="custom" data-chat-rank={rank || undefined} style={rowWithRank}>
+        <div key={chat.id} className={`group flex items-start gap-3 p-3 rounded-2xl hover:bg-white/5 ${animClass}`} data-chat="row" data-chat-platform={chat.platform} data-chat-kind="custom" data-chat-rank={rank || undefined} style={rowWithRank}>
           {avatar}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -436,10 +453,10 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
       );
     }
 
-    if (settings.chatTheme === 'compact') { return ( <div key={chat.id} className={`group flex items-baseline gap-2 py-0.5 px-2 hover:bg-white/5 rounded-sm transition-colors ${animClass}`} data-chat="row" data-chat-kind="compact" data-chat-rank={rank || undefined} style={rowWithRank}> {showTime && (<span className="text-[10px] font-mono text-zinc-600 shrink-0 select-none" data-chat="time">{timeText(chat)}</span>)} <div className="flex items-center gap-1 shrink-0 select-none" data-chat="marks"> {settings.showAvatars && chat.avatar && ( <img src={chat.avatar} className="w-4 h-4 rounded-full" data-chat="avatar" alt="" /> )} {settings.showPlatformIcons && <PlatformMark platform={chat.platform} size={10} />} {renderRankBadges(chat, 10)} </div> <div className="flex-1 break-words leading-snug"> <span onClick={() => onMention(chat.user)} title={t.replyTo} className={`cursor-pointer hover:underline font-bold mr-1 ${settings.colorUsername ? '' : 'text-zinc-300'}`} data-chat="user" style={userStyle}> {chat.user}: </span> <span className="text-zinc-300" data-chat="text" style={commonStyle}> {parseMessageWithEmotes(chat.msg, chat.emotes, settings.emoteSize, (chat as any).names)} </span> </div> </div> ); }
-    if (settings.chatTheme === 'retro') { return ( <div key={chat.id} className={`mb-4 relative group ${animClass}`} data-chat="row" data-chat-kind="retro" data-chat-rank={rank || undefined} style={{ animationDuration: rowStyle.animationDuration, ...vars, ...(rankColour ? { ['--chat-rank' as any]: rankColour } : {}) }}> <div className="bg-[#e5e7eb] p-1.5 rounded-md border-b-4 border-r-4 border-[#9ca3af]" style={rowStyle}> <div className="flex items-center justify-between px-1 mb-1"> <div className="flex items-center gap-2"> <span className="flex items-center shrink-0 select-none" data-chat="marks"><span className="w-3 h-3 rounded-full border border-black block" style={{ backgroundColor: (PLATFORMS as any)[chat.platform]?.colour || '#ff0050' }}></span></span> <span onClick={() => onMention(chat.user)} title={t.replyTo} className={`cursor-pointer hover:underline font-black font-mono uppercase tracking-tight ${settings.colorUsername ? '' : 'text-zinc-800'}`} data-chat="user" style={userStyle}> {chat.user} </span> </div> {showTime && (<span className="font-mono text-[9px] text-zinc-600 font-bold bg-zinc-200 px-1 rounded" data-chat="time">{timeText(chat)}</span>)} </div> <div className="bg-[#18181b] p-2.5 rounded-sm border-2 border-[#27272a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"> <div className="flex gap-2"> {settings.showAvatars && chat.avatar && ( <img src={chat.avatar} className="w-8 h-8 rounded-none border border-zinc-600 shrink-0" data-chat="avatar" alt="Pix" style={{imageRendering: 'pixelated'}} /> )} <div className={`font-mono text-zinc-200 leading-snug break-words`} data-chat="text" style={commonStyle}> {parseMessageWithEmotes(chat.msg, chat.emotes, settings.emoteSize, (chat as any).names)} </div> </div> </div> <div className="absolute -bottom-1 left-4 w-8 h-1 bg-[#8b5cf6] rounded-b-md opacity-80"></div> </div> </div> ); }
+    if (settings.chatTheme === 'compact') { return ( <div key={chat.id} className={`group flex items-baseline gap-2 py-0.5 px-2 hover:bg-white/5 rounded-sm transition-colors ${animClass}`} data-chat="row" data-chat-platform={chat.platform} data-chat-kind="compact" data-chat-rank={rank || undefined} style={rowWithRank}> {showTime && (<span className="text-[10px] font-mono text-zinc-600 shrink-0 select-none" data-chat="time">{timeText(chat)}</span>)} <div className="flex items-center gap-1 shrink-0 select-none" data-chat="marks"> {settings.showAvatars && chat.avatar && ( <img src={chat.avatar} className="w-4 h-4 rounded-full" data-chat="avatar" alt="" /> )} {settings.showPlatformIcons && <PlatformMark platform={chat.platform} size={10} />} {renderRankBadges(chat, 10)} </div> <div className="flex-1 break-words leading-snug"> <span onClick={() => onMention(chat.user)} title={t.replyTo} className={`cursor-pointer hover:underline font-bold mr-1 ${nameSource !== 'layout' ? '' : 'text-zinc-300'}`} data-chat="user" style={userStyle}> {chat.user}: </span> <span className="text-zinc-300" data-chat="text" style={commonStyle}> {parseMessageWithEmotes(chat.msg, chat.emotes, settings.emoteSize, (chat as any).names)} </span> </div> </div> ); }
+    if (settings.chatTheme === 'retro') { return ( <div key={chat.id} className={`mb-4 relative group ${animClass}`} data-chat="row" data-chat-platform={chat.platform} data-chat-kind="retro" data-chat-rank={rank || undefined} style={{ animationDuration: rowStyle.animationDuration, ...vars, ...(rankColour ? { ['--chat-rank' as any]: rankColour } : {}) }}> <div className="bg-[#e5e7eb] p-1.5 rounded-md border-b-4 border-r-4 border-[#9ca3af]" style={rowStyle}> <div className="flex items-center justify-between px-1 mb-1"> <div className="flex items-center gap-2"> <span className="flex items-center shrink-0 select-none" data-chat="marks"><span className="w-3 h-3 rounded-full border border-black block" style={{ backgroundColor: (PLATFORMS as any)[chat.platform]?.colour || '#ff0050' }}></span></span> <span onClick={() => onMention(chat.user)} title={t.replyTo} className={`cursor-pointer hover:underline font-black font-mono uppercase tracking-tight ${nameSource !== 'layout' ? '' : 'text-zinc-800'}`} data-chat="user" style={userStyle}> {chat.user} </span> </div> {showTime && (<span className="font-mono text-[9px] text-zinc-600 font-bold bg-zinc-200 px-1 rounded" data-chat="time">{timeText(chat)}</span>)} </div> <div className="bg-[#18181b] p-2.5 rounded-sm border-2 border-[#27272a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"> <div className="flex gap-2"> {settings.showAvatars && chat.avatar && ( <img src={chat.avatar} className="w-8 h-8 rounded-none border border-zinc-600 shrink-0" data-chat="avatar" alt="Pix" style={{imageRendering: 'pixelated'}} /> )} <div className={`font-mono text-zinc-200 leading-snug break-words`} data-chat="text" style={commonStyle}> {parseMessageWithEmotes(chat.msg, chat.emotes, settings.emoteSize, (chat as any).names)} </div> </div> </div> <div className="absolute -bottom-1 left-4 w-8 h-1 bg-[#8b5cf6] rounded-b-md opacity-80"></div> </div> </div> ); }
     // Default 'modern'
-    return ( <div key={chat.id} className={`group flex items-start gap-3 p-3 rounded-2xl transition-all duration-200 hover:bg-white/5 ${animClass}`} data-chat="row" data-chat-kind="modern" data-chat-rank={rank || undefined} style={rowWithRank}> {settings.showAvatars && chat.avatar && ( <img src={chat.avatar} className="w-8 h-8 rounded-lg shadow-sm border border-white/5 shrink-0" data-chat="avatar" alt="Avatar" /> )} <div className="flex-1 min-w-0"> <div className="flex items-center gap-2 mb-1"> <span className="flex items-center gap-1 shrink-0 select-none" data-chat="marks">{settings.showPlatformIcons && <PlatformMark platform={chat.platform} size={12} />} {renderRankBadges(chat, 12)}</span> <span onClick={() => onMention(chat.user)} title={t.replyTo} className={`cursor-pointer hover:underline font-black uppercase tracking-tight truncate ${settings.colorUsername ? '' : 'text-zinc-100'}`} data-chat="user" style={userStyle}> {chat.user} </span> {showTime && (<span className="text-[9px] font-mono font-bold text-zinc-600 whitespace-nowrap select-none" data-chat="time">{timeText(chat)}</span>)} </div> <div className={`leading-relaxed text-zinc-300 break-words`} data-chat="text" style={commonStyle}> {parseMessageWithEmotes(chat.msg, chat.emotes, settings.emoteSize, (chat as any).names)} </div> </div> </div> );
+    return ( <div key={chat.id} className={`group flex items-start gap-3 p-3 rounded-2xl transition-all duration-200 hover:bg-white/5 ${animClass}`} data-chat="row" data-chat-platform={chat.platform} data-chat-kind="modern" data-chat-rank={rank || undefined} style={rowWithRank}> {settings.showAvatars && chat.avatar && ( <img src={chat.avatar} className="w-8 h-8 rounded-lg shadow-sm border border-white/5 shrink-0" data-chat="avatar" alt="Avatar" /> )} <div className="flex-1 min-w-0"> <div className="flex items-center gap-2 mb-1"> <span className="flex items-center gap-1 shrink-0 select-none" data-chat="marks">{settings.showPlatformIcons && <PlatformMark platform={chat.platform} size={12} />} {renderRankBadges(chat, 12)}</span> <span onClick={() => onMention(chat.user)} title={t.replyTo} className={`cursor-pointer hover:underline font-black uppercase tracking-tight truncate ${nameSource !== 'layout' ? '' : 'text-zinc-100'}`} data-chat="user" style={userStyle}> {chat.user} </span> {showTime && (<span className="text-[9px] font-mono font-bold text-zinc-600 whitespace-nowrap select-none" data-chat="time">{timeText(chat)}</span>)} </div> <div className={`leading-relaxed text-zinc-300 break-words`} data-chat="text" style={commonStyle}> {parseMessageWithEmotes(chat.msg, chat.emotes, settings.emoteSize, (chat as any).names)} </div> </div> </div> );
   };
 
   /**
@@ -541,7 +558,7 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
         // than one long row that wrapped and left the username stranded beside
         // empty space. The tint, left border and translucent fill stay, so it
         // still reads as an event and not as something somebody typed.
-        <div key={chat.id} className={`flex items-start gap-2 px-3 py-2 my-1 rounded-xl border-l-4 bg-white/[0.04] ${animClass}`} data-chat="row" data-chat-kind="event" style={{ borderLeftColor: chat.color }}>
+        <div key={chat.id} className={`flex items-start gap-2 px-3 py-2 my-1 rounded-xl border-l-4 bg-white/[0.04] ${animClass}`} data-chat="row" data-chat-platform={chat.platform} data-chat-kind="event" style={{ borderLeftColor: chat.color }}>
           {settings.showAvatars && chat.avatar && (
             <img src={chat.avatar} className="w-5 h-5 rounded-md shrink-0 mt-0.5" data-chat="avatar" alt="" />
           )}

@@ -173,7 +173,8 @@ test('the list has words for every kind of viewer event, and the omnibar\'s Rece
 test('the Events dock is in OBS as a tab of the chat dock, and the screen asks before emptying', () => {
   const app = read('../../web/App.tsx');
   assert.ok(app.includes("{ id: 'events', label: t.dockTabEvents || 'Events', icon: List },"));
-  assert.ok(app.includes("panel === 'events' && (") && app.includes('<EventFeed\n            compact') || app.includes('<EventFeed\r\n            compact'));
+  // The tab draws what dockPanelBody('events') draws: the same feed, compact, also under the stream (DockBelow).
+  assert.ok(app.includes("panel === 'events' && (") && app.includes("{dockPanelBody('events')}") && /case 'events': return \(\s*<EventFeed\s+compact/.test(app));
   const screen = read('../../web/components/views/EventsDockView.tsx');
   assert.ok(screen.includes('window.confirm(t.eventsClearConfirm'));
   assert.ok(screen.includes('<EventFeed'));

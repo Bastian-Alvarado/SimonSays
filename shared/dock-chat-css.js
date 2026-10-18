@@ -9,6 +9,7 @@
  */
 
 import { SPECTRUM, SPECTRUM_DOWN } from './looks/common.js';
+import { PLATFORM_NAME_COLOURS as N } from './name-colours.js';
 
 /**
  * The dock's chat: Marathon's, always.
@@ -38,6 +39,11 @@ export const DOCK_CHAT_CSS = `:scope {
   --vip: #ff2d95; /* VIP */
   --sub: #00d5ff; /* Subscriber */
   --accent: var(--overlay-accent, var(--current-accent, #f43f5e));
+  /* A name with no colour of its own (or with name colours off): its platform's. Twitch keeps the accent. */
+  --name-twitch: var(--accent);
+  --name-tiktok: ${N.tiktok};
+  --name-discord: ${N.discord};
+  --name-youtube: ${N.youtube};
 }
 
 [data-chat="row"] {
@@ -48,9 +54,14 @@ export const DOCK_CHAT_CSS = `:scope {
   gap: 8px;
 }
 
-/* The name as a filled chip: their own colour when name colours are on. */
+/* The name as a filled chip: their own colour when name colours are on, else their platform's. */
+[data-chat="row"] { --name-own: var(--accent); }
+[data-chat-platform="twitch"] { --name-own: var(--name-twitch); }
+[data-chat-platform="tiktok"] { --name-own: var(--name-tiktok); }
+[data-chat-platform="discord"] { --name-own: var(--name-discord); }
+[data-chat-platform="youtube"] { --name-own: var(--name-youtube); }
 [data-chat="user"] {
-  background: var(--chat-user-color, var(--accent));
+  background: var(--chat-user-color, var(--name-own));
   color: var(--chat-user-ink, var(--on-accent));
   padding: 0 .4em;
   letter-spacing: .1em;
