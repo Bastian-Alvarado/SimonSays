@@ -258,3 +258,72 @@ doubles.obsCanvasScenes = undefined;
 await store.omnilayer({ op: 'set', settings: { enabled: settingsBefore.enabled, live: settingsBefore.live, scene: settingsBefore.scene, transition: settingsBefore.transition, vertical: { enabled: false, canvas: '', canvasName: '', scene: '' } } });
 store.setLayouts(layoutsBefore);
 await wait(200);
+
+// ------------------------------------- the vertical side's own groups and order
+
+const G = await import('../../../shared/layer-groups.js');
+const vgLayer = (uid, group) => ({ uid, type: 'shape', x: 0, y: 0, width: 100, height: 100, ...(group ? { group } : {}) });
+const vgLayout = { id: 'vg', name: 'VG', width: 1920, height: 1080, groups: [{ id: 'g1', name: 'Pair' }], layers: [vgLayer('a'), vgLayer('b', 'g1'), vgLayer('c', 'g1'), vgLayer('d')] };
+const groupsOf = (layers) => layers.map((l) => `${l.uid}${l.group ? `:${l.group}` : ''}`).join(' ');
+
+test('ungrouping on the vertical side leaves the horizontal side\'s groups as they were', () => {
+  // Untouched, the vertical side follows the horizontal one and nothing of its own is kept.
+  const untouched = F.fromVerticalView(vgLayout, F.viewOf(vgLayout, 'vertical'));
+  assert.equal(F.ownVerticalGrouping(untouched), false);
+  assert.equal(untouched.vertical, undefined, 'a vertical side never changed was saved with something of its own');
+  const view = F.viewOf(vgLayout, 'vertical');
+  const ug = G.ungroupLayers(view.layers, view.groups, { group: 'g1' });
+  const saved = F.fromVerticalView(vgLayout, { ...view, layers: ug.layers, groups: ug.groups });
+  assert.equal(groupsOf(saved.layers), 'a b:g1 c:g1 d', 'the horizontal side lost its group');
+  assert.deepEqual(saved.groups, vgLayout.groups);
+  assert.deepEqual(F.viewOf(saved, 'vertical').groups, [], 'the vertical side still shows the group');
+  assert.equal(groupsOf(F.viewOf(saved, 'vertical').layers), 'a b c d');
+});
+
+test('groups made on the vertical side are its own, drawn in its own order, kept by the server, and let go with one press', () => {
+  const view = F.viewOf(vgLayout, 'vertical');
+  const ug = G.ungroupLayers(view.layers, view.groups, { group: 'g1' });
+  const gr = G.groupLayers(ug.layers, ug.groups, ['a', 'd'], { id: 'v1', name: 'Vert' });
+  const saved = F.fromVerticalView(vgLayout, { ...view, layers: gr.layers, groups: gr.groups });
+  assert.equal(groupsOf(saved.layers), 'a b:g1 c:g1 d', 'grouping on the vertical side changed the horizontal side');
+  assert.deepEqual(saved.vertical.groups, [{ id: 'v1', name: 'Vert' }]);
+  assert.deepEqual(saved.vertical.group, { a: 'v1', d: 'v1' });
+  // Its layers side by side in the vertical order; the horizontal order as it was.
+  assert.deepEqual(F.formatLayout(saved, 'vertical').layers.map((l) => l.uid), ['b', 'c', 'a', 'd']);
+  assert.deepEqual(F.formatLayout(saved, 'horizontal').layers.map((l) => l.uid), ['a', 'b', 'c', 'd']);
+  // The server keeps it, holding it to its shape.
+  const [kept] = normaliseLayouts([saved]);
+  assert.deepEqual(kept.vertical.groups, [{ id: 'v1', name: 'Vert' }]);
+  assert.deepEqual(kept.vertical.order, ['b', 'c', 'a', 'd']);
+  assert.equal(groupsOf(kept.layers), 'a b:g1 c:g1 d');
+  // Junk in it is dropped: unknown layers, groups with bad ids, groups holding nothing.
+  const junk = F.cleanVertical({ order: ['zz', 'a', 'a', 'b'], groups: [{ id: 'bad id!', name: 'x' }, { id: 'v2', name: 'Empty' }, { id: 'v3', name: 'Real' }], group: { a: 'v3', zz: 'v3' } }, ['a', 'b']);
+  assert.deepEqual(junk.order, ['a', 'b']);
+  assert.deepEqual(junk.groups, [{ id: 'v3', name: 'Real' }]);
+  assert.deepEqual(junk.group, { a: 'v3' });
+  // "Use the horizontal groups": the vertical side follows them again.
+  const shared = F.sharedGrouping(saved);
+  assert.equal(F.ownVerticalGrouping(shared), false);
+  assert.equal(groupsOf(F.viewOf(shared, 'vertical').layers), 'a b:g1 c:g1 d');
+  // A layer added on the horizontal side since shows on the vertical side too, at the front.
+  const added = { ...saved, layers: [...saved.layers, vgLayer('e')] };
+  assert.equal(F.viewOf(added, 'vertical').layers.at(-1).uid, 'e');
+  const editor = fs.readFileSync(new URL('../../web/components/views/LayoutsView.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(editor.includes('data-layout-vertical-shared-groups') && editor.includes('const next = sharedGrouping(stored) as CanvasLayout;'));
+  const strings = fs.readFileSync(new URL('../../web/constants.ts', SCRIPT_URL), 'utf8');
+  for (const key of ['layoutVerticalSharedGroups', 'layoutVerticalSharedGroupsHint']) assert.equal(strings.split(`    ${key}: `).length - 1, 2, key);
+});
+
+test('a vertical order of its own keeps a group made on the horizontal side together', () => {
+  const plain = { id: 'vo', name: 'VO', width: 1920, height: 1080, layers: [vgLayer('a'), vgLayer('b'), vgLayer('c'), vgLayer('d')] };
+  // Reordered on the vertical side only: an order of its own, the horizontal side's (no) groups.
+  const view = F.viewOf(plain, 'vertical');
+  const reordered = F.fromVerticalView(plain, { ...view, layers: [view.layers[0], view.layers[3], view.layers[1], view.layers[2]] });
+  assert.deepEqual(reordered.vertical.order, ['a', 'd', 'b', 'c']);
+  assert.equal(reordered.vertical.groups, undefined);
+  // Then A and B grouped on the horizontal side: on the vertical side they stay side by side, not split by D.
+  const grouped = { ...reordered, groups: [{ id: 'h1', name: 'AB' }], layers: reordered.layers.map((l) => (l.uid === 'a' || l.uid === 'b' ? { ...l, group: 'h1' } : l)) };
+  const shown = F.viewOf(grouped, 'vertical').layers.map((l) => `${l.uid}${l.group ? ':' + l.group : ''}`);
+  const at = shown.indexOf('a:h1');
+  assert.ok(at >= 0 && (shown[at + 1] === 'b:h1' || shown[at - 1] === 'b:h1'), `the group is split on the vertical side: ${shown.join(' ')}`);
+});

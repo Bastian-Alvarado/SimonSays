@@ -83,3 +83,26 @@ test('the editor keeps the shape on the canvas, in the size fields and across a 
   assert.ok(src.includes('sizeWithAspect(field, Number(e.target.value) || 0, aspectRatio(layer.aspect))'), 'typing a width bends the shape');
   assert.ok(src.includes('start.some((l) => aspectRatio(l.aspect)) ? box0.width / box0.height : null'), 'stretching a group bends a layer kept to a shape');
 });
+
+test('the layout\'s own settings fold to a line, remembered in the browser, showing name, size, accent and background', () => {
+  const view = fs.readFileSync(new URL('../../web/components/views/LayoutsView.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(view.includes("localStorage.getItem('layout_settings_folded') === 'on'"), 'the fold is not remembered');
+  assert.ok(view.includes('data-layout-settings-toggle') && view.includes('data-layout-settings-summary'));
+  // Everything from the name to the custom CSS goes inside the fold.
+  const open = view.indexOf('{!settingsFolded && (<>');
+  assert.ok(open > 0 && open < view.indexOf("{t.layoutName || 'Name'}") && view.indexOf('</>)}') > view.indexOf('<LayoutCssPanel'), 'not all the settings fold');
+  const strings = fs.readFileSync(new URL('../../web/constants.ts', SCRIPT_URL), 'utf8');
+  for (const key of ['layoutSettings', 'layoutSettingsFold', 'layoutSettingsOpen']) assert.equal(strings.split(`    ${key}: `).length - 1, 2, key);
+});
+
+test('the list of layers scrolls on its own, about eight rows tall, where layer settings open beside the canvas', () => {
+  const view = fs.readFileSync(new URL('../../web/components/views/LayoutsView.tsx', SCRIPT_URL), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(view.includes('className="space-y-3 xl:max-h-[38rem] xl:overflow-y-auto xl:overscroll-contain xl:pr-1 xl:-mr-1" data-layers-scroll'), 'the layers do not scroll in a box of their own');
+  // Rows and group folders inside it; the layers to add stay outside, always in reach.
+  const box = view.indexOf('data-layers-scroll');
+  assert.ok(box < view.indexOf('<LayerGroupFolder') && view.indexOf("{t.layoutAdd || 'Add a layer'}") > view.indexOf('layerRow(unit.layer as CanvasLayer, layerOrder)))}\n              </div>'), 'the list box does not end before the layers to add');
+  // A layer picked on the canvas is brought into view in it.
+  assert.ok(view.includes('const layerScroller = useRef<HTMLDivElement>(null);') && view.includes('}, [selectedLayer]);'));
+  // Dragging near its edge scrolls it: the drag finds the nearest box that scrolls.
+  assert.ok(fs.readFileSync(new URL('../../web/hooks/useDragOrder.tsx', SCRIPT_URL), 'utf8').includes('while (box && !scrolls(box)) box = box.parentElement;'));
+});

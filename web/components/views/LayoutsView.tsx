@@ -50,7 +50,7 @@ import { dropLayer } from '../../../shared/layer-order.js';
 import { tidyGroups, displayUnits, dropInGroup, groupBox, fitGroup, groupLayers, ungroupLayers, newGroupId, groupKey, cleanGroupName } from '../../../shared/layer-groups.js';
 import { useDragOrder, DragGrip, DragOrder } from '../../hooks/useDragOrder';
 import { ASPECTS, aspectRatio, fitAspect, holdAspect, sizeWithAspect } from '../../../shared/aspect.js';
-import { viewOf, fromVerticalView, shownIn, PHONE_SAFE_ZONES } from '../../../shared/layout-formats.js';
+import { viewOf, fromVerticalView, shownIn, PHONE_SAFE_ZONES, sharedGrouping, ownVerticalGrouping } from '../../../shared/layout-formats.js';
 import { LayerGroupFolder } from '../LayerGroupFolder';
 import { CommittedInput } from '../CommittedInput';
 import { fill, refusalWords } from '../../words';
@@ -64,7 +64,7 @@ import { pageLink } from '../../page-link';
 import {
   Check, Copy, ExternalLink, Eye, EyeOff, Layers, Plus, Trash2, ArrowUp, ArrowDown, Lock, LockOpen, SquareDashed, Tag,
   MessageSquare, Bell, Radio, Clock, Users, BarChart3, Headphones, Music, MonitorPlay, Monitor, IdCard, Image as ImageIcon, Target, ListOrdered, MessageCircleQuestion, Type, Square, CopyPlus, Gamepad2, Smile, Mic, X,
-  TrainFront, Megaphone, Trophy, Gift, Folder, FolderPlus, FolderOutput, SquareCheck, Ungroup, Smartphone, Music2, RotateCcw,
+  TrainFront, Megaphone, Trophy, Gift, Folder, FolderPlus, FolderOutput, SquareCheck, Ungroup, Smartphone, Music2, RotateCcw, ChevronRight,
 } from 'lucide-react';
 
 /**
@@ -274,6 +274,16 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
+  // The layer picked, on the canvas or anywhere: brought into view in the list of layers, which scrolls on its own.
+  const layerScroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!selectedLayer) return;
+    const row = layerScroller.current?.querySelector<HTMLElement>(`[data-drag-id="${CSS.escape(selectedLayer)}"]`);
+    const box = layerScroller.current;
+    if (!row || !box || box.scrollHeight <= box.clientHeight) return;
+    const r = row.getBoundingClientRect(); const b = box.getBoundingClientRect();
+    if (r.top < b.top || r.bottom > b.bottom) box.scrollTop += r.top < b.top ? r.top - b.top - 8 : r.bottom - b.bottom + 8;
+  }, [selectedLayer]);
   /*
     A group chosen as a whole: on the canvas its layers move and resize
     together. Choosing one of its layers instead — in the list, or by a
@@ -312,6 +322,11 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
   const setChrome = (which: string, on: boolean) => {
     try { localStorage.setItem(which, on ? 'on' : 'off'); } catch { /* private mode */ }
   };
+  // The layout's own settings — name, size, typeface, accent, background — set once and seldom again: folded to a line when asked, remembered in this browser.
+  const [settingsFolded, setSettingsFoldedNow] = useState(() => {
+    try { return localStorage.getItem('layout_settings_folded') === 'on'; } catch { return false; }
+  });
+  const setSettingsFolded = (on: boolean) => { setSettingsFoldedNow(on); setChrome('layout_settings_folded', on); };
 
   // The layout being edited. Local because a drag produces a move per pointer
   // event and the server does not need to hear about every one of them — it
@@ -431,6 +446,16 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
     applyWorking(viewOf(next, formatRef.current));
     setLayouts(layoutsRef.current.map((l) => (l.id === next.id ? next : l)));
   };
+  // The vertical side following the horizontal side's groups and order again, its own let go.
+  const verticalSharedGroups = () => {
+    const stored = storedRef.current;
+    if (!stored || !ownVerticalGrouping(stored)) return;
+    const next = sharedGrouping(stored) as CanvasLayout;
+    storedRef.current = next;
+    applyWorking(viewOf(next, formatRef.current));
+    setLayouts(layoutsRef.current.map((l) => (l.id === next.id ? next : l)));
+  };
+  const verticalOwnGroups = ownVerticalGrouping(storedRef.current);
   // How many layers have a vertical place of their own: read from the stored layout, which every edit updates first.
   const placedByHand = (uid: string) => Boolean(storedRef.current?.vertical?.boxes?.[uid]);
   const placedCount = Object.keys(storedRef.current?.vertical?.boxes || {}).length;
@@ -1762,9 +1787,19 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                     <RotateCcw size={11} /> {t.layoutVerticalAutoAll || 'Put every layer back'}
                   </button>
                 )}
+                {format === 'vertical' && verticalOwnGroups && (
+                  <button
+                    onClick={() => verticalSharedGroups()}
+                    title={t.layoutVerticalSharedGroupsHint || 'The vertical side goes back to the horizontal side’s groups and order of layers, and follows them again'}
+                    className={`${placedCount > 0 ? '' : 'ml-auto '}flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300`}
+                    data-layout-vertical-shared-groups
+                  >
+                    <Folder size={11} /> {t.layoutVerticalSharedGroups || 'Use the horizontal groups'}
+                  </button>
+                )}
                 {format === 'vertical' && (
                   <p className="basis-full text-[9px] text-zinc-500 leading-snug">
-                    {t.layoutFormatVerticalHint || 'The same layout on OBS\'s vertical canvas. Move or resize a layer here and that is its place on the vertical side only; everything else about it stays shared.'}
+                    {t.layoutFormatVerticalHint || 'The same layout on OBS\'s vertical canvas. Move or resize a layer here and that is its place on the vertical side only. Group, ungroup or reorder layers here and those groups and that order are the vertical side\'s own. Everything else about a layer stays shared.'}
                   </p>
                 )}
               </div>
@@ -2041,7 +2076,25 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               </p>
             )}
             <Locked on={readOnly}>
-            <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-4">
+            <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-4" data-layout-settings={settingsFolded ? 'folded' : 'open'}>
+              <button
+                onClick={() => setSettingsFolded(!settingsFolded)} aria-expanded={!settingsFolded} data-layout-settings-toggle
+                title={settingsFolded ? (t.layoutSettingsOpen || 'Show the layout’s settings') : (t.layoutSettingsFold || 'Fold the layout’s settings away')}
+                className="w-full flex items-center gap-2 text-left group"
+              >
+                <ChevronRight size={12} className={`shrink-0 text-zinc-500 transition-transform ${settingsFolded ? '' : 'rotate-90'}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 group-hover:text-zinc-300 shrink-0">{t.layoutSettings || 'Layout settings'}</span>
+                {/* Folded: what they are, at a glance. */}
+                {settingsFolded && (
+                  <span className="flex-1 min-w-0 flex items-center justify-end gap-2 text-[10px] text-zinc-400" data-layout-settings-summary>
+                    <span className="truncate font-bold text-zinc-300">{working.name}</span>
+                    <span className="shrink-0 font-mono text-zinc-500">{working.width}×{working.height}</span>
+                    <span className={`shrink-0 w-3.5 h-3.5 rounded ${working.accent ? '' : 'border border-dashed border-zinc-600'}`} style={working.accent ? { background: working.accent } : undefined} title={t.layoutAccent || 'Accent'} />
+                    <span className="shrink-0 w-3.5 h-3.5 rounded border border-zinc-700" style={working.background === 'transparent' ? { backgroundImage: 'linear-gradient(45deg,#3f3f46 25%,transparent 25%,transparent 75%,#3f3f46 75%),linear-gradient(45deg,#3f3f46 25%,transparent 25%,transparent 75%,#3f3f46 75%)', backgroundSize: '6px 6px', backgroundPosition: '0 0,3px 3px' } : { background: working.background }} title={t.layoutBackground || 'Background'} />
+                  </span>
+                )}
+              </button>
+              {!settingsFolded && (<>
               <label className="block">
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{t.layoutName || 'Name'}</span>
                 <input
@@ -2181,6 +2234,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                 setCss={(next) => patchLayout({ css: next })}
                 t={t}
               />
+              </>)}
             </div>
 
             </Locked>
@@ -2231,6 +2285,14 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               )}
 
               {/*
+                The rows scroll on their own, about eight tall, so the layers to
+                add below stay in reach. Only where a layer's settings open beside
+                the canvas (xl): narrower, they open inside the list, which then
+                grows instead. Dragging a row near the edge scrolls it (useDragOrder).
+              */}
+              <div ref={layerScroller} className="space-y-3 xl:max-h-[38rem] xl:overflow-y-auto xl:overscroll-contain xl:pr-1 xl:-mr-1" data-layers-scroll>
+
+              {/*
                 A layer on its own is a row; a group is a folder of rows,
                 dragged as one. Both are rows of the same list, so a group
                 goes in front of or behind other layers whole.
@@ -2256,6 +2318,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
                   t={t}
                 />
               ) : layerRow(unit.layer as CanvasLayer, layerOrder)))}
+              </div>
 
               {unused.length > 0 && (
                 <div className="pt-2 border-t border-zinc-800">

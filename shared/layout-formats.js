@@ -25,6 +25,50 @@
  */
 
 import { aspectRatio, fitAspect } from './aspect.js';
+import { tidyGroups, GROUP_ID, MAX_GROUPS, cleanGroupName } from './layer-groups.js';
+
+/*
+  The vertical side's own groups, and its own order of layers. Until the
+  groups or the order are changed on the vertical side it follows the
+  horizontal one's; once they are, it keeps them — in `layout.vertical`
+  as `groups` (its folders), `group` (each layer's, by uid) and `order`
+  (the layers' uids, back to front) — and the horizontal side's are left
+  alone. Groups need their layers side by side in the stack, so groups of
+  their own mean an order of their own: the vertical overlay draws its
+  layers in it. A layer the vertical side has not placed in its order yet
+  (added on the horizontal side since) goes to the front.
+*/
+const hasOwnGrouping = (v) => Boolean(v && (Array.isArray(v.groups) || Array.isArray(v.order)));
+
+/** The layers in the vertical side's order, with its groups: what the vertical view and overlay go by. */
+function verticalGrouping(layout) {
+  const v = layout?.vertical;
+  const layers = layout?.layers || [];
+  if (!hasOwnGrouping(v)) return { layers, groups: layout?.groups || [] };
+  const byUid = new Map(layers.map((l) => [l.uid, l]));
+  const order = Array.isArray(v.order) ? v.order.filter((u) => byUid.has(u)) : layers.map((l) => l.uid);
+  const placed = new Set(order);
+  const ordered = [...order.map((u) => byUid.get(u)), ...layers.filter((l) => !placed.has(l.uid))];
+  // An order of its own with the horizontal side's groups: those groups' layers gathered side by side in it, as any groups' are.
+  if (!Array.isArray(v.groups)) return tidyGroups(ordered, layout?.groups || []);
+  const own = v.group && typeof v.group === 'object' ? v.group : {};
+  const regrouped = ordered.map((l) => {
+    const { group: _horizontal, ...rest } = l;
+    return own[l.uid] ? { ...rest, group: own[l.uid] } : rest;
+  });
+  return tidyGroups(regrouped, v.groups);
+}
+
+/** The layout following its horizontal side's groups and order again: the vertical side's own left out. */
+export function sharedGrouping(layout) {
+  if (!hasOwnGrouping(layout?.vertical)) return layout;
+  const { groups: _g, group: _m, order: _o, ...v } = layout.vertical;
+  const { vertical: _v, ...rest } = layout;
+  return Object.keys(v).length ? { ...rest, vertical: v } : rest;
+}
+
+/** Whether a layout's vertical side keeps groups or an order of its own. */
+export const ownVerticalGrouping = (layout) => hasOwnGrouping(layout?.vertical);
 
 /** The vertical canvas a layout gets until it is given another: 1080×1920, a phone's screen. */
 export const VERTICAL_CANVAS = Object.freeze({ width: 1080, height: 1920 });
@@ -119,12 +163,14 @@ export function viewOf(layout, format) {
   if (!layout || format !== 'vertical') return layout;
   const canvas = verticalCanvas(layout);
   const { vertical, ...rest } = layout;
+  const grouped = verticalGrouping(layout);
   return {
     ...rest,
     _view: 'vertical',
     width: canvas.width,
     height: canvas.height,
-    layers: (layout.layers || []).map((l) => ({ ...l, ...verticalBox(l, layout, canvas) })),
+    groups: grouped.groups,
+    layers: grouped.layers.map((l) => ({ ...l, ...verticalBox(l, layout, canvas) })),
   };
 }
 
@@ -155,8 +201,9 @@ export function fromVerticalView(stored, view) {
   const canvas = { width: num(view.width, LIMITS.min, LIMITS.max, VERTICAL_CANVAS.width), height: num(view.height, LIMITS.min, LIMITS.max, VERTICAL_CANVAS.height) };
   const horizontal = { width: base.width, height: base.height };
   const boxes = {};
-  const layers = (view.layers || []).map((vl) => {
-    const sl = (base.layers || []).find((l) => l.uid === vl.uid);
+  const storedOf = new Map((base.layers || []).map((l) => [l.uid, l]));
+  const converted = (view.layers || []).map((vl) => {
+    const sl = storedOf.get(vl.uid);
     const placed = BOX.every((k) => Number.isFinite(Number(vl[k])) && vl[k] !== undefined);
     let layer;
     if (sl) {
@@ -171,12 +218,30 @@ export function fromVerticalView(stored, view) {
       const box = { x: Math.round(vl.x), y: Math.round(vl.y), width: Math.round(vl.width), height: Math.round(vl.height) };
       if (!sameBox(box, autoVerticalBox(layer, horizontal, canvas))) boxes[vl.uid] = box;
     }
-    return layer;
+    // Its horizontal group is the horizontal side's: kept as stored (none for a layer new here).
+    const { group: _vertical, ...shared } = layer;
+    return sl?.group ? { ...shared, group: sl.group } : shared;
   });
-  const { _view, width, height, layers: _l, ...shared } = view;
+  // The horizontal side's order stays as stored; a layer new on the vertical side goes to the front of it.
+  const byUid = new Map(converted.map((l) => [l.uid, l]));
+  const layers = [
+    ...(base.layers || []).filter((l) => byUid.has(l.uid)).map((l) => byUid.get(l.uid)),
+    ...converted.filter((l) => !storedOf.has(l.uid)),
+  ];
+  // The vertical side's groups and order, as the view left them: kept only where they are not the horizontal side's.
+  const viewOrder = (view.layers || []).map((l) => l.uid);
+  const sameOrder = viewOrder.length === layers.length && viewOrder.every((u, i) => layers[i].uid === u);
+  const viewGroups = (Array.isArray(view.groups) ? view.groups : []).map((g) => ({ id: g.id, name: g.name }));
+  const baseGroups = (Array.isArray(base.groups) ? base.groups : []).map((g) => ({ id: g.id, name: g.name }));
+  const memberOf = Object.fromEntries((view.layers || []).filter((l) => l.group).map((l) => [l.uid, l.group]));
+  const sameGroups = layers.every((l) => (memberOf[l.uid] || '') === (l.group || ''))
+    && JSON.stringify([...viewGroups].sort((a, b) => a.id.localeCompare(b.id))) === JSON.stringify([...baseGroups].sort((a, b) => a.id.localeCompare(b.id)));
+  const { _view, width, height, layers: _l, groups: _g, ...shared } = view;
   const vertical = {
     ...(canvas.width !== VERTICAL_CANVAS.width || canvas.height !== VERTICAL_CANVAS.height ? { width: canvas.width, height: canvas.height } : {}),
     ...(Object.keys(boxes).length ? { boxes } : {}),
+    ...(sameGroups ? {} : { groups: viewGroups, group: memberOf }),
+    ...(sameOrder && sameGroups ? {} : { order: viewOrder }),
   };
   const { vertical: _old, ...rest } = { ...base, ...shared, width: base.width, height: base.height, layers };
   return Object.keys(vertical).length ? { ...rest, vertical } : rest;
@@ -206,6 +271,23 @@ export function cleanVertical(incoming, layerUids) {
     };
   }
   if (Object.keys(boxes).length) out.boxes = boxes;
+  // Its own order and groups, when it has them: layers the layout has, groups that hold something, each group's layers side by side.
+  if (Array.isArray(incoming.order) || Array.isArray(incoming.groups)) {
+    const order = [...new Set((Array.isArray(incoming.order) ? incoming.order : [...uids]).map(String).filter((u) => uids.has(u)))];
+    if (Array.isArray(incoming.groups)) {
+      const member = incoming.group && typeof incoming.group === 'object' ? incoming.group : {};
+      const groups = incoming.groups
+        .filter((g) => g && GROUP_ID.test(String(g.id)))
+        .slice(0, MAX_GROUPS)
+        .map((g) => ({ id: String(g.id), name: cleanGroupName(g.name) }));
+      const tidy = tidyGroups(order.map((uid) => (member[uid] ? { uid, group: String(member[uid]) } : { uid })), groups);
+      out.order = tidy.layers.map((l) => l.uid);
+      out.groups = tidy.groups;
+      out.group = Object.fromEntries(tidy.layers.filter((l) => l.group).map((l) => [l.uid, l.group]));
+    } else {
+      out.order = order;
+    }
+  }
   return Object.keys(out).length ? out : null;
 }
 

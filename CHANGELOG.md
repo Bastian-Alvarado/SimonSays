@@ -2,6 +2,13 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.3.2] — 2026-10-25
+
+- The overlay editor’s layout settings — name, size, typeface, accent, background and custom CSS — fold to one line showing the name, size, accent and background, remembered in that browser.
+- Syncing someone’s Discord roles from Role Management says why when it fails, under their name, instead of failing silently.
+- The overlay editor’s list of layers scrolls on its own, about eight rows tall, so the layers to add stay in reach without scrolling the page; a layer picked on the canvas is brought into view in it. (On narrower screens, where a layer’s settings open inside the list, it grows as before.)
+- The vertical side of a layout can have groups of its own: group, ungroup or reorder layers on the vertical side and the horizontal side’s groups and order stay as they were. Until you do, the vertical side follows the horizontal one; “Use the horizontal groups” makes it follow again.
+
 ## [2.3.1] — 2026-10-25
 
 - The Roadmap’s next major is 3.0.0 The easy install update; The kick update moves to 6.0.0.

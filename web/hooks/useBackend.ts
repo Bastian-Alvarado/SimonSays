@@ -349,7 +349,7 @@ export function useBackend() {
         try {
           msg = JSON.parse(event.data);
         } catch (err) {
-          console.error('unparseable frame from server:', err, event.data);
+          console.error('unparseable frame from server:', err, `(${String(event.data).length} characters)`);
           return;
         }
 

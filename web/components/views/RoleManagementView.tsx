@@ -142,6 +142,8 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
     const [modOpen, setModOpen] = useState('');
     const [modArmed, setModArmed] = useState('');
     const [modSaid, setModSaid] = useState<Record<string, string>>({});
+    // Why syncing somebody's roles did not work, by account, said under their name.
+    const [syncSaid, setSyncSaid] = useState<Record<string, string>>({});
     // YouTube: people seen in its chat, and a channel found by @handle or id.
     const [youtubeResults, setYoutubeResults] = useState<{ seen: any[]; found: any | null } | null>(null);
     const [isSearchingYoutube, setIsSearchingYoutube] = useState(false);
@@ -190,10 +192,11 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
     const handleForceSync = async (key: string) => {
         if (syncingUsers.has(key)) return;
         setSyncingUsers(prev => new Set(prev).add(key));
+        setSyncSaid((m) => ({ ...m, [key]: '' }));
         try {
             await forceSyncUser(key);
-        } catch (e) {
-            console.error(e);
+        } catch (err: any) {
+            setSyncSaid((m) => ({ ...m, [key]: refusalWords(t, err) || String(err?.message || err) }));
         } finally {
             setSyncingUsers(prev => {
                 const next = new Set(prev);
@@ -987,6 +990,7 @@ export const RoleManagementViewConnected: React.FC<RoleManagementViewProps> = ({
                                                   <div className="min-w-0 flex-1">
                                                       <div className="text-xs font-bold text-white truncate">{person.name}</div>
                                                       <div className="text-[9px] text-zinc-500">{(t.linkPersonLevel || 'Level {level} · {xp} XP').replace('{level}', String(person.level)).replace('{xp}', String(person.xp))}</div>
+                                                      {syncSaid[syncKey] && <div className="text-[9px] text-rose-400" data-role-sync-error>{syncSaid[syncKey]}</div>}
                                                   </div>
                                                   {hasDiscord && (
                                                       <button

@@ -777,7 +777,6 @@ export const useStreamSystem = () => {
         // credential whenever the handoff failed, leaving nothing but a
         // mysterious page reload.
         window.history.replaceState({}, '', window.location.pathname + window.location.search);
-        console.info(`Twitch: connected as ${validated.login}`);
       } catch (err: any) {
         console.error('Twitch token handoff failed:', err);
         alert(`Could not finish Twitch login.\n\n${err.message}\n\n`
@@ -823,15 +822,12 @@ export const useStreamSystem = () => {
             localStorage.setItem('discord_guilds', JSON.stringify(result.guilds));
           }
 
-          console.info(`Discord: signed in as ${result?.user?.username ?? 'unknown'}`);
           scrub();
         } else if (provider === 'spotify') {
           await request(C2S.SPOTIFY_EXCHANGE_CODE, { code, redirectUri });
-          console.info('Spotify: authorised');
           scrub();
         } else if (provider === 'youtube') {
           await request(C2S.YOUTUBE_EXCHANGE_CODE, { code, redirectUri });
-          console.info('YouTube: authorised');
           scrub();
         }
       } catch (err: any) {
