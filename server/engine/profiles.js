@@ -410,7 +410,8 @@ export function switchProfile(groupId, profileId) {
 }
 
 /** A new, empty profile. Creating does not switch to it. */
-export function createProfile(groupId, name) {
+/** A new profile: empty, or (`seed`, by collection) starting from a template's layouts. */
+export function createProfile(groupId, name, seed = {}) {
   const group = groupById(groupId);
   if (!group) throw new Error(`no such profile group: ${groupId}`);
   const state = db.get()[groupId];
@@ -422,7 +423,7 @@ export function createProfile(groupId, name) {
     name: safeName(name, `Profile ${state.profiles.length + 1}`),
     // Empty rather than a copy: a new profile is for a different setup. Use
     // duplicate when the point is to start from what is already there.
-    data: Object.fromEntries(group.collections.map((c) => [c, emptyFor(c)])),
+    data: Object.fromEntries(group.collections.map((c) => [c, group.collections.includes(c) && seed[c] !== undefined ? seed[c] : emptyFor(c)])),
   };
   db.update((prev) => ({ ...prev, [groupId]: { ...prev[groupId], profiles: [...prev[groupId].profiles, profile] } }));
   return summary();

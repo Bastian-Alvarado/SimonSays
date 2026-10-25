@@ -971,7 +971,7 @@ export const useStreamSystem = () => {
     profileSwitch: (group: string, id: string) => (isMod ? (group === 'overlays' ? peekProfile(group, id).catch(() => {}) : undefined) : send(C2S.PROFILE_SWITCH, { group, id })),
     profileSave: (group: string) => send(C2S.PROFILE_CAPTURE, { group }),
     profileRevert: (group: string) => send(C2S.PROFILE_REVERT, { group }),
-    profileCreate: (group: string, name: string) => send(C2S.PROFILE_CREATE, { group, name }),
+    profileCreate: (group: string, name: string, from?: { template?: string; layouts?: any[]; lang: string }) => send(C2S.PROFILE_CREATE, { group, name, ...(from || {}) }),
     profileDuplicate: (group: string, name: string) => send(C2S.PROFILE_DUPLICATE, { group, name }),
     profileRename: (group: string, id: string, name: string) => send(C2S.PROFILE_RENAME, { group, id, name }),
     profileDelete: (group: string, id: string) => send(C2S.PROFILE_DELETE, { group, id }),

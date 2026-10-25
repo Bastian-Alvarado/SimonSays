@@ -1058,7 +1058,15 @@ async function handleMessage(ws, raw) {
         return reply(engine.store.profilePeek(payload?.group, payload?.id));
 
       case C2S.PROFILE_CREATE:
-        broadcast(S2C.CONFIG_PATCH, { profiles: engine.store.profileCreate(payload?.group, payload?.name) });
+        // A template only makes overlay layouts; any other group refuses one rather than make an empty profile under its name.
+        if (payload?.template && payload?.group !== 'overlays') throw refusal('layout_template_unknown', 'layout templates are for overlay profiles');
+        // So does a shared layouts file: it is layouts, and nothing else a profile holds.
+        if (payload?.layouts !== undefined && (payload?.group !== 'overlays' || !Array.isArray(payload.layouts) || !payload.layouts.length)) throw refusal('layout_share_not_a_file', 'shared layouts make overlay profiles, from a list of layouts');
+        broadcast(S2C.CONFIG_PATCH, { profiles: engine.store.profileCreate(payload?.group, payload?.name, {
+          ...(payload?.template ? { template: String(payload.template) } : {}),
+          ...(Array.isArray(payload?.layouts) ? { layouts: payload.layouts } : {}),
+          lang: payload?.lang === 'es' ? 'es' : 'en',
+        }) });
         return reply({ ok: true });
 
       case C2S.PROFILE_DUPLICATE:

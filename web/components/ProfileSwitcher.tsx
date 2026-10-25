@@ -17,8 +17,10 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { fill } from '../words';
+import { LAYOUT_TEMPLATES } from '../../shared/layout-template-list.js';
+import { readShareFile } from '../../shared/layout-share.js';
 import {
-  Layers, Plus, Copy, Pencil, Trash2, Save, Undo2, Check, ChevronDown,
+  Layers, Plus, Copy, Pencil, Trash2, Save, Undo2, Check, ChevronDown, LayoutTemplate, Upload,
 } from 'lucide-react';
 
 export interface ProfileGroupState {
@@ -42,7 +44,7 @@ interface ProfileSwitcherProps {
     profileSwitch: (group: string, id: string) => void;
     profileSave: (group: string) => void;
     profileRevert: (group: string) => void;
-    profileCreate: (group: string, name: string) => void;
+    profileCreate: (group: string, name: string, from?: { template?: string; layouts?: any[]; lang: string }) => void;
     profileDuplicate: (group: string, name: string) => void;
     profileRename: (group: string, id: string, name: string) => void;
     profileDelete: (group: string, id: string) => void;
@@ -138,7 +140,30 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profile
   const create = () => {
     setOpen(false);
     const name = window.prompt(t.profileNewPrompt || 'Name for the new, empty profile');
-    if (name?.trim()) actions.profileCreate(group, name.trim());
+    // In this screen's language: a new overlay profile's starter omnibar slot says where to change it.
+    if (name?.trim()) actions.profileCreate(group, name.trim(), { template: '', lang: t.lang === 'es' ? 'es' : 'en' });
+  };
+
+  // A new profile from a layout template: every scene, ready, in this screen's language; nothing that is there now is touched.
+  const fromTemplate = (tpl: (typeof LAYOUT_TEMPLATES)[number]) => {
+    setOpen(false);
+    const lang = t.lang === 'es' ? 'es' : 'en';
+    const name = window.prompt(fill(t.profileTemplatePrompt || 'Name for the new profile, made from “{name}”', { name: tpl.name[lang] }), tpl.name[lang]);
+    if (name?.trim()) actions.profileCreate(group, name.trim(), { template: tpl.id, lang });
+  };
+
+  // A new profile from a layouts file somebody shared (shared/layout-share.js): its layouts, with ids of their own; nothing here is touched.
+  const fromFile = async (file: File | undefined) => {
+    setOpen(false);
+    if (!file) return;
+    let layouts: any[];
+    try { layouts = readShareFile(await file.text()); } catch {
+      window.alert(t.refuseLayoutShareNotAFile || 'That file is not a SimonSays layouts file.');
+      return;
+    }
+    const suggested = file.name.replace(/(\.simonsays-layouts)?\.json$/i, '').replace(/[-_]+/g, ' ').trim();
+    const name = window.prompt(fill(t.profileFilePrompt || 'Name for the new profile (layouts in that file: {n})', { n: layouts.length }), suggested);
+    if (name?.trim()) actions.profileCreate(group, name.trim(), { layouts, lang: t.lang === 'es' ? 'es' : 'en' });
   };
 
   const duplicate = () => {
@@ -234,6 +259,19 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profile
                 <button onClick={create} disabled={atCapacity} className="w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white disabled:opacity-30 transition-colors">
                   <Plus size={11} /> {t.profileNew || 'New empty profile'}
                 </button>
+                {group === 'overlays' && LAYOUT_TEMPLATES.map((tpl) => (
+                  <button key={tpl.id} onClick={() => fromTemplate(tpl)} disabled={atCapacity} title={tpl.hint[t.lang === 'es' ? 'es' : 'en']} data-profile-template={tpl.id}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white disabled:opacity-30 transition-colors">
+                    <LayoutTemplate size={11} /> {fill(t.profileFromTemplate || 'New from a template: {name}', { name: tpl.name[t.lang === 'es' ? 'es' : 'en'] })}
+                  </button>
+                ))}
+                {group === 'overlays' && (
+                  <label title={t.profileFromFileHint || 'Layouts somebody shared as a file, as a profile of their own'} data-profile-from-file
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white transition-colors ${atCapacity ? 'opacity-30 pointer-events-none' : 'cursor-pointer'}`}>
+                    <Upload size={11} /> {t.profileFromFile || 'New from a file'}
+                    <input type="file" accept=".json,application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.currentTarget.value = ''; fromFile(f); }} />
+                  </label>
+                )}
                 <button onClick={duplicate} disabled={atCapacity} className="w-full flex items-center gap-2 px-3 py-2 text-left text-[10px] font-bold text-zinc-400 hover:bg-white/5 hover:text-white disabled:opacity-30 transition-colors">
                   <Copy size={11} /> {t.profileDuplicate || 'Duplicate this one'}
                 </button>

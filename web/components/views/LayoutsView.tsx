@@ -52,6 +52,7 @@ import { useDragOrder, DragGrip, DragOrder } from '../../hooks/useDragOrder';
 import { ASPECTS, aspectRatio, fitAspect, holdAspect, sizeWithAspect } from '../../../shared/aspect.js';
 import { viewOf, fromVerticalView, shownIn, PHONE_SAFE_ZONES, sharedGrouping, ownVerticalGrouping } from '../../../shared/layout-formats.js';
 import { LayerGroupFolder } from '../LayerGroupFolder';
+import { LayoutShare } from '../LayoutShare';
 import { CommittedInput } from '../CommittedInput';
 import { fill, refusalWords } from '../../words';
 import { themeFromLayout } from '../../../shared/user-themes.js';
@@ -605,6 +606,16 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
     setSelectedId(layout.id);
     setSelectedLayer(null);
   };
+
+  // Layouts from a file somebody shared: added as new ones (ids of their own, shared/layout-share.js), the first opened.
+  const addShared = (incoming: CanvasLayout[]) => {
+    if (!incoming.length) return;
+    setLayouts([...layouts, ...incoming]);
+    setSelectedId(incoming[0].id);
+    setSelectedLayer(null);
+  };
+  const overlayProfiles = ((system?.data as any)?.profiles || []).find((g: any) => g.id === 'overlays');
+  const profileName = overlayProfiles?.profiles?.find((p: any) => p.id === overlayProfiles.active)?.name || t.overlays || 'Overlays';
 
   const deleteLayout = (id: string) => {
     const rest = layouts.filter((l) => l.id !== id);
@@ -1733,7 +1744,10 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
             </button>
           ))}
         </div>
-        {!readOnly && <Button icon={<Plus size={16} />} onClick={newLayout} disabled={atCapacity}>{t.layoutNew || 'New layout'}</Button>}
+        <div className="flex flex-wrap items-center gap-2">
+          {!readOnly && <LayoutShare layouts={layouts} working={working ? toStored(working) : null} profileName={profileName} max={MAX_LAYOUTS} onAdd={addShared} t={t} />}
+          {!readOnly && <Button icon={<Plus size={16} />} onClick={newLayout} disabled={atCapacity}>{t.layoutNew || 'New layout'}</Button>}
+        </div>
       </div>
 
       {!working ? (

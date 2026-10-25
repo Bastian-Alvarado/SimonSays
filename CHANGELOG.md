@@ -2,6 +2,12 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.4.0] — 2026-10-25
+
+- Overlays → the profile menu has New from a template: SimonSays Casual — every scene ready in the SimonSays look (starting, in game, just chatting, BRB, ending, 16:9 and 4:3 game, co-op and 4 players, each with its vertical side), as a new profile, in the dashboard’s language. Nobody’s content comes with it: the default avatar, no pictures, and no OBS sources, timers or scenes picked, for you to choose.
+- A new install, and every new overlay profile, starts with the omnibar on and one message slot — “Go to the omnibar tab to modify what appears here!” — so an omnibar layer shows something and says where to change it, instead of nothing.
+- Overlays → layouts can be shared as a file: Share, beside New layout, downloads this layout or every layout of the profile, leaving out what is yours unless you say otherwise (the OBS sources, timers and scenes picked, which avatar it draws, pictures you uploaded). Add from a file puts somebody’s layouts in this profile as new ones, and New from a file in the profile menu makes them a profile of their own. Nothing that is there is ever replaced.
+
 ## [2.3.2] — 2026-10-25
 
 - The overlay editor’s layout settings — name, size, typeface, accent, background and custom CSS — fold to one line showing the name, size, accent and background, remembered in that browser.

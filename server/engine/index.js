@@ -48,6 +48,7 @@ import { getAnnounce } from './announce.js';
 import { DEFAULT_LAYOUTS, normaliseLayouts, looksBehind, lookColour, SETTINGS_VERSION, setChatFallback, cleanAvatarSources, newAvatarSourceId, MAX_AVATAR_SOURCES } from './layouts.js';
 import { supersededLook, looksNow } from '../../shared/looks-history.js';
 import * as profiles from './profiles.js';
+import { templateLayouts, templateName } from './layout-templates.js';
 import * as sceneTypes from './scene-types.js';
 import * as backup from './backup.js';
 import { cleanPlayers, cleanName, sameName, readColour, colourFor, MAX_PLAYERS, PLAYER_STATES } from '../../shared/players.js';
@@ -107,6 +108,22 @@ const DEFAULT_OMNIBAR = {
     settingsVersion: SETTINGS_VERSION,
   },
 };
+
+/**
+ * The bar a new install and every new overlay profile start with: on, with
+ * one slot saying where to change it. Off and empty, an omnibar layer draws
+ * nothing at all, and nothing on the layout says why.
+ */
+const starterOmnibar = (lang = 'en') => cleanOmnibar({
+  ...DEFAULT_OMNIBAR,
+  enabled: true,
+  items: [{
+    id: 'omni-start',
+    type: 'text',
+    name: lang === 'es' ? 'Bienvenida' : 'Welcome',
+    text: lang === 'es' ? '¡Ve a la pestaña Omnibar para cambiar lo que aparece aquí!' : 'Go to the omnibar tab to modify what appears here!',
+  }],
+});
 
 /**
  * The viewer counter overlay.
@@ -470,7 +487,7 @@ export function initEngine(platformServices) {
     // The rotating bar along the bottom of the stream. Server-side because it
     // is stream configuration rather than a display preference: the overlay in
     // OBS and the editor on a laptop have to agree about what it says.
-    omnibar: collection('omnibar', DEFAULT_OMNIBAR),
+    omnibar: collection('omnibar', starterOmnibar()),
     /* Every bar but Main, each with its own slots, named so a layer can pick one. */
     omnibars: collection('omnibars', []),
     // Named pixel avatars, which avatar layers on any layout can wear (layouts.js cleanAvatarSources).
@@ -1900,7 +1917,15 @@ export const store = {
   // fresh summary and the caller broadcasts a full snapshot rather than a
   // patch — half the app just changed underneath it.
   profileSwitch: (groupId, profileId) => profiles.switchProfile(groupId, profileId),
-  profileCreate: (groupId, name) => profiles.createProfile(groupId, name),
+  // From a layout template (engine/layout-templates.js), or from a file somebody shared (shared/layout-share.js):
+  // its layouts, cleaned as any saved ones are. A template's come in the dashboard's language.
+  // A new overlay profile has the starter omnibar, so its omnibar layers show something and say where to change it.
+  profileCreate: (groupId, name, { template, layouts, lang } = {}) => {
+    const bar = groupId === 'overlays' ? { omnibar: starterOmnibar(lang) } : {};
+    if (template) return profiles.createProfile(groupId, String(name || '').trim() || templateName(template, lang), { ...bar, layouts: normaliseLayouts(templateLayouts(template, lang)) });
+    if (Array.isArray(layouts)) return profiles.createProfile(groupId, name, { ...bar, layouts: normaliseLayouts(layouts) });
+    return profiles.createProfile(groupId, name, bar);
+  },
   profileDuplicate: (groupId, name) => profiles.duplicateProfile(groupId, name),
   profileRename: (groupId, profileId, name) => profiles.renameProfile(groupId, profileId, name),
   profileDelete: (groupId, profileId) => profiles.deleteProfile(groupId, profileId),

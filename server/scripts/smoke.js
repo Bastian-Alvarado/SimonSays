@@ -119,6 +119,9 @@ await import('./smoke/call-triggers.js');
 await import('./smoke/moderating.js');
 // The home screen's own settings and data.
 await import('./smoke/home.js');
+// Layout templates, made into a profile of their own.
+await import('./smoke/layout-templates.js');
+await import('./smoke/layout-share.js');
 // Its own server and sockets, switched on and off again within the file.
 await import('./smoke/sign-in.js');
 // Last: it gives the Spotify module a stand-in token no other file expects.
