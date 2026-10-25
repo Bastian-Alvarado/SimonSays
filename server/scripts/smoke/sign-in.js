@@ -544,7 +544,13 @@ await wait(50);
 const keyConnAfterOut = keyConn.closed;
 // A new owner key ends the sign-ins made with the old one, but not the streamer's Twitch one asking for it.
 const keyIn2 = await http('/auth/owner-key', { method: 'POST', body: { key: ownerKey } });
+// A connection opened with the old key as a header: no sign-in of its own to end, so let go by the key changing.
+const headerConn = await connect({ headers: { Authorization: `Bearer ${ownerKey}` } });
+const headerSaw = headerConn.me?.role || '';
 const rotated = await ownerConn.ask(C2S.AUTH, { op: 'new-key', which: 'ownerKey' });
+await wait(50);
+const headerConnAfterRotate = headerConn.closed;
+const askerAfterRotate = ownerConn.closed;
 const afterRotate = await http('/api/snapshot', { headers: { Cookie: cookieOf(keyIn2.cookie) } });
 const ownerAfterRotate = await http('/api/snapshot', { headers: { Cookie: ownerCookie } });
 
@@ -588,6 +594,9 @@ test('a new owner key ends every sign-in made with the old one, and not the stre
   assert.ok(rotated.payload.ownerKey && rotated.payload.ownerKey !== ownerKey);
   assert.equal(afterRotate.status, 401);
   assert.equal(ownerAfterRotate.status, 200);
+  assert.equal(headerSaw, 'owner', 'the connection on the owner key was not the owner to begin with');
+  assert.equal(headerConnAfterRotate, 4401, 'a connection opened with the old owner key stayed open, still the owner');
+  assert.ok(!askerAfterRotate, 'the connection that asked for the new key was let go');
 });
 
 // Off again, for whatever runs after.
@@ -626,4 +635,16 @@ test('sign-in is said in both languages, and so is every refusal it gives', () =
     assert.equal(words.split(`    ${key}: `).length - 1, 2, key);
   }
   for (const key of ['signInSection', 'signInTwitch', 'signInEnableConfirm', 'signInPageKeyHint']) assert.equal(words.split(`    ${key}: `).length - 1, 2, key);
+});
+
+test('a backup is restored from any device by the owner signed in; with sign-in off, only on the machine the app runs on', () => {
+  const ws = fs.readFileSync(new URL('../api/ws.js', SCRIPT_URL), 'utf8');
+  assert.ok(ws.includes("if (!ws.isLocal && !(auth.isEnabled() && ws.who?.role === 'owner')) throw refusal('import_local_only'"), 'restoring a backup is not limited the way it should be');
+  // Moderators and the pages OBS shows never restore one, wherever they are.
+  assert.equal(mayAsk({ role: 'mod' }, C2S.CONFIG_IMPORT, {}), false);
+  assert.equal(mayAsk({ role: 'page' }, C2S.CONFIG_IMPORT, {}), false);
+  assert.equal(mayAsk({ role: 'owner' }, C2S.CONFIG_IMPORT, {}), true);
+  const strings = fs.readFileSync(new URL('../../web/constants.ts', SCRIPT_URL), 'utf8');
+  assert.equal(strings.split('    refuseImportLocalOnly: ').length - 1, 2);
+  assert.ok(strings.includes('Switch sign-in on in Settings → Sign-in to restore one from any device'), 'the refusal does not say how to restore from another device');
 });

@@ -356,3 +356,21 @@ test('the role activity log names people rather than showing their Discord id', 
     assert.ok(twitchSrc.includes('const byBot = Boolean(c.botLogin) &&') && twitchSrc.includes('isBot: byBot,'), 'Twitch does not say which messages are the bot\'s');
   });
 }
+
+const invite = await import('../../../shared/discord-invite.js');
+
+test('an Invite the bot button makes the URL Generator\u2019s link from the Client ID: the bot scope and the twelve permissions the guide names', () => {
+  // Manage Roles, Manage Events (bit 33: past 32 bits), View Channels, Send Messages, Embed Links, Attach Files,
+  // Read Message History, Mention Everyone, Add Reactions, Use External Emojis, Manage Messages, Connect.
+  assert.equal(invite.BOT_PERMISSIONS.length, 12);
+  assert.equal(invite.botPermissions(), '8859937856');
+  assert.equal(invite.botInviteUrl(' 123456789012345678 '), 'https://discord.com/oauth2/authorize?client_id=123456789012345678&scope=bot&permissions=8859937856');
+  assert.equal(invite.botInviteUrl(''), '', 'no Client ID yet: no link');
+  assert.equal(invite.botInviteUrl('not-an-id'), '');
+  const guide = fs.readFileSync(new URL('../../shared/guides.js', SCRIPT_URL), 'utf8');
+  for (const [name] of invite.BOT_PERMISSIONS) assert.ok(guide.includes(name), `the guide's by-hand list names ${name}`);
+  assert.ok(guide.includes('press {t:discordInvite}'));
+  const screen = fs.readFileSync(new URL('../../web/components/views/ConnectionsView.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(screen.includes('const discordInviteUrl = botInviteUrl(discordToken);'));
+  assert.equal(screen.split('{discordInvite}').length - 1, 2, 'before signing in and after');
+});

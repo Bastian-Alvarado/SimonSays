@@ -106,6 +106,9 @@ export const authState = (identity) => ({
 */
 const endedListeners = new Set();
 export const onSessionsEnded = (fn) => { endedListeners.add(fn); return () => endedListeners.delete(fn); };
+/** Told when the owner key changes, with who changed it: a connection opened with the old key has no sign-in to end, so it is let go by this instead. */
+const keyListeners = new Set();
+export const onOwnerKeyChanged = (fn) => { keyListeners.add(fn); return () => keyListeners.delete(fn); };
 
 /** End every sign-in `drop` picks, and say which. */
 function dropSessions(drop) {
@@ -430,7 +433,10 @@ export function newSecret(which, identity) {
   secrets.set({ ...secrets.get(), [which]: newKey() });
   secrets.flush();
   // A sign-in made with the owner key has no Twitch account to it; with a new key, those end — but not the one asking.
-  if (which === 'ownerKey') dropSessions((s, id) => s.role === 'owner' && !s.userId && id !== identity.sessionId);
+  if (which === 'ownerKey') {
+    dropSessions((s, id) => s.role === 'owner' && !s.userId && id !== identity.sessionId);
+    for (const fn of keyListeners) { try { fn(identity); } catch (err) { log.warn('a sign-in listener failed:', err.message); } }
+  }
   return authState(identity);
 }
 

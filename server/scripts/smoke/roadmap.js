@@ -107,14 +107,14 @@ test('a newer release to update to is on the tree, and unreleased work that name
 });
 
 test('the planned major updates are the two named so far, nothing of the private edition\'s own', () => {
-  assert.deepEqual(R.PLANS.map((p) => [p.version, p.name]), [['2.0.0', 'The moderators update'], ['3.0.0', 'The kick update'], ['4.0.0', 'The community update'], ['5.0.0', 'The creators update'], ['6.0.0', 'The easy install update'], ['7.0.0', 'The automation update'], ['8.0.0', 'The insights update'], ['9.0.0', 'The on-the-go update']]);
+  assert.deepEqual(R.PLANS.map((p) => [p.version, p.name]), [['2.0.0', 'The moderators update'], ['3.0.0', 'The easy install update'], ['4.0.0', 'The community update'], ['5.0.0', 'The creators update'], ['6.0.0', 'The kick update'], ['7.0.0', 'The automation update'], ['8.0.0', 'The insights update'], ['9.0.0', 'The on-the-go update']]);
   for (const plan of R.PLANS) assert.ok(plan.summary && plan.goals?.length, `${plan.name} has nothing said about it`);
 });
 
 test('the kick update says up front that Kick needs a public address of your own, and that nothing goes through anybody else\'s server', () => {
   // The streamer's decision (2026-10-16): Kick sends its events only to an address on the internet, and they
   // come to the streamer's own, never through a relay of the people who make SimonSays.
-  const kick = R.PLANS.find((p) => p.version === '3.0.0');
+  const kick = R.PLANS.find((p) => p.name === 'The kick update');
   assert.ok(kick.goals.some((g) => g.includes('public address or domain') && g.includes('never through anybody else’s server')));
 });
 

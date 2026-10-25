@@ -7,7 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { refusalWords } from '../../words';
 import { Button } from '../Button';
 import { ThemeConfig, RelayConfig, SpotifyState } from '../../types';
-import { AlertTriangle, Bot, Copy, ExternalLink, Info, LogOut, Mic, Monitor, Wifi, WifiOff, X, ToggleRight, ToggleLeft, Hash, Server, Camera } from 'lucide-react';
+import { AlertTriangle, Bot, Copy, ExternalLink, Info, LogOut, Mic, Monitor, Wifi, WifiOff, X, ToggleRight, ToggleLeft, Hash, Server, Camera, UserPlus } from 'lucide-react';
+import { botInviteUrl } from '../../../shared/discord-invite.js';
 import { SpotifyIcon } from '../SpotifyPlayer';
 import { spotifyRedirectUri, youtubeRedirectUri, copyText } from '../../utils';
 
@@ -252,6 +253,34 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({
   }, [discordStatus, discordGuildId, channels.length, fetchChannels]);
 
 
+  /*
+    Adding the bot to a server: the link Discord's URL Generator would make,
+    built from the Client ID with the bot's permissions ticked
+    (shared/discord-invite.js). Straight to Discord, which asks which server.
+    Before signing in it is the step before Login; after, it adds the bot to
+    another server.
+  */
+  const discordInviteUrl = botInviteUrl(discordToken);
+  const discordInvite = (
+    <div className="space-y-1" data-discord-invite={discordInviteUrl ? 'ready' : 'needs-client-id'}>
+      <a
+        href={discordInviteUrl || undefined}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-disabled={!discordInviteUrl}
+        onClick={(e) => { if (!discordInviteUrl) e.preventDefault(); }}
+        className={`w-full flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-xs font-black uppercase tracking-widest transition-colors ${discordInviteUrl ? 'border-[#5865F2]/60 text-[#aab4ff] hover:bg-[#5865F2]/10' : 'border-zinc-800 text-zinc-600 cursor-not-allowed'}`}
+      >
+        <UserPlus size={14} /> {t.discordInvite || 'Invite the bot to a server'}
+      </a>
+      <p className="text-[10px] text-zinc-600 text-left">
+        {discordInviteUrl
+          ? (t.discordInviteHint || 'Opens Discord: pick the server, check the permissions and authorise.')
+          : (t.discordInviteNeedsId || 'Paste the Client ID first.')}
+      </p>
+    </div>
+  );
+
   return (
     <div className="animate-fade-in space-y-12 pb-20">
        <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
@@ -469,6 +498,7 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({
                               t={t}
                             />
                         </div>
+                        <div className="mb-4">{discordInvite}</div>
                         <Button className="w-full bg-[#5865F2] hover:bg-[#4752c4] text-white" onClick={() => connectDiscord(discordToken || '')} disabled={!discordToken}>
                             {t.discordLogin || 'Login with Discord'}
                         </Button>
@@ -506,6 +536,7 @@ export const ConnectionsView: React.FC<ConnectionsViewProps> = ({
                                  </select>
                              </div>
                              <p className="text-[10px] text-zinc-600">{t.botMustBeInServer}</p>
+                             {discordInvite}
                              <button data-discord-commands-everywhere onClick={() => setDiscordCommandsEverywhere?.(!discordCommandsEverywhere)} className={`w-full p-3 rounded-xl border flex items-center justify-between gap-3 text-left ${discordCommandsEverywhere ? 'bg-[#5865F2]/10 border-[#5865F2] text-[#5865F2]' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}>
                                  <span className="flex flex-col"><span className="text-xs font-bold">{t.discordCommandsEverywhere || 'Commands work in every channel'}</span><span className="text-[10px] font-medium opacity-80">{t.discordCommandsEverywhereHint || 'Off: only in the channel above. Either way, a command answers in the Discord channel it was typed in when its chat step sends to "Where it came from".'}</span></span>
                                  {discordCommandsEverywhere ? <ToggleRight size={18} className="shrink-0" /> : <ToggleLeft size={18} className="shrink-0" />}

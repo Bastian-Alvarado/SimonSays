@@ -2,6 +2,13 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [2.3.1] — 2026-10-25
+
+- The Roadmap’s next major is 3.0.0 The easy install update; The kick update moves to 6.0.0.
+- Connections → Discord has an Invite the bot to a server button: Discord’s own link, made from your Client ID with the permissions the bot needs, instead of the Developer Portal’s URL Generator.
+- With sign-in on, a backup can be restored from any device you are signed in on as the streamer, not only from the computer the app runs on. With sign-in off it still stays on that computer, and the message says how to change that.
+- Making a new owner key now also lets go of any connection opened with the old one, as it already ended the sign-ins made with it.
+
 ## [2.3.0] — 2026-10-18
 
 - The dock can show the stream: a TV button by its tabs puts Twitch’s own player at the top (beside the tabs on a phone held sideways), switched on per device and off until you do. The picture comes straight from Twitch, so it costs your computer and the server nothing.

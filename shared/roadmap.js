@@ -34,12 +34,12 @@ export const PLANS = [
   },
   {
     version: '3.0.0',
-    name: 'The kick update',
-    summary: 'Kick joins Twitch, YouTube and TikTok as a platform SimonSays supports.',
+    name: 'The easy install update',
+    summary: 'SimonSays installs like any other program: no Node, no command line.',
     goals: [
-      'Kick chat and events alongside your other platforms.',
-      'Every feature of the app working with Kick, as far as Kick allows it.',
-      'For advanced setups: Kick sends chat and events only to an address on the internet, so it needs a public address or domain of your own. They come straight to you, never through anybody else’s server.',
+      'A Windows installer, and the app in the tray beside the clock.',
+      'A first start that finds OBS on its own and walks through connecting your platforms.',
+      'Updates and backups that run by themselves.',
     ],
   },
   {
@@ -66,12 +66,12 @@ export const PLANS = [
   },
   {
     version: '6.0.0',
-    name: 'The easy install update',
-    summary: 'SimonSays installs like any other program: no Node, no command line.',
+    name: 'The kick update',
+    summary: 'Kick joins Twitch, YouTube and TikTok as a platform SimonSays supports.',
     goals: [
-      'A Windows installer, and the app in the tray beside the clock.',
-      'A first start that finds OBS on its own and walks through connecting your platforms.',
-      'Updates and backups that run by themselves.',
+      'Kick chat and events alongside your other platforms.',
+      'Every feature of the app working with Kick, as far as Kick allows it.',
+      'For advanced setups: Kick sends chat and events only to an address on the internet, so it needs a public address or domain of your own. They come straight to you, never through anybody else’s server.',
     ],
   },
   {

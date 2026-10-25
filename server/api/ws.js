@@ -296,6 +296,10 @@ export function initWebSocket(httpServer) {
   auth.onSessionsEnded((ids) => {
     for (const c of clients) if (c.who?.sessionId && ids.includes(c.who.sessionId)) letGo(c);
   });
+  // A new owner key: connections opened with the old one (it came as a header, with no sign-in of its own) go too — all but the one that asked for it.
+  auth.onOwnerKeyChanged((asking) => {
+    for (const c of clients) if (c.who?.via === 'owner-key' && c.who !== asking) letGo(c);
+  });
 
   wireBusToClients();
   log.info('hub ready');
@@ -1202,11 +1206,13 @@ async function handleMessage(ws, raw) {
         return reply(engine.exportConfig());
 
       case C2S.CONFIG_IMPORT: {
-        // Replacing every command, action and alert is not something a device
-        // on the network gets to do. The Dock Actions surface is deliberately
-        // open to the LAN so a phone can press buttons; this is the other kind
-        // of request, and it stays on the machine running the server.
-        if (!ws.isLocal) throw refusal('import_local_only', 'configuration can only be imported from this machine');
+        // Replacing every command, action and alert is the streamer's alone.
+        // With sign-in on, the owner is who they are wherever they sign in from
+        // (OWNER_ONLY already keeps moderators and pages out), so a backup can
+        // be restored from any device. With it off everybody who reaches the
+        // server is let in as the owner, so then it stays on the machine
+        // running the server.
+        if (!ws.isLocal && !(auth.isEnabled() && ws.who?.role === 'owner')) throw refusal('import_local_only', 'configuration can only be imported from this machine while sign-in is off');
         const summary = engine.importConfig(payload?.bundle ?? payload);
         // Every surface is a replica, so they all need the new truth at once.
         broadcast(S2C.SNAPSHOT, buildSnapshot());
