@@ -23,7 +23,7 @@ import { SCRIPT_URL, assert, fs, test } from './harness.js';
 const read = (p) => fs.readFileSync(new URL(p, SCRIPT_URL), 'utf8');
 const constants = read('../../web/constants.ts');
 const bothLanguages = (key) => constants.split(`    ${key}: '`).length - 1 === 2;
-const { parseVersion, compareVersions, cleanReleaseManifest, sameDependencies, packageName, MAX_PACKAGE_BYTES } = await import('../../../shared/release.js');
+const { parseVersion, compareVersions, cleanReleaseManifest, sameDependencies, packageName, platformPackageName, PLATFORM_KEYS, MAX_PACKAGE_BYTES } = await import('../../../shared/release.js');
 const { packTarGz, unpackTarGz } = await import('../../core/tar.js');
 const launcher = await import('../../../start.js');
 const updater = await import('../../engine/updater.js');
@@ -154,7 +154,7 @@ test('an install updated by hand since runs itself, not the older version an upd
   assert.equal(pulledFile.dir, '');
   assert.equal(notPulled.abs, path.join(handInstall, 'versions', '1.2.0'), 'an older install ran over the version updated to');
   assert.ok(launcher.isNewer('1.10.0', '1.9.0') && !launcher.isNewer('1.2.0', '1.2.0') && !launcher.isNewer('x', '1.0.0'));
-  assert.ok(read('../../start.js').includes('const current = chooseCurrent(root);'));
+  assert.ok(read('../../start.js').includes('const current = chooseCurrent(root, base);'));
 });
 
 /*
@@ -179,7 +179,7 @@ const placed = {
 };
 
 test('a version runs on the install\'s own data, assets and .env, never on copies of its own', () => {
-  assert.equal(fromRoot.SIMONSAYS_LAUNCHER, '1');
+  assert.equal(fromRoot.SIMONSAYS_LAUNCHER, launcher.LAUNCHER_VERSION);
   assert.equal(fromRoot.SIMONSAYS_ROOT, install);
   assert.equal(fromVersion.SIMONSAYS_ROOT, install);
   assert.equal(fromVersion.ENV_FILE, path.join(install, '.env'));
@@ -360,6 +360,103 @@ test('an update is refused without the launcher, while live, for a package that 
   assert.equal(seen.unknown, 'update_unknown_op');
   assert.equal(restartedWith, null, 'a refused update restarted the server');
   assert.deepEqual(seen.touched, [], 'a refused update left something in the install');
+});
+
+/*
+  A built copy updating (3.0.0): one the installer made, or a portable zip,
+  with portable.json beside its launcher and no npm. When the new version's
+  dependencies are the same it takes the small package, as any copy does;
+  when they changed, the release's package for its platform, which has them
+  in it — never npm. Against a stand-in GitHub of its own.
+*/
+const builtKey = `${process.platform}-${process.arch}`;
+const builtProgram = path.join(scratch, 'built-program');
+fs.mkdirSync(builtProgram, { recursive: true });
+fs.writeFileSync(path.join(builtProgram, 'portable.json'), JSON.stringify({ version: VERSION, platform: process.platform, arch: process.arch, node: '24.0.0' }));
+const builtRoot = path.join(scratch, 'built-home');
+fs.mkdirSync(builtRoot, { recursive: true });
+// Dependencies other than this copy's: the platform's package is the only way to them.
+const changedLock = JSON.stringify({ packages: { '': { name: 'simonsays-server' }, 'node_modules/new-dep': { version: '1.0.0' } } });
+const smallPkg = packTarGz([{ path: 'server/index.js', data: '' }, { path: 'server/package-lock.json', data: changedLock }, { path: 'shared/version.js', data: "export const VERSION = '99.1.0';\n" }]);
+const platformPkg = packTarGz([
+  { path: 'server/index.js', data: '' }, { path: 'server/package-lock.json', data: changedLock }, { path: 'shared/version.js', data: "export const VERSION = '99.1.0';\n" },
+  { path: 'server/node_modules', dir: true }, { path: 'server/node_modules/new-dep/index.js', data: 'module.exports = 1;' },
+]);
+const platformFile = platformPackageName('99.1.0', builtKey);
+const builtManifest = (extra = {}) => ({ version: '99.1.0', file: packageName('99.1.0'), size: smallPkg.length, sha256: sha(smallPkg), node: 22, ...extra });
+let builtRelease = null;
+let npmAsked = false;
+const builtGithub = http.createServer((req, res) => {
+  const base = `http://127.0.0.1:${builtGithub.address().port}`;
+  if (req.url === '/repos/test/app/releases/latest') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ tag_name: 'v99.1.0', name: 'SimonSays 99.1.0', body: '', html_url: '', published_at: '', assets: [
+      { name: 'release.json', browser_download_url: `${base}/dl/release.json` },
+      { name: packageName('99.1.0'), browser_download_url: `${base}/dl/small` },
+      ...(builtRelease.withPlatform ? [{ name: platformFile, browser_download_url: `${base}/dl/platform` }] : []),
+    ] }));
+    return;
+  }
+  if (req.url === '/dl/release.json') { res.writeHead(200); res.end(JSON.stringify(builtRelease.manifest)); return; }
+  if (req.url === '/dl/small') { res.writeHead(200); res.end(smallPkg); return; }
+  if (req.url === '/dl/platform') { res.writeHead(200); res.end(builtRelease.platformBody || platformPkg); return; }
+  res.writeHead(404); res.end();
+});
+await new Promise((resolve) => builtGithub.listen(0, '127.0.0.1', resolve));
+const builtSaved = { UPDATE_REPO: process.env.UPDATE_REPO, UPDATE_API: process.env.UPDATE_API, SIMONSAYS_ROOT: process.env.SIMONSAYS_ROOT, SIMONSAYS_APP: process.env.SIMONSAYS_APP };
+process.env.UPDATE_REPO = 'test/app';
+process.env.UPDATE_API = `http://127.0.0.1:${builtGithub.address().port}`;
+process.env.SIMONSAYS_ROOT = builtRoot;
+const sourceCopy = updater.builtFor();
+process.env.SIMONSAYS_APP = builtProgram;
+const built = { key: updater.builtFor() };
+restartedWith = null;
+const platformEntry = { file: platformFile, size: platformPkg.length, sha256: sha(platformPkg) };
+builtRelease = { manifest: builtManifest(), withPlatform: false };
+built.noBundle = await codeOf(() => updater.applyNow());
+built.noBundleVars = updater.getUpdates().phase.vars;
+built.leftAfterNoBundle = fs.existsSync(path.join(builtRoot, 'versions')) ? fs.readdirSync(path.join(builtRoot, 'versions')) : [];
+builtRelease = { manifest: builtManifest({ platforms: { [builtKey]: platformEntry } }), withPlatform: true, platformBody: Buffer.concat([platformPkg, Buffer.from('x')]) };
+built.badBundle = await codeOf(() => updater.applyNow());
+builtRelease = { manifest: builtManifest({ platforms: { [builtKey]: platformEntry } }), withPlatform: true };
+built.went = await codeOf(() => updater.applyNow());
+await new Promise((resolve) => { setTimeout(resolve, 900); });
+built.restarted = restartedWith;
+built.dep = fs.existsSync(path.join(builtRoot, 'versions', '99.1.0', 'server', 'node_modules', 'new-dep', 'index.js'));
+built.current = JSON.parse(fs.readFileSync(path.join(builtRoot, 'current.json'), 'utf8'));
+built.backedUp = fs.existsSync(path.join(builtRoot, 'backups'));
+await new Promise((resolve) => builtGithub.close(resolve));
+for (const [k, v] of Object.entries(builtSaved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+updater.stopUpdater();
+
+test('a built copy updates from its platform\'s package when the dependencies changed, never with npm, and says so when the release has none for it', () => {
+  assert.equal(sourceCopy, '', 'a copy of the source counts as built');
+  assert.equal(built.key, builtKey);
+  assert.equal(built.noBundle, 'update_no_bundle');
+  assert.deepEqual(built.noBundleVars, { platform: builtKey });
+  assert.deepEqual(built.leftAfterNoBundle, [], 'a refused update left a version half made');
+  assert.equal(built.badBundle, 'update_checksum', 'a platform package that did not arrive whole was installed');
+  assert.notEqual(built.went, 'update_install', 'it tried npm');
+  assert.equal(built.restarted, updater.RESTART_FOR_UPDATE, `it did not restart into the new version (${built.went})`);
+  assert.ok(built.dep, 'the new version has not got its dependencies');
+  assert.equal(built.current.version, '99.1.0');
+  assert.equal(built.current.dir, 'versions/99.1.0');
+  // The program outside the home is what it goes back to: the installed one, '.'.
+  assert.deepEqual(built.current.previous, { version: VERSION, dir: '.' });
+  const src = read('../engine/updater.js');
+  assert.ok(src.indexOf('} else if (built) {') < src.indexOf('await installDependencies('), 'a built copy can reach npm');
+});
+
+test('release.json names each platform\'s package, held to its shape; one that is off is left out, not the release', () => {
+  const m = cleanReleaseManifest(builtManifest({ platforms: {
+    [builtKey]: platformEntry,
+    'win32-ia32': { ...platformEntry, file: platformPackageName('99.1.0', 'win32-ia32') },
+    'linux-x64': { ...platformEntry, file: 'other.tgz' },
+    'darwin-arm64': { ...platformEntry, file: platformPackageName('99.1.0', 'darwin-arm64'), sha256: 'nope' },
+  } }));
+  assert.deepEqual(Object.keys(m.platforms), [builtKey]);
+  assert.equal(cleanReleaseManifest(builtManifest()).platforms, undefined);
+  assert.ok(PLATFORM_KEYS.includes('win32-x64'));
 });
 
 // The release script's package, from a stand-in app folder: what goes in, what never does.

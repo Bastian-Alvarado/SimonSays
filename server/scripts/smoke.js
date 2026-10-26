@@ -104,6 +104,9 @@ await import('./smoke/scene-types.js');
 await import('./smoke/remote-players.js');
 await import('./smoke/polish.js');
 await import('./smoke/updates.js');
+await import('./smoke/install.js');
+await import('./smoke/portable.js');
+await import('./smoke/tray.js');
 await import('./smoke/vertical.js');
 await import('./smoke/roadmap.js');
 await import('./smoke/user-themes.js');
@@ -122,6 +125,10 @@ await import('./smoke/home.js');
 // Layout templates, made into a profile of their own.
 await import('./smoke/layout-templates.js');
 await import('./smoke/layout-share.js');
+// A new install's first-run setup.
+await import('./smoke/first-run.js');
+// Automatic backups, and putting one back.
+await import('./smoke/auto-backups.js');
 // Its own server and sockets, switched on and off again within the file.
 await import('./smoke/sign-in.js');
 // Last: it gives the Spotify module a stand-in token no other file expects.

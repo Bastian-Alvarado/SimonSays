@@ -36,6 +36,15 @@ export function compareVersions(a, b) {
 export const RELEASE_MANIFEST = 'release.json';
 export const packageName = (version) => `simonsays-${version}.tgz`;
 
+/**
+ * The platforms a release can carry a package of its own for (3.0.0): the
+ * app with its dependencies installed for that platform, for a copy the
+ * installer made, which has no npm to install them with
+ * (scripts/portable.mjs builds them, scripts/release-bundle.mjs packs them).
+ */
+export const PLATFORM_KEYS = ['win32-x64', 'win32-arm64', 'linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64'];
+export const platformPackageName = (version, key) => `simonsays-${version}-${key}.tgz`;
+
 /** release.json, held to its shape: anything off and it is not a release this can install. */
 export function cleanReleaseManifest(raw) {
   const m = raw && typeof raw === 'object' ? raw : null;
@@ -47,7 +56,18 @@ export function cleanReleaseManifest(raw) {
   const size = Number(m.size);
   if (!Number.isInteger(size) || size <= 0 || size > MAX_PACKAGE_BYTES) return null;
   const node = Number(m.node);
-  return { version, file: m.file, size, sha256: m.sha256, node: Number.isInteger(node) && node > 0 ? node : 22 };
+  // Each platform's package held to the same shape; one that is off is left out, not the release.
+  const platforms = {};
+  for (const [key, p] of Object.entries(m.platforms && typeof m.platforms === 'object' ? m.platforms : {})) {
+    const bytes = Number(p?.size);
+    if (!PLATFORM_KEYS.includes(key) || p?.file !== platformPackageName(version, key) || !/^[0-9a-f]{64}$/.test(String(p?.sha256 || ''))) continue;
+    if (!Number.isInteger(bytes) || bytes <= 0 || bytes > MAX_PACKAGE_BYTES) continue;
+    platforms[key] = { file: p.file, size: bytes, sha256: p.sha256 };
+  }
+  return {
+    version, file: m.file, size, sha256: m.sha256, node: Number.isInteger(node) && node > 0 ? node : 22,
+    ...(Object.keys(platforms).length ? { platforms } : {}),
+  };
 }
 
 /** The most a package may weigh: the app without its dependencies is a few MB, so this is room to grow, not a target. */

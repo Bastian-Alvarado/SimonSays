@@ -11,6 +11,9 @@ import { Button } from '../Button';
 import { VERSION } from '../../../shared/version.js';
 import { fill, refusalWords } from '../../words';
 import { UpdatesPanel, type UpdatesState } from '../UpdatesPanel';
+import { BringInPanel } from '../BringInPanel';
+import { AutoBackupsPanel } from '../AutoBackupsPanel';
+import { NetworkPanel } from '../NetworkPanel';
 import { BugReportPanel } from '../BugReportPanel';
 import { SignInPanel } from '../SignInPanel';
 
@@ -27,6 +30,12 @@ interface SettingsViewProps {
   /** Updates from GitHub, on a copy that updates itself (null on one updated by hand), and the way to ask for them. */
   updates?: UpdatesState | null;
   updatesAct?: (op: 'check' | 'apply') => Promise<any>;
+  /** Where this copy keeps things, and bringing in an existing SimonSays (engine/install.js). */
+  installAct?: (op: 'where' | 'look' | 'bring_in' | 'dismiss', folder?: string) => Promise<any>;
+  /** The automatic backups of the data folder (engine/auto-backups.js). */
+  backupsAct?: (op: 'list' | 'take' | 'restore' | 'dismiss', name?: string) => Promise<any>;
+  /** Who can open the dashboard, as the first-run setup asks it (engine/first-run.js). */
+  firstRunAct?: (op: 'state' | 'network', more?: Record<string, any>) => Promise<any>;
   /** To the Roadmap screen: every release, and the ones planned. */
   openRoadmap?: () => void;
   /** Who this is, and the sign-in settings (hooks/useStreamSystem.ts auth). */
@@ -45,6 +54,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   serverVersion,
   updates,
   updatesAct,
+  installAct,
+  backupsAct,
+  firstRunAct,
   openRoadmap,
   auth,
   t
@@ -240,6 +252,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         )}
 
         <p className="mt-4 text-[10px] text-zinc-600 leading-relaxed">{t.backupScopeNote}</p>
+        {backupsAct && <AutoBackupsPanel act={backupsAct} language={language} light={activeTheme.id === 'light'} t={t} />}
       </section>}
 
       {/*
@@ -271,6 +284,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {owner && updates?.enabled && updatesAct && (
           <UpdatesPanel updates={updates} act={updatesAct} language={language} light={activeTheme.id === 'light'} t={t} />
         )}
+        {owner && installAct && <BringInPanel act={installAct} language={language} light={activeTheme.id === 'light'} t={t} />}
+        {owner && firstRunAct && <NetworkPanel act={firstRunAct} light={activeTheme.id === 'light'} t={t} />}
         {owner && <BugReportPanel language={language} light={activeTheme.id === 'light'} t={t} />}
       </section>
     </div>

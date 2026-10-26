@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { NavSections, StatusRow, NavSearch, SearchButton, ScreenTabs, PhoneBar, type NavSection, type SearchEntry } from './components/NavMenu';
 import { useReloadAfterUpdate } from './components/UpdatesPanel';
+import { FirstRun } from './components/FirstRun';
 import { formatLayout } from '../shared/layout-formats.js';
 import { Button } from './components/Button';
 import { NotFoundPage } from './components/NotFoundPage';
@@ -1282,6 +1283,17 @@ export default function App() {
       />
 
       {showIntro && ( <div className="fixed inset-0 z-50 bg-[#050505] flex items-center justify-center font-sans overflow-hidden"> <div className="relative flex items-center justify-center"> <div className="absolute inset-0 bg-rose-500/20 blur-[100px] rounded-full animate-pulse"></div> <div className="relative z-10 flex flex-col items-center"> <div className="relative w-32 h-32 mb-8"> <div className="absolute inset-0 border-4 border-rose-500/30 rounded-full animate-[spin_3s_linear_infinite]"></div> <div className="absolute inset-2 border-4 border-rose-500/50 rounded-full border-t-transparent animate-[spin_2s_linear_infinite_reverse]"></div> <div className="absolute inset-0 flex items-center justify-center"> <Logo className="w-16 h-16 text-rose-500 animate-[pulse_2s_ease-in-out_infinite]" /> </div> </div> <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-4 animate-[slide-up_0.8s_ease-out]"> SIMON SAYS </h1> <div className="h-1 w-24 bg-gradient-to-r from-transparent via-rose-500 to-transparent rounded-full animate-[width_1s_ease-out]"></div> </div> </div> </div> )}
+      {/* A new install's first-run setup (engine/first-run.js): the streamer's, once, over everything else. */}
+      {!system.auth.isMod && !showIntro && (system.data as any).firstRun?.done === false && (
+        <FirstRun
+          act={system.actions.firstRun}
+          installAct={system.actions.install}
+          language={system.settings.language}
+          setLanguage={system.settings.setLanguage}
+          onFinish={(toSetupSteps) => { if (toSetupSteps) { setGuidesTab('start'); setView('guides'); } }}
+          t={t}
+        />
+      )}
       {isMobileMenuOpen && ( <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm md:hidden animate-fade-in" onClick={() => setIsMobileMenuOpen(false)} /> )}
       
       <aside className={`fixed inset-y-0 left-0 z-[70] w-72 ${activeTheme.bgClass} border-r ${activeTheme.borderClass} md:hidden transform transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full shadow-none'}`}> {renderSidebar(true)} </aside>
@@ -1381,6 +1393,9 @@ export default function App() {
                serverVersion={(system.data as any).serverVersion}
                updates={(system.data as any).updates}
                updatesAct={system.actions.updates}
+               installAct={system.actions.install}
+               backupsAct={system.actions.backups}
+               firstRunAct={system.actions.firstRun}
                openRoadmap={() => goTo('roadmap')}
                auth={system.auth}
                t={t} 

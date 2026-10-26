@@ -1,0 +1,12 @@
+{
+  "//": "The Node a portable build carries (scripts/portable.mjs): one version, and the SHA-256 of each platform's official archive from nodejs.org/dist/v<version>/SHASUMS256.txt. A download that does not match is refused. To move to another version, change both and check the sums against that file.",
+  "version": "24.22.1",
+  "sha256": {
+    "win-x64": "d2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5",
+    "win-arm64": "a0c807319fede24c4a0d8f84564c82a619bd313b16b10c007c383c2609e99171",
+    "linux-x64": "6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6",
+    "linux-arm64": "dbabf7a1cbf947e6059ffad2c27b80041db97dea1e553b62afdee7f13fca336e",
+    "darwin-x64": "d132557e7ee2b85af08b0c8c34338e65c6430f2238d01f727728ef42dc83b035",
+    "darwin-arm64": "89c682593d76cd44233fa53b1563264e7de9cbb189cad169135c5b4fadfbc0a7"
+  }
+}

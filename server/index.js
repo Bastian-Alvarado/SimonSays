@@ -34,6 +34,9 @@ import { initHighlights } from './engine/highlights.js';
 import { initLiveDms } from './engine/live-dms.js';
 import { initRemotePlayers, aliasFor, everyAliasOf } from './engine/remote-players.js';
 import { initUpdater } from './engine/updater.js';
+import { initInstall } from './engine/install.js';
+import { initFirstRun } from './engine/first-run.js';
+import { initAutoBackups } from './engine/auto-backups.js';
 import * as omnilayer from './engine/omnilayer.js';
 import { getGreetings } from './engine/welcome.js';
 import { initDiscordQuestions } from './engine/discord-questions.js';
@@ -71,6 +74,9 @@ async function main() {
 
   // 1. Persistence
   initStore();
+  // A new install: nothing in the data folder yet, before anything here writes to it (engine/first-run.js).
+  const fresh = !fs.readdirSync(config.dataDir).some((f) => f.endsWith('.json'));
+  initFirstRun({ fresh });
 
   // 2. Engine, wired to the platform services it will drive
   initEngine({
@@ -184,10 +190,16 @@ async function main() {
     // Started by the launcher (start.js): it waits for this before trusting a new version.
     if (process.send) process.send({ type: 'simonsays-ready', version: VERSION });
   });
+  // The launcher asking it to stop (start.js, for the tray): there is no signal for that on Windows.
+  process.on('message', (m) => { if (m?.type === 'simonsays-stop') shutdown('stop'); });
 
   const shutdown = installShutdownHandlers(server);
   // Updates from GitHub, for the public edition: ready a new version, then stop for the launcher to start it.
   initUpdater({ restarter: (code) => shutdown('update', code), obsService: obs });
+  // Bringing in an existing SimonSays: stop for the launcher to copy it.
+  initInstall({ restarter: (code) => shutdown('bring-in', code), obsService: obs });
+  // A backup a day, and putting one back: stop for the launcher to do it.
+  initAutoBackups({ restarter: (code) => shutdown('restore', code), obsService: obs });
 }
 
 function installShutdownHandlers(server) {

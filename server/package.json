@@ -1,7 +1,7 @@
 {
   "name": "simonsays-server",
   "private": true,
-  "version": "2.4.0",
+  "version": "3.0.0",
   "type": "module",
   "description": "Headless stream automation server: platform connections, command engine, alerts, leveling.",
   "main": "index.js",
@@ -29,5 +29,8 @@
     "tmi.js": "^1.8.5",
     "wasm-webp": "0.1.0",
     "ws": "^8.18.0"
+  },
+  "overrides": {
+    "fflate": "0.7.5"
   }
 }

@@ -22,3 +22,6 @@ update.tgz
 versions/
 current.json
 backups/
+
+# The tray (tray/, Rust): what cargo builds.
+tray/target/

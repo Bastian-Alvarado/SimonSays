@@ -34,7 +34,7 @@ import { unpackTarGz } from '../core/tar.js';
 import { config } from '../config.js';
 import { VERSION } from '../../shared/version.js';
 import { UPDATE_REPO } from '../../shared/edition.js';
-import { compareVersions, cleanReleaseManifest, sameDependencies, RELEASE_MANIFEST, MAX_PACKAGE_BYTES } from '../../shared/release.js';
+import { compareVersions, cleanReleaseManifest, sameDependencies, RELEASE_MANIFEST, MAX_PACKAGE_BYTES, PLATFORM_KEYS } from '../../shared/release.js';
 
 const log = createLogger('updater');
 
@@ -56,7 +56,26 @@ let busy = false;
 const repo = () => process.env.UPDATE_REPO || UPDATE_REPO;
 const api = () => (process.env.UPDATE_API || 'https://api.github.com').replace(/\/+$/, '');
 const root = () => process.env.SIMONSAYS_ROOT || '';
+// The program the launcher came with (start.js says, with SIMONSAYS_APP): an installed copy's is not where its home is.
+const app = () => process.env.SIMONSAYS_APP || CODE_DIR;
 export const updatesEnabled = () => Boolean(repo());
+
+/**
+ * The platform a built copy was built for — one the installer made, or a
+ * portable zip (scripts/portable.mjs leaves portable.json in it) — or '' for
+ * a git or zip copy of the source. A built copy has no npm: when a version's
+ * dependencies change, it takes the release's package for its platform, with
+ * them in it, instead of installing them.
+ */
+export function builtFor() {
+  try {
+    const made = JSON.parse(fs.readFileSync(path.join(app(), 'portable.json'), 'utf8'));
+    const key = `${made.platform}-${made.arch}`;
+    return PLATFORM_KEYS.includes(key) ? key : '';
+  } catch {
+    return '';
+  }
+}
 
 /** What the launcher remembers: versions that would not start, so the screen can say so. */
 function launcherMemory() {
@@ -142,6 +161,16 @@ async function download(url, max) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
+}
+
+/** A package's files into the new version's folder, none of them outside it. */
+function unpackInto(pkg, dir) {
+  for (const e of unpackTarGz(pkg)) {
+    const to = path.join(dir, e.path);
+    if (path.relative(dir, to).startsWith('..')) throw refusal('update_bad_release', 'the release does not describe itself properly');
+    if (e.dir) fs.mkdirSync(to, { recursive: true });
+    else { fs.mkdirSync(path.dirname(to), { recursive: true }); fs.writeFileSync(to, e.data); }
+  }
 }
 
 /** npm ci in the new version's server folder, for dependencies that changed. */
@@ -230,11 +259,11 @@ export async function warmTree(dir, { at = 32 } = {}) {
 /** How many of the backups taken before updates are kept: the newest, so a year of updates is not a year of copies. */
 export const KEEP_BACKUPS = 5;
 
-/** The backups taken before updates (backups/before-*), all but the newest KEEP_BACKUPS removed. */
+/** The backups taken before updates (backups/before-<version>-*), all but the newest KEEP_BACKUPS removed: never the launcher's or the daily ones (engine/auto-backups.js). */
 export function pruneBackups(dir, keep = KEEP_BACKUPS) {
   if (!fs.existsSync(dir)) return [];
   const taken = fs.readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && e.name.startsWith('before-'))
+    .filter((e) => e.isDirectory() && /^before-\d+\.\d+\.\d+-/.test(e.name))
     .map((e) => ({ name: e.name, at: fs.statSync(path.join(dir, e.name)).mtimeMs }))
     .sort((a, b) => b.at - a.at);
   const gone = taken.slice(keep).map((b) => b.name);
@@ -312,12 +341,7 @@ async function run() {
     partial = `${target}.partial`;
     fs.rmSync(partial, { recursive: true, force: true });
     fs.mkdirSync(partial, { recursive: true });
-    for (const e of unpackTarGz(pkg)) {
-      const to = path.join(partial, e.path);
-      if (path.relative(partial, to).startsWith('..')) throw refusal('update_bad_release', 'the release does not describe itself properly');
-      if (e.dir) fs.mkdirSync(to, { recursive: true });
-      else { fs.mkdirSync(path.dirname(to), { recursive: true }); fs.writeFileSync(to, e.data); }
-    }
+    unpackInto(pkg, partial);
     // The package is the version it says it is.
     const said = fs.readFileSync(path.join(partial, 'shared', 'version.js'), 'utf8');
     if (!fs.existsSync(path.join(partial, 'server', 'index.js')) || !said.includes(`'${manifest.version}'`)) throw refusal('update_bad_release', 'the release does not describe itself properly');
@@ -325,8 +349,18 @@ async function run() {
     step('installing', { version: manifest.version });
     const lock = (dir) => { try { return JSON.parse(fs.readFileSync(path.join(dir, 'server', 'package-lock.json'), 'utf8')); } catch { return null; } };
     const installed = path.join(CODE_DIR, 'server', 'node_modules');
+    const built = builtFor();
     if (fs.existsSync(installed) && sameDependencies(lock(CODE_DIR), lock(partial))) {
       await copyTree(installed, path.join(partial, 'server', 'node_modules'));
+    } else if (built) {
+      // No npm here: the release's package for this platform, which has them in it, checked as the first one was.
+      const entry = manifest.platforms?.[built];
+      const url = entry ? latest.assets[entry.file] : '';
+      if (!url) throw refusal('update_no_bundle', `that release has no package for this computer (${built}); install it with its installer instead`, { platform: built });
+      const bundle = await download(url, Math.min(MAX_PACKAGE_BYTES, entry.size + 1024));
+      if (bundle.length !== entry.size || crypto.createHash('sha256').update(bundle).digest('hex') !== entry.sha256) throw refusal('update_checksum', 'the package did not arrive whole; nothing was changed');
+      unpackInto(bundle, partial);
+      if (!fs.existsSync(path.join(partial, 'server', 'node_modules'))) throw refusal('update_bad_release', 'the release does not describe itself properly');
     } else {
       try {
         await installDependencies(path.join(partial, 'server'));
@@ -341,7 +375,9 @@ async function run() {
     await warmTree(target);
 
     // The launcher's turn: this version, and the one to go back to if it will not start.
-    const here = path.relative(root(), CODE_DIR) || '.';
+    // '.' is the app the launcher came with: this folder itself, or an installed copy's program, outside its home.
+    const rel = path.relative(root(), CODE_DIR);
+    const here = !rel || rel.startsWith('..') || path.isAbsolute(rel) ? '.' : rel;
     const memory = launcherMemory();
     fs.writeFileSync(path.join(root(), 'current.json'), JSON.stringify({
       version: manifest.version,

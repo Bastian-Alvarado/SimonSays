@@ -73,52 +73,62 @@ Windows, Linux and Android phones, also in English and Spanish.
 
 ### What you need
 
-- **A computer to run it on.** The one that runs OBS is simplest. Windows
-  or Linux; a spare PC or an old Android phone on your network works too.
-- **[Node.js](https://nodejs.org) 22 or newer.** Take the LTS installer and
-  keep its defaults. To check, open a terminal and run `node -v`.
+- **A computer to run it on.** The one that runs OBS is simplest: Windows 10
+  or 11 with the installer below. Linux, or an old Android phone on your
+  network, run it from source.
 - **[OBS Studio](https://obsproject.com) 28 or newer**, for the overlays.
 - **The accounts you stream from** — Twitch, YouTube, TikTok — and Discord
   or Spotify if you want those too.
 
-### 1. Download it
+### 1. Install it
 
-Download **[SimonSays.zip](../../releases/latest/download/SimonSays.zip)**,
-the latest release, and unzip it somewhere that stays put, like
-`Documents\SimonSays`. Or, with git, copy the address under **Code** and run
-`git clone` with it.
+On Windows, download **[SimonSays-Setup.exe](../../releases/latest/download/SimonSays-Setup.exe)**
+and run it. It brings everything SimonSays needs, Node included, and asks
+for no administrator: it is installed just for you.
 
-### 2. Install it
+- **"Windows protected your PC"?** The installer is not signed yet, so
+  SmartScreen does not know it. Click **More info**, then **Run anyway**.
+- It asks **English or Español**, and SimonSays starts in the one you pick.
+- It adds SimonSays to the **Start menu** (and, if you tick them, to the
+  desktop and to start with Windows), then starts it.
 
-Open a terminal in that folder. On Windows: open the folder, right-click
-an empty space, and choose **Open in Terminal**. Then:
+SimonSays runs from its icon in the **tray**, by the clock (under the **^**
+if Windows hides it): click it to open the dashboard, right-click it to
+restart, find the logs, start it with Windows, or quit. Your things — data,
+pictures, settings, backups — are kept in `%LOCALAPPDATA%\SimonSays`,
+apart from the program, so installing a newer one over it or uninstalling
+it keeps them. Uninstalling asks before deleting them.
+
+Rather not install anything? **[SimonSays-Windows-Portable.zip](../../releases/latest/download/SimonSays-Windows-Portable.zip)**
+is the same, unzipped anywhere: double-click `SimonSays.exe`. It keeps
+everything in its own folder.
+
+#### Or from source (Linux, Android, or with git)
+
+You need **[Node.js](https://nodejs.org) 22 or newer** (the LTS, with its
+defaults; `node -v` checks). Download **[SimonSays.zip](../../releases/latest/download/SimonSays.zip)**
+and unzip it somewhere that stays put, or `git clone` the address under
+**Code**. Then, in a terminal in that folder:
 
 ```bash
 npm install
-```
-
-It downloads what the app needs. A few minutes, once.
-
-### 3. Start it
-
-```bash
 npm run serve
 ```
 
-The first time it builds the app, then starts it. When it says
-`listening on http://0.0.0.0:8081`, it's running. **Leave that window
-open** — it is the app. Closing it stops everything; closing the browser
-doesn't.
+The first time it downloads what the app needs and builds it, a few
+minutes. When it says `listening on http://0.0.0.0:8081`, it's running.
+**Leave that window open** — it is the app. Every time after that,
+`npm start` is enough. Start it before you go live.
 
-Every time after that, `npm start` is enough. Start it before you go live.
+### 2. Open it
 
-### 4. Open it
+Installed, it opens by itself; from source, go to **http://localhost:8081**
+in your browser. A new install starts with a short setup: your language,
+bringing in a SimonSays you used before, who can open the dashboard, and
+OBS. Then the home screen shows the setup steps still to do, each with a
+button to where it's done, and ticks them off as you go.
 
-Go to **http://localhost:8081** in your browser. The home screen welcomes
-you with the setup steps still to do, each with a button to where it's
-done, and ticks them off as you go.
-
-### 5. Connect where you stream
+### 3. Connect where you stream
 
 On the **Connections** screen:
 
@@ -138,14 +148,14 @@ On the **Connections** screen:
 - **YouTube**, **TikTok LIVE**, **Discord** and **Spotify** each have a
   click-by-click walkthrough in **Guides → Start here**.
 
-### 6. Connect OBS
+### 4. Connect OBS
 
 In OBS: **Tools → WebSocket Server Settings**, tick **Enable WebSocket
 server**, press **Show Connect Info** and copy the password. On the
 Connections screen, fill in `localhost`, `4455` and that password, and
 connect.
 
-### 7. Put your stream in OBS
+### 5. Put your stream in OBS
 
 Add a **Browser** source to your scenes, 1920 × 1080, with the address from
 the **Overlays** screen (`http://localhost:8081/?mode=canvas`). That one
@@ -156,7 +166,7 @@ is on, it carries the key OBS needs.
 For the chat and your buttons beside OBS's preview, add a dock: **Docks →
 Custom Browser Docks**, with `http://localhost:8081/?mode=dock`.
 
-### 8. Make it yours
+### 6. Make it yours
 
 - **Overlays:** make a layout, or start from a theme in **Looks**. Bind
   each layout to the OBS scenes it shows in, or turn on **Omnilayer** to run
@@ -167,14 +177,16 @@ Custom Browser Docks**, with `http://localhost:8081/?mode=dock`.
 - **Dock Actions:** a grid of buttons for those actions, in the OBS dock and
   on your phone.
 
-### 9. Before anyone else can reach it
+### 7. Before anyone else can reach it
 
-On your home network nothing more is needed. If the app can be reached
+An installed copy starts reachable from this computer only; the first setup,
+or **Settings**, opens it to your phone and other devices when you want a
+dock there. On your home network nothing more is needed. If the app can be reached
 from anywhere else — a public address in front of it, say — switch
 **sign-in** on first (**Settings → Sign-in**): from then on only you and
 your Twitch channel's moderators can open the dashboard. Every address you
 sign in from must be added to your Twitch app's OAuth Redirect URLs, as in
-step 5.
+step 3.
 
 Moderators then sign in with their own Twitch account and help run the
 stream from their own dock, without touching what's yours. The
@@ -210,17 +222,21 @@ blank is ignored.
 
 ## Updating
 
-Started with `npm run serve` (or `npm start` once the UI is built), the app
-keeps itself up to date. It checks GitHub once a day, and **Settings → About**
-shows when a new version is out, with what's new in it. **Update now**
-downloads it, checks it arrived whole, backs up `data/` to `backups/` and
-restarts into it. That takes a few seconds, and overlays come back by
-themselves. If the new version won't start, the app goes back to the one you
-had.
+The app keeps itself up to date, installed or started with `npm start`. It
+checks GitHub once a day, and **Settings → About** shows when a new version
+is out, with what's new in it. **Update now** downloads it, checks it
+arrived whole, backs up your data and restarts into it. That takes a few
+seconds, and overlays come back by themselves. If the new version won't
+start, the app goes back to the one you had.
 
 It never updates on its own, and never while OBS is streaming or recording.
-Each version gets its own folder under `versions/`; your `data/`, `assets/`
-and `.env` stay where they are.
+An installed copy downloads the update made for Windows, with everything in
+it, so it never needs npm. Each version gets its own folder under
+`versions/`; your data, pictures and `.env` stay where they are. Installing
+a newer SimonSays-Setup.exe over it works too.
+
+Your data is also backed up once a day: **Settings → Data** lists the
+backups, the newest seven of each kind, and puts any of them back.
 
 Prefer git? `git pull`, `npm install` and `npm run serve` still work, and a
 newer copy from git wins over an older version installed from Settings.

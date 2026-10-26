@@ -938,6 +938,9 @@ export const useStreamSystem = () => {
     remotePlayers: (op: string, payload: Record<string, any> = {}) => request(C2S.REMOTE_PLAYERS, { ...payload, op }),
     // Updates from GitHub (server/engine/updater.js): 'check', or 'apply' to get the newest ready and restart into it.
     updates: (op: 'check' | 'apply') => request(C2S.UPDATES, { op }),
+    install: (op: 'where' | 'look' | 'bring_in' | 'dismiss', folder = '') => request(C2S.INSTALL, { op, folder }),
+    firstRun: (op: 'state' | 'done' | 'obs_find' | 'obs_use' | 'network', more: Record<string, any> = {}) => request(C2S.FIRST_RUN, { op, ...more }),
+    backups: (op: 'list' | 'take' | 'restore' | 'dismiss', name = '') => request(C2S.BACKUPS, { op, name }),
     /** Which Discord channels feed the Questions dock (server/engine/discord-questions.js). */
     setDiscordQuestions: (settings: Record<string, any>) => request(C2S.DISCORD_QUESTIONS, { settings }),
     /** The game requests board (server/engine/game-requests.js). */
@@ -1672,6 +1675,8 @@ export const useStreamSystem = () => {
       remotePlayers: (snapshot as any).remotePlayers,
       // Whether a newer version is out, and how an update is going (server/engine/updater.js); null on a copy updated by hand.
       updates: (snapshot as any).updates || null,
+      // A new install's first-run setup: whether it is done (server/engine/first-run.js).
+      firstRun: (snapshot as any).firstRun || null,
       discordQuestions: (snapshot as any).discordQuestions,
       gameRequests: (snapshot as any).gameRequests,
       moderation: (snapshot as any).moderation,

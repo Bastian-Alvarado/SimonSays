@@ -91,6 +91,12 @@ export const C2S = {
   REMOTE_PLAYERS: 'remote_players',
   /** Updates from GitHub: { op: 'check' | 'apply' } (server/engine/updater.js). */
   UPDATES: 'updates',
+  // Where this copy keeps the streamer's things, and bringing in an existing SimonSays (engine/install.js).
+  INSTALL: 'install',
+  // The first-run setup on a new install (engine/first-run.js).
+  FIRST_RUN: 'first_run',
+  // Automatic backups of the data folder: the list, one now, one put back (engine/auto-backups.js).
+  BACKUPS: 'backups',
   /** A saved profile, to look at without switching: { group, id } → { id, live, data: { layouts, omnibar, … } } (server/engine/profiles.js peekProfile). */
   PROFILE_PEEK: 'profile_peek',
   /** Sign-in, the streamer's only: { op: 'get' } | { op: 'enable', on } | { op: 'new-key', which: 'pageKey' | 'ownerKey' } (server/api/auth.js). */

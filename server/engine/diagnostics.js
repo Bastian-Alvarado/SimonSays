@@ -182,7 +182,7 @@ function problemLine(e, known) {
  * startedAt and now.
  */
 export function diagnosticsReport({ platforms = {}, logs = [], known = [], signIn = false, startedAt = Date.now(), now = Date.now() } = {}) {
-  const launcher = process.env.SIMONSAYS_LAUNCHER === '1';
+  const launcher = Boolean(process.env.SIMONSAYS_LAUNCHER);
   const lines = [
     `SimonSays ${VERSION}`,
     `Updates: ${UPDATE_REPO ? 'from GitHub releases' : 'by hand (a copy built from the source)'}; started ${launcher ? 'by start.js' : 'without start.js (npm run serve or similar)'}`,

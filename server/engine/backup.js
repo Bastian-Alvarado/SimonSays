@@ -187,8 +187,10 @@ export const MANIFEST = [
  *   auth_*                      — the sign-in: whether it is on, the owner and
  *                                 page keys, who is signed in and moderators'
  *                                 Twitch tokens; secrets, and this install's own
+ *   first_run                   — whether this install's first-run setup was
+ *                                 done: this install's own, not configuration
  */
-export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'later_steps', 'banner_text', 'auth_settings', 'auth_secrets', 'auth_sessions', 'auth_tokens', 'mod_activity', 'surfaces_seen'];
+export const EXCLUDED = ['updates', 'event_history', 'recent_chat', 'viewer_events', 'discord_cache', 'role_activity_log', 'spotify_tokens', 'youtube_tokens', 'xp_data', 'twitch_rewards', 'questions', 'poll', 'poll_history', 'event_totals', 'role_sync', 'pixel_avatar_versions', 'youtube_usage', 'stream_tally', 'stream_live', 'giveaway', 'repeat_fired', 'later_steps', 'banner_text', 'auth_settings', 'auth_secrets', 'auth_sessions', 'auth_tokens', 'mod_activity', 'surfaces_seen', 'first_run'];
 
 /** Everything needed to stand this install up somewhere else. */
 export function buildBundle() {

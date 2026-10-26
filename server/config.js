@@ -72,10 +72,19 @@ const bool = (v, fallback) => {
 */
 const install = process.env.SIMONSAYS_ROOT || path.join(__dirname, '..');
 const place = (dir, fallback) => (dir ? path.resolve(install, 'server', dir) : fallback);
+/*
+  A copy the installer made (its home apart from its program, start.js) is
+  reached from this computer only until the streamer says otherwise — the
+  first-run setup asks — so a new install is not open to the whole network,
+  and Windows has no firewall question to ask on its first start. Every
+  other copy listens on the network, as it always has.
+*/
+const installedCopy = Boolean(process.env.SIMONSAYS_APP && process.env.SIMONSAYS_ROOT)
+  && path.resolve(process.env.SIMONSAYS_APP).toLowerCase() !== path.resolve(process.env.SIMONSAYS_ROOT).toLowerCase();
 
 export const config = {
   port: num(process.env.PORT, 8081),
-  host: process.env.HOST || '0.0.0.0',
+  host: process.env.HOST || (installedCopy ? '127.0.0.1' : '0.0.0.0'),
 
   // Where runtime state lives. Override to relocate the whole database.
   dataDir: place(process.env.DATA_DIR, path.join(install, 'data')),

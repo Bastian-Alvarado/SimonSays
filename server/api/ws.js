@@ -42,6 +42,9 @@ import * as highlights from '../engine/highlights.js';
 import * as liveDms from '../engine/live-dms.js';
 import * as remotePlayers from '../engine/remote-players.js';
 import * as updater from '../engine/updater.js';
+import * as install from '../engine/install.js';
+import * as firstRun from '../engine/first-run.js';
+import * as autoBackups from '../engine/auto-backups.js';
 import * as discordQuestions from '../engine/discord-questions.js';
 import * as gameRequests from '../engine/game-requests.js';
 import * as moderation from '../engine/moderation.js';
@@ -580,6 +583,8 @@ function buildSnapshot() {
     ...liveDms.snapshot(),
     ...remotePlayers.snapshot(),
     ...updater.snapshot(),
+    ...firstRun.snapshot(),
+    ...autoBackups.snapshot(),
     ...discordQuestions.snapshot(),
     ...gameRequests.snapshot(),
     ...moderation.snapshot(),
@@ -627,7 +632,7 @@ const PAGE_MAY = new Set([C2S.HELLO, C2S.GET_SNAPSHOT]);
 const OWNER_ONLY = new Set([
   C2S.SET_CREDENTIALS, C2S.PLATFORM_CONNECT, C2S.PLATFORM_DISCONNECT,
   C2S.SPOTIFY_EXCHANGE_CODE, C2S.YOUTUBE_EXCHANGE_CODE, C2S.YOUTUBE_SET_SETTINGS, C2S.YOUTUBE_LOGOUT,
-  C2S.CONFIG_EXPORT, C2S.CONFIG_IMPORT, C2S.UPDATES, C2S.PIXEL_AVATARS,
+  C2S.CONFIG_EXPORT, C2S.CONFIG_IMPORT, C2S.UPDATES, C2S.INSTALL, C2S.FIRST_RUN, C2S.BACKUPS, C2S.PIXEL_AVATARS,
   C2S.SET_LAYOUTS, C2S.USER_THEMES, C2S.AVATAR_SOURCES, C2S.MODERATORS, C2S.DROIDCAM_SETTINGS,
   C2S.PROFILE_SWITCH, C2S.PROFILE_CREATE, C2S.PROFILE_DUPLICATE, C2S.PROFILE_RENAME, C2S.PROFILE_DELETE, C2S.PROFILE_CAPTURE, C2S.PROFILE_REVERT,
 ]);
@@ -650,6 +655,18 @@ export function mayAsk(who, type, payload) {
     return type === C2S.AUTH || !OWNER_ONLY.has(type);
   }
   return false;
+}
+
+/**
+ * What reaches into this computer — a folder looked at or brought in, a backup put back, who can open the
+ * dashboard — is done from the computer itself, or by the streamer signed in. With sign-in off everybody who
+ * reaches the server counts as the owner (CONFIG_IMPORT keeps the same rule), and a copy brought in replaces
+ * the data and the .env.
+ */
+function mayChangeThisComputer(ws, payload, ops) {
+  if (!ops.includes(payload?.op)) return;
+  if (ws.isLocal || (auth.isEnabled() && ws.who?.role === 'owner')) return;
+  throw refusal('install_local_only', 'this can only be done from the computer running SimonSays while sign-in is off');
 }
 
 async function handleMessage(ws, raw) {
@@ -875,6 +892,21 @@ async function handleMessage(ws, raw) {
       // Updates: check for a newer version, or get it ready and restart into it.
       case C2S.UPDATES:
         return reply(await updater.control(payload));
+
+      // Where this copy keeps things, and bringing in an existing SimonSays.
+      case C2S.INSTALL:
+        mayChangeThisComputer(ws, payload, ['look', 'bring_in']);
+        return reply(install.control(payload));
+
+      // A new install's first-run setup: OBS's own settings are only used from this machine.
+      case C2S.FIRST_RUN:
+        mayChangeThisComputer(ws, payload, ['network']);
+        return reply(await firstRun.control(payload, { local: ws.isLocal }));
+
+      // The automatic backups: listed, one taken now, one put back.
+      case C2S.BACKUPS:
+        mayChangeThisComputer(ws, payload, ['take', 'restore']);
+        return reply(await autoBackups.control(payload));
 
       // Which Discord channels feed the Questions dock, and whether answers go back there.
       case C2S.DISCORD_QUESTIONS:

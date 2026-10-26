@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen, Check, Circle, ChevronDown, ChevronRight, ArrowRight, Copy, Search, ListChecks, BookMarked, Braces,
   Plug, Monitor, Layers, MonitorPlay, Bell, Terminal, LayoutGrid, Palette, Cast, MessageSquare, Trophy, Smartphone, Save, ShieldCheck, Copy as CopyIcon,
-  KeyRound, Lock, AlertTriangle, ExternalLink, Clock,
+  KeyRound, Lock, AlertTriangle, ExternalLink, Clock, Download,
 } from 'lucide-react';
 import type { AppView } from '../../types';
 import { GUIDES, GUIDE_GROUPS, GLOSSARY, BUILTIN_WORDS, GUIDE_TOKEN, PLATFORM_SETUPS, guideTexts } from '../../../shared/guides.js';
@@ -30,7 +30,7 @@ export type GuidesTab = 'start' | 'guides' | 'reference' | 'glossary';
 
 const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   plug: Plug, monitor: Monitor, layers: Layers, 'monitor-play': MonitorPlay, bell: Bell, terminal: Terminal,
-  grid: LayoutGrid, palette: Palette, copy: CopyIcon, cast: Cast, discord: MessageSquare, trophy: Trophy, phone: Smartphone, save: Save, shield: ShieldCheck,
+  grid: LayoutGrid, palette: Palette, copy: CopyIcon, cast: Cast, discord: MessageSquare, trophy: Trophy, phone: Smartphone, save: Save, shield: ShieldCheck, download: Download,
 };
 
 /** The address of a page for OBS: this page's own, with its mode. */
