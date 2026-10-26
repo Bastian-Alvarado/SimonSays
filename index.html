@@ -3563,7 +3563,7 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 <h1 class="fc-hero-title"><span data-l="en">Your whole stream, run by one small server.</span><span data-l="es">Todo tu stream, manejado por un pequeño servidor.</span></h1>
 <p class="fc-hero-lede"><span data-l="en">Twitch, YouTube, TikTok LIVE, Discord, OBS and Spotify, driven by a server you run on your own computer, a spare PC or an old phone. The web app is where you set it up. Close it and everything keeps working.</span><span data-l="es">Twitch, YouTube, TikTok LIVE, Discord, OBS y Spotify, movidos por un servidor que corre en tu propia PC, una PC que te sobre o un teléfono viejo. La app web es donde lo configuras. Ciérrala y todo sigue funcionando.</span></p>
 <div class="fc-hero-cta">
-<a class="fc-btn-get" href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays.zip">
+<a class="fc-btn-get" href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Setup.exe">
 <p class="fc-btn-get-text"><span data-l="en">Get SimonSays</span><span data-l="es">Descarga SimonSays</span></p>
 </a>
 <a class="fc-btn-start" href="#install">
@@ -3914,7 +3914,7 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 <p class="fc-crumb-label"><span data-l="en">SimonSays · Install guide</span><span data-l="es">SimonSays · Guía de instalación</span></p>
 </div>
 <h1 class="fc-hero-title"><span data-l="en">Install SimonSays.</span><span data-l="es">Instala SimonSays.</span></h1>
-<p class="fc-hero-lede"><span data-l="en">A small server you run on your own machine. The same four moves everywhere, 15 to 30 minutes the first time, most of it waiting for downloads.</span><span data-l="es">Un pequeño servidor que corre en tu propia máquina. Los mismos cuatro pasos en todas partes, de 15 a 30 minutos la primera vez, casi todo esperando descargas.</span></p>
+<p class="fc-hero-lede"><span data-l="en">A small server you run on your own machine. On Windows, one installer and five minutes; on Linux and Android, four moves and 15 to 30 minutes, most of it waiting for downloads.</span><span data-l="es">Un pequeño servidor que corre en tu propia máquina. En Windows, un instalador y cinco minutos; en Linux y Android, cuatro pasos y de 15 a 30 minutos, casi todo esperando descargas.</span></p>
 <div class="fc-moves">
 <div class="fc-move">
 <div class="fc-move-num">
@@ -3948,10 +3948,10 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 <div class="fc-path-icon">
 <div class="fc-icon-windows"><svg aria-hidden="true" class="lucide lucide-monitor" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><rect height="14" rx="2" width="20" x="2" y="3"></rect><line x1="8" x2="16" y1="21" y2="21"></line><line x1="12" x2="12" y1="17" y2="21"></line></svg></div>
 </div>
-<p class="fc-path-time">~20 min</p>
+<p class="fc-path-time">~5 min</p>
 </div>
 <p class="fc-path-name">Windows</p>
-<p class="fc-path-blurb"><span data-l="en">The PC that runs OBS. The easiest choice.</span><span data-l="es">El PC donde corre OBS. Lo más fácil.</span></p>
+<p class="fc-path-blurb"><span data-l="en">The PC that runs OBS. One installer, no terminal.</span><span data-l="es">El PC donde corre OBS. Un instalador, sin terminal.</span></p>
 </a>
 <a aria-current="false" class="fc-path-linux in-path" data-os="linux" href="#in-system">
 <div class="fc-path-top-2">
@@ -3978,7 +3978,7 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 
 <section id="in-guide"><nav class="in-toc" aria-label="On this page"></nav><div class="in-main"><div data-l="en" lang="en"><section class="in-chapter in-before" id="in-en-before">
 <h2>Before you start</h2>
-<p>SimonSays is a small server you run on your own machine. Installing it is the same four moves everywhere: get Node.js 22 or newer, download the app, run <code>npm install</code>, then run <code>npm run serve</code>. Plan on 15 to 30 minutes the first time, most of it waiting for downloads.</p>
+<p>SimonSays is a small server you run on your own machine. On Windows, one installer does it all. On Linux and Android it is the same four moves: get Node.js 22 or newer, download the app, run <code>npm install</code>, then run <code>npm run serve</code>. Plan on 15 to 30 minutes the first time, most of it waiting for downloads.</p>
 <div class="in-sub" id="in-en-before-1"><h3 data-toc="Pick your path">Pick your path</h3>
 <div class="in-table"><table><thead><tr><th></th><th>Windows</th><th>Linux</th><th>Android (Termux)</th></tr></thead><tbody><tr><th>Best for</th><td>The PC that runs OBS</td><td>A PC, laptop or home server, desktop or headless</td><td>A spare phone left on, plugged in</td></tr><tr><th>Terminal</th><td>Windows Terminal or PowerShell</td><td>Any shell</td><td>The Termux app</td></tr><tr><th>Node.js from</th><td>nodejs.org installer or winget</td><td>Your distro, NodeSource or nvm</td><td><code>pkg install nodejs-lts</code></td></tr><tr><th>Starts with the computer</th><td>Startup folder (optional)</td><td>systemd service (optional)</td><td>Termux:Boot (optional)</td></tr><tr><th>Watch out for</th><td>Firewall prompt on first use</td><td>Firewall (ufw or firewalld)</td><td>Android killing apps in the background</td></tr></tbody></table></div>
 <p>The simplest setup runs SimonSays on the same PC as OBS. Any other machine on your home network works too: OBS then points at that machine&#x27;s address instead of <code>localhost</code>.</p>
@@ -3993,8 +3993,25 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 </section>
 <section class="in-chapter in-windows" id="in-en-windows" data-os="windows">
 <h2>Windows</h2>
-<p>On Windows 10 or 11 the whole install is two programs from winget, one download and two commands. Use the PC that runs OBS unless you have a reason not to.</p>
-<div class="in-step" id="in-en-windows-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Install Node.js and Git">Install Node.js and Git</h3>
+<p>On Windows 10 or 11, one installer does it all: it brings everything SimonSays needs, Node.js included, and asks for no administrator. Use the PC that runs OBS unless you have a reason not to.</p>
+<div class="in-step" id="in-en-windows-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Download the installer">Download the installer</h3>
+<p>Download <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Setup.exe" target="_blank" rel="noopener">SimonSays-Setup.exe</a>, the latest release.</p>
+</div></div>
+<div class="in-step" id="in-en-windows-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Open it">Open it</h3>
+<div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p><strong>Windows protected your PC?</strong> The installer is not signed yet, so SmartScreen does not know it. Click <strong>More info</strong>, then <strong>Run anyway</strong>.</p></div>
+<p>Pick <strong>English</strong> or <strong>Español</strong>: SimonSays starts in that language. Tick a desktop icon or <strong>Start SimonSays when I sign in to Windows</strong> if you want them, then <strong>Install</strong>. It goes in your own user folder, so nothing asks for an administrator.</p>
+</div></div>
+<div class="in-step" id="in-en-windows-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Find it in the tray">Find it in the tray</h3>
+<p>SimonSays runs from an icon by the clock (under the <strong>^</strong> if Windows hides it). Click it to open the dashboard; right-click it to restart, open the logs folder, start it with Windows, or quit. Closing the browser does not stop it.</p>
+<p>Your data, pictures, settings and backups are kept in <code>%LOCALAPPDATA%\SimonSays</code>, apart from the program: installing a newer one over it, or uninstalling it, keeps them.</p>
+</div></div>
+<div class="in-step" id="in-en-windows-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Check it works">Check it works</h3>
+<p>The dashboard opens by itself with a short first setup: your language, bringing in a SimonSays you used before, who can open the dashboard, and OBS. Continue at After installing.</p>
+</div></div>
+<div class="in-sub" id="in-en-windows-5"><h3 data-toc="The manual way, with Node.js and Git">The manual way, with Node.js and Git</h3>
+<p>Rather run it from source, or keep it in a Git folder? These were the steps before the installer, and still work. Rather not install anything, but no terminal either? <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Windows-Portable.zip" target="_blank" rel="noopener">SimonSays-Windows-Portable.zip</a> is the installed app unzipped: double-click <code>SimonSays.exe</code> inside.</p>
+</div>
+<div class="in-sub" id="in-en-windows-6"><h3 data-toc="Install Node.js and Git">Install Node.js and Git</h3>
 <p>Open <strong>Windows Terminal</strong> or <strong>PowerShell</strong> (press Start, type <i>terminal</i>, press Enter) and run:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>winget install OpenJS.NodeJS.LTS
 winget install Git.Git</code></pre></div>
@@ -4004,48 +4021,48 @@ winget install Git.Git</code></pre></div>
 npm -v
 git --version</code></pre></div>
 <p><code>node -v</code> must say <strong>v22</strong> or higher.</p>
-</div></div>
-<div class="in-step" id="in-en-windows-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Download SimonSays">Download SimonSays</h3>
+</div>
+<div class="in-sub" id="in-en-windows-7"><h3 data-toc="Download SimonSays">Download SimonSays</h3>
 <p>With Git (recommended), this puts the app in <code>Documents\SimonSays</code>:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>cd $HOME\Documents
 git clone https://github.com/Bastian-Alvarado/SimonSays.git
 cd SimonSays</code></pre></div>
 <p>Without Git: download <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays.zip" target="_blank" rel="noopener">SimonSays.zip</a>, the latest release. Right-click it, choose <strong>Extract All</strong>, and move the SimonSays folder somewhere permanent such as <code>Documents</code>. Then open the folder, right-click an empty space and choose <strong>Open in Terminal</strong>.</p>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p>Avoid OneDrive-synced folders if you can. Syncing thousands of small files in <code>node_modules</code> slows the install and can lock files mid-update.</p></div>
-</div></div>
-<div class="in-step" id="in-en-windows-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Install the app&#x27;s dependencies">Install the app&#x27;s dependencies</h3>
+</div>
+<div class="in-sub" id="in-en-windows-8"><h3 data-toc="Install the app&#x27;s dependencies">Install the app&#x27;s dependencies</h3>
 <p>In the app folder:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>npm install</code></pre></div>
 <p>It installs the server&#x27;s and the web app&#x27;s parts in one go, about 300 MB. A few minutes, once. Lines about <i>deprecated</i> packages or <i>vulnerabilities</i> are normal and need nothing from you.</p>
-</div></div>
-<div class="in-step" id="in-en-windows-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Start it">Start it</h3>
+</div>
+<div class="in-sub" id="in-en-windows-9"><h3 data-toc="Start it">Start it</h3>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>npm run serve</code></pre></div>
 <p>The first run builds the web app (under a minute), then starts the server. It is ready when you see:</p>
 <div class="in-code"><div class="in-code-bar"><span>text</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>listening on http://0.0.0.0:8081
 the stack is now live and does not need a browser open</code></pre></div>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p><strong>Leave this window open.</strong> It is the app. Minimise it, but don&#x27;t close it.</p></div>
 <p>From now on, <code>npm start</code> is enough. Use <code>npm run serve</code> again only after updating with Git, so the web app is rebuilt.</p>
-</div></div>
-<div class="in-step" id="in-en-windows-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Allow it through the firewall">Allow it through the firewall</h3>
+</div>
+<div class="in-sub" id="in-en-windows-10"><h3 data-toc="Allow it through the firewall">Allow it through the firewall</h3>
 <p>The first time another device connects, Windows asks whether to let <strong>Node.js JavaScript Runtime</strong> through. Tick <strong>Private networks</strong>, untick <strong>Public</strong>, and press <strong>Allow</strong>. Missed it? Run this in a terminal opened as administrator:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>New-NetFirewallRule -DisplayName &quot;SimonSays&quot; -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow -Profile Private</code></pre></div>
 <p>Only needed for phones, other PCs or OBS on another machine. On the same PC, nothing is blocked.</p>
-</div></div>
-<div class="in-step" id="in-en-windows-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Start it with Windows (optional)">Start it with Windows (optional)</h3>
+</div>
+<div class="in-sub" id="in-en-windows-11"><h3 data-toc="Start it with Windows (optional)">Start it with Windows (optional)</h3>
 <p>Make a file called <code>start-simonsays.bat</code> in the app folder with this inside:</p>
 <div class="in-code"><div class="in-code-bar"><span>bat</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>@echo off
 title SimonSays
 cd /d &quot;%~dp0&quot;
 npm start</code></pre></div>
 <p>Press <strong>Win + R</strong>, type <code>shell:startup</code> and press Enter. Right-click the <code>.bat</code> file, choose <strong>Create shortcut</strong>, and move the shortcut into that Startup folder. SimonSays now opens in its own window each time you sign in.</p>
-</div></div>
-<div class="in-step" id="in-en-windows-7"><span class="in-step-num">7</span><div class="in-step-body"><h3 data-toc="7. Check it works">Check it works</h3>
+</div>
+<div class="in-sub" id="in-en-windows-12"><h3 data-toc="Check it works">Check it works</h3>
 <p>Open <a href="http://localhost:8081" target="_blank" rel="noopener">http://localhost:8081</a> in your browser, or run:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>curl.exe localhost:8081/api/health</code></pre></div>
 <p>An answer starting <code>{&quot;ok&quot;:true</code> means the server is up. Continue at <strong>After installing</strong>.</p>
-</div></div>
-<div class="in-sub in-trouble" id="in-en-windows-8"><h3 data-toc="Windows problems">Windows problems</h3>
-<ul class="in-list"><li><strong><code>running scripts is disabled on this system</code></strong> (PowerShell blocks <code>npm</code>): run <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> once and answer <strong>Y</strong>. Or use <strong>Command Prompt</strong> instead.</li><li><strong><code>&#x27;&amp;&amp;&#x27; is not a valid statement separator</code></strong> (Windows PowerShell 5.1): type the commands on separate lines.</li><li><strong><code>&#x27;node&#x27; is not recognized</code></strong>: open a new terminal after installing Node.js. Still failing? Reinstall Node.js and keep <i>Add to PATH</i> ticked.</li><li><strong><code>Port 8081 is already in use</code></strong>: SimonSays is already running in another window. Use that one, or close it first.</li><li><strong><code>EPERM</code></strong><strong> or </strong><strong><code>EBUSY</code></strong><strong> during </strong><strong><code>npm install</code></strong>: an antivirus or OneDrive is holding a file. Pause syncing, close editors on the folder, and run <code>npm install</code> again.</li></ul>
+</div>
+<div class="in-sub in-trouble" id="in-en-windows-13"><h3 data-toc="Windows problems">Windows problems</h3>
+<ul class="in-list"><li><strong>Windows protected your PC</strong> when opening SimonSays-Setup.exe: click More info, then Run anyway. The installer is not signed yet.</li><li><strong>No icon by the clock</strong>: click the <strong>^</strong> beside it, or start SimonSays from the Start menu; started again while it runs, it only opens the dashboard.</li><li><strong><code>running scripts is disabled on this system</code></strong> (PowerShell blocks <code>npm</code>): run <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> once and answer <strong>Y</strong>. Or use <strong>Command Prompt</strong> instead.</li><li><strong><code>&#x27;&amp;&amp;&#x27; is not a valid statement separator</code></strong> (Windows PowerShell 5.1): type the commands on separate lines.</li><li><strong><code>&#x27;node&#x27; is not recognized</code></strong>: open a new terminal after installing Node.js. Still failing? Reinstall Node.js and keep <i>Add to PATH</i> ticked.</li><li><strong><code>Port 8081 is already in use</code></strong>: SimonSays is already running in another window. Use that one, or close it first.</li><li><strong><code>EPERM</code></strong><strong> or </strong><strong><code>EBUSY</code></strong><strong> during </strong><strong><code>npm install</code></strong>: an antivirus or OneDrive is holding a file. Pause syncing, close editors on the folder, and run <code>npm install</code> again.</li></ul>
 </div>
 <a class="in-pics" href="install-en-1-windows.png" target="_blank" rel="noopener"><div class="in-pics-copy"><strong>Prefer pictures?</strong><span>The same install as a picture guide, with Pixel Simon pointing things out.</span><em>Open the picture guide →</em></div><div class="in-pics-img"><img src="install-en-1-windows.png" alt="Installing SimonSays on Windows, step by step" loading="lazy"></div></a>
 </section>
@@ -4223,7 +4240,7 @@ npm run serve</code></pre></div>
 </div>
 </section></div><div data-l="es" lang="es"><section class="in-chapter in-before" id="in-es-before">
 <h2>Antes de empezar</h2>
-<p>SimonSays es un pequeño servidor que corre en tu propia máquina. Instalarlo son los mismos cuatro pasos en todas partes: tener Node.js 22 o más nuevo, descargar la app, ejecutar <code>npm install</code> y luego <code>npm run serve</code>. Calcula entre 15 y 30 minutos la primera vez, casi todo esperando descargas.</p>
+<p>SimonSays es un pequeño servidor que corre en tu propia máquina. En Windows, un instalador lo hace todo. En Linux y Android son los mismos cuatro pasos: tener Node.js 22 o más nuevo, descargar la app, ejecutar <code>npm install</code> y luego <code>npm run serve</code>. Calcula entre 15 y 30 minutos la primera vez, casi todo esperando descargas.</p>
 <div class="in-sub" id="in-es-before-1"><h3 data-toc="Elige tu camino">Elige tu camino</h3>
 <div class="in-table"><table><thead><tr><th></th><th>Windows</th><th>Linux</th><th>Android (Termux)</th></tr></thead><tbody><tr><th>Ideal para</th><td>El PC donde corre OBS</td><td>Un PC, portátil o servidor de casa, con o sin escritorio</td><td>Un teléfono que sobra, siempre enchufado</td></tr><tr><th>Terminal</th><td>Windows Terminal o PowerShell</td><td>Cualquier shell</td><td>La app Termux</td></tr><tr><th>Node.js desde</th><td>El instalador de nodejs.org o winget</td><td>Tu distro, NodeSource o nvm</td><td><code>pkg install nodejs-lts</code></td></tr><tr><th>Arranca con el equipo</th><td>Carpeta de inicio (opcional)</td><td>Servicio de systemd (opcional)</td><td>Termux:Boot (opcional)</td></tr><tr><th>Ojo con</th><td>El aviso del firewall la primera vez</td><td>El firewall (ufw o firewalld)</td><td>Android cerrando apps en segundo plano</td></tr></tbody></table></div>
 <p>Lo más simple es correr SimonSays en el mismo PC que OBS. Cualquier otra máquina de tu red sirve igual: OBS apunta entonces a la dirección de esa máquina en vez de a <code>localhost</code>.</p>
@@ -4238,8 +4255,25 @@ npm run serve</code></pre></div>
 </section>
 <section class="in-chapter in-windows" id="in-es-windows" data-os="windows">
 <h2>Windows</h2>
-<p>En Windows 10 u 11 la instalación completa son dos programas con winget, una descarga y dos comandos. Usa el PC donde corre OBS, salvo que tengas un motivo para no hacerlo.</p>
-<div class="in-step" id="in-es-windows-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Instala Node.js y Git">Instala Node.js y Git</h3>
+<p>En Windows 10 u 11, un instalador lo hace todo: trae todo lo que SimonSays necesita, Node.js incluido, y no pide administrador. Usa el PC que corre OBS salvo que tengas un motivo para no hacerlo.</p>
+<div class="in-step" id="in-es-windows-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Descarga el instalador">Descarga el instalador</h3>
+<p>Descarga <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Setup.exe" target="_blank" rel="noopener">SimonSays-Setup.exe</a>, la última versión.</p>
+</div></div>
+<div class="in-step" id="in-es-windows-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Ábrelo">Ábrelo</h3>
+<div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p><strong>¿Windows protegió tu equipo?</strong> El instalador aún no está firmado, así que SmartScreen no lo conoce. Haz clic en <strong>Más información</strong> y luego en <strong>Ejecutar de todas formas</strong>.</p></div>
+<p>Elige <strong>English</strong> o <strong>Español</strong>: SimonSays empieza en ese idioma. Marca un icono en el escritorio o <strong>Iniciar SimonSays al iniciar sesión en Windows</strong> si los quieres, y luego <strong>Instalar</strong>. Se instala en tu propia carpeta de usuario, así que nada pide administrador.</p>
+</div></div>
+<div class="in-step" id="in-es-windows-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Encuéntralo en la bandeja">Encuéntralo en la bandeja</h3>
+<p>SimonSays corre desde un icono junto al reloj (bajo la <strong>^</strong> si Windows lo oculta). Haz clic para abrir el panel; clic derecho para reiniciarlo, abrir la carpeta de registros, iniciarlo con Windows o salir. Cerrar el navegador no lo detiene.</p>
+<p>Tus datos, imágenes, ajustes y respaldos se guardan en <code>%LOCALAPPDATA%\SimonSays</code>, aparte del programa: instalar uno más nuevo encima, o desinstalarlo, los conserva.</p>
+</div></div>
+<div class="in-step" id="in-es-windows-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Comprueba que funciona">Comprueba que funciona</h3>
+<p>El panel se abre solo con una configuración inicial corta: tu idioma, traer un SimonSays que usabas antes, quién puede abrir el panel, y OBS. Sigue en Después de instalar.</p>
+</div></div>
+<div class="in-sub" id="in-es-windows-5"><h3 data-toc="A mano, con Node.js y Git">A mano, con Node.js y Git</h3>
+<p>¿Prefieres correrlo desde el código, o tenerlo en una carpeta de Git? Estos eran los pasos antes del instalador, y siguen funcionando. ¿Sin instalar nada, pero tampoco con terminal? <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Windows-Portable.zip" target="_blank" rel="noopener">SimonSays-Windows-Portable.zip</a> es la app instalada, descomprimida: haz doble clic en <code>SimonSays.exe</code> dentro.</p>
+</div>
+<div class="in-sub" id="in-es-windows-6"><h3 data-toc="Instala Node.js y Git">Instala Node.js y Git</h3>
 <p>Abre <strong>Windows Terminal</strong> o <strong>PowerShell</strong> (pulsa Inicio, escribe <i>terminal</i> y pulsa Enter) y ejecuta:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>winget install OpenJS.NodeJS.LTS
 winget install Git.Git</code></pre></div>
@@ -4249,48 +4283,48 @@ winget install Git.Git</code></pre></div>
 npm -v
 git --version</code></pre></div>
 <p><code>node -v</code> tiene que decir <strong>v22</strong> o más.</p>
-</div></div>
-<div class="in-step" id="in-es-windows-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Descarga SimonSays">Descarga SimonSays</h3>
+</div>
+<div class="in-sub" id="in-es-windows-7"><h3 data-toc="Descarga SimonSays">Descarga SimonSays</h3>
 <p>Con Git (recomendado), esto deja la app en <code>Documentos\SimonSays</code>:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>cd $HOME\Documents
 git clone https://github.com/Bastian-Alvarado/SimonSays.git
 cd SimonSays</code></pre></div>
 <p>Sin Git: descarga <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays.zip" target="_blank" rel="noopener">SimonSays.zip</a>, la última versión. Haz clic derecho en él, elige <strong>Extraer todo</strong> y mueve la carpeta SimonSays a un lugar fijo como <code>Documentos</code>. Luego abre la carpeta, haz clic derecho en un espacio vacío y elige <strong>Abrir en Terminal</strong>.</p>
 <p>Si puedes, evita las carpetas sincronizadas con OneDrive. Sincronizar miles de archivos pequeños de <code>node_modules</code> hace lenta la instalación y puede bloquear archivos en medio de una actualización.</p>
-</div></div>
-<div class="in-step" id="in-es-windows-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Instala las dependencias de la app">Instala las dependencias de la app</h3>
+</div>
+<div class="in-sub" id="in-es-windows-8"><h3 data-toc="Instala las dependencias de la app">Instala las dependencias de la app</h3>
 <p>En la carpeta de la app:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>npm install</code></pre></div>
 <p>Instala de una vez las partes del servidor y de la app web, unos 300 MB. Unos minutos, solo una vez. Los mensajes sobre paquetes <i>deprecated</i> o <i>vulnerabilities</i> son normales y no tienes que hacer nada.</p>
-</div></div>
-<div class="in-step" id="in-es-windows-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Iníciala">Iníciala</h3>
+</div>
+<div class="in-sub" id="in-es-windows-9"><h3 data-toc="Iníciala">Iníciala</h3>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>npm run serve</code></pre></div>
 <p>La primera vez construye la app web (menos de un minuto) y luego inicia el servidor. Está lista cuando ves:</p>
 <div class="in-code"><div class="in-code-bar"><span>text</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>listening on http://0.0.0.0:8081
 the stack is now live and does not need a browser open</code></pre></div>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p><strong>Deja esta ventana abierta.</strong> Es la app. Puedes minimizarla, pero no cerrarla.</p></div>
 <p>De aquí en adelante basta con <code>npm start</code>. Vuelve a usar <code>npm run serve</code> solo después de actualizar con Git, para que la app web se reconstruya.</p>
-</div></div>
-<div class="in-step" id="in-es-windows-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Permítela en el firewall">Permítela en el firewall</h3>
+</div>
+<div class="in-sub" id="in-es-windows-10"><h3 data-toc="Permítela en el firewall">Permítela en el firewall</h3>
 <p>La primera vez que otro dispositivo se conecte, Windows pregunta si deja pasar a <strong>Node.js JavaScript Runtime</strong>. Marca <strong>Redes privadas</strong>, desmarca <strong>Públicas</strong> y pulsa <strong>Permitir</strong>. ¿Te lo saltaste? Ejecuta esto en una terminal abierta como administrador:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>New-NetFirewallRule -DisplayName &quot;SimonSays&quot; -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow -Profile Private</code></pre></div>
 <p>Solo hace falta para teléfonos, otros PC u OBS en otra máquina. En el mismo PC no se bloquea nada.</p>
-</div></div>
-<div class="in-step" id="in-es-windows-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Que arranque con Windows (opcional)">Que arranque con Windows (opcional)</h3>
+</div>
+<div class="in-sub" id="in-es-windows-11"><h3 data-toc="Que arranque con Windows (opcional)">Que arranque con Windows (opcional)</h3>
 <p>Crea un archivo llamado <code>start-simonsays.bat</code> en la carpeta de la app con esto dentro:</p>
 <div class="in-code"><div class="in-code-bar"><span>bat</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>@echo off
 title SimonSays
 cd /d &quot;%~dp0&quot;
 npm start</code></pre></div>
 <p>Pulsa <strong>Win + R</strong>, escribe <code>shell:startup</code> y pulsa Enter. Haz clic derecho en el <code>.bat</code>, elige <strong>Crear acceso directo</strong> y mueve el acceso directo a esa carpeta de Inicio. Ahora SimonSays se abre en su propia ventana cada vez que inicias sesión.</p>
-</div></div>
-<div class="in-step" id="in-es-windows-7"><span class="in-step-num">7</span><div class="in-step-body"><h3 data-toc="7. Comprueba que funciona">Comprueba que funciona</h3>
+</div>
+<div class="in-sub" id="in-es-windows-12"><h3 data-toc="Comprueba que funciona">Comprueba que funciona</h3>
 <p>Abre <a href="http://localhost:8081" target="_blank" rel="noopener">http://localhost:8081</a> en tu navegador, o ejecuta:</p>
 <div class="in-code"><div class="in-code-bar"><span>powershell</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>curl.exe localhost:8081/api/health</code></pre></div>
 <p>Una respuesta que empieza con <code>{&quot;ok&quot;:true</code> significa que el servidor está funcionando. Sigue en <strong>Después de instalar</strong>.</p>
-</div></div>
-<div class="in-sub in-trouble" id="in-es-windows-8"><h3 data-toc="Problemas en Windows">Problemas en Windows</h3>
-<ul class="in-list"><li><strong><code>running scripts is disabled on this system</code></strong> (PowerShell bloquea <code>npm</code>): ejecuta una vez <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> y responde <strong>S</strong> (o <strong>Y</strong>). O usa el <strong>Símbolo del sistema</strong> en su lugar.</li><li><strong><code>&#x27;&amp;&amp;&#x27; is not a valid statement separator</code></strong> (Windows PowerShell 5.1): escribe los comandos en líneas separadas.</li><li><strong><code>&#x27;node&#x27; is not recognized</code></strong>: abre una terminal nueva después de instalar Node.js. ¿Sigue fallando? Reinstala Node.js con <i>Add to PATH</i> marcado.</li><li><strong><code>Port 8081 is already in use</code></strong>: SimonSays ya está corriendo en otra ventana. Usa esa, o ciérrala primero.</li><li><strong><code>EPERM</code></strong><strong> o </strong><strong><code>EBUSY</code></strong><strong> durante </strong><strong><code>npm install</code></strong>: un antivirus u OneDrive tiene un archivo tomado. Pausa la sincronización, cierra los editores abiertos en la carpeta y vuelve a ejecutar <code>npm install</code>.</li></ul>
+</div>
+<div class="in-sub in-trouble" id="in-es-windows-13"><h3 data-toc="Problemas en Windows">Problemas en Windows</h3>
+<ul class="in-list"><li><strong>Windows protegió tu equipo</strong> al abrir SimonSays-Setup.exe: haz clic en Más información y luego en Ejecutar de todas formas. El instalador aún no está firmado.</li><li><strong>No hay icono junto al reloj</strong>: haz clic en la <strong>^</strong> de al lado, o abre SimonSays desde el menú Inicio; abierto de nuevo mientras corre, solo abre el panel.</li><li><strong><code>running scripts is disabled on this system</code></strong> (PowerShell bloquea <code>npm</code>): ejecuta una vez <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> y responde <strong>S</strong> (o <strong>Y</strong>). O usa el <strong>Símbolo del sistema</strong> en su lugar.</li><li><strong><code>&#x27;&amp;&amp;&#x27; is not a valid statement separator</code></strong> (Windows PowerShell 5.1): escribe los comandos en líneas separadas.</li><li><strong><code>&#x27;node&#x27; is not recognized</code></strong>: abre una terminal nueva después de instalar Node.js. ¿Sigue fallando? Reinstala Node.js con <i>Add to PATH</i> marcado.</li><li><strong><code>Port 8081 is already in use</code></strong>: SimonSays ya está corriendo en otra ventana. Usa esa, o ciérrala primero.</li><li><strong><code>EPERM</code></strong><strong> o </strong><strong><code>EBUSY</code></strong><strong> durante </strong><strong><code>npm install</code></strong>: un antivirus u OneDrive tiene un archivo tomado. Pausa la sincronización, cierra los editores abiertos en la carpeta y vuelve a ejecutar <code>npm install</code>.</li></ul>
 </div>
 <a class="in-pics" href="install-es-1-windows.png" target="_blank" rel="noopener"><div class="in-pics-copy"><strong>¿Prefieres imágenes?</strong><span>La misma instalación como guía en imágenes, con Pixel Simon señalando lo importante.</span><em>Abrir la guía en imágenes →</em></div><div class="in-pics-img"><img src="install-es-1-windows.png" alt="Instalación de SimonSays en Windows, paso a paso" loading="lazy"></div></a>
 </section>
