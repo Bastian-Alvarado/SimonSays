@@ -1,7 +1,7 @@
 {
   "name": "simonsays-web",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
   "description": "Configuration UI and overlay renderer. Holds no authority — the server does.",
   "scripts": {

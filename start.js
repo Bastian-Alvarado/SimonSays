@@ -362,29 +362,29 @@ function main() {
 
   // Nowhere to write (the window that started it closed) is no reason to stop.
   for (const out of [process.stdout, process.stderr]) out.on('error', () => {});
-  for (const sig of ['SIGINT', 'SIGTERM']) {
-    process.on(sig, () => {
-      stopping = true;
-      try { child?.kill(sig); } catch { process.exit(0); }
-    });
-  }
   /*
-    Started by the tray (SimonSays.exe, SIMONSAYS_CONTROL=stdin): it says "stop" on this one's stdin.
-    Windows has no signal a program without a console can be sent to stop it cleanly — a kill
-    is a kill — so the server is asked over the channel it already has, saves and says goodbye,
-    and exits; then this one does. The tray gone (its end of the pipe closed) is a stop too.
-    A server that does not stop within 15 s is stopped.
+    Every stop is asked of the server over the channel it already has: it saves and says goodbye, and
+    exits; then this one does. Not passed on as a kill: on Windows a kill is a kill, and the server, started
+    with no console of its own, never hears a Ctrl+C or its window closing — so SimonSays.cmd's window
+    closed used to cut it off without saving. A server that does not stop within 15 s is stopped.
+    SIGHUP is the window it runs in closing: a terminal (the AppImage), or a console on Windows.
+  */
+  let asked = false;
+  const stopCleanly = () => {
+    if (asked) return;
+    asked = true;
+    stopping = true;
+    if (!child || child.exitCode !== null || child.signalCode) { process.exit(0); return; }
+    try { child.send({ type: 'simonsays-stop' }); } catch { try { child.kill(); } catch { process.exit(0); } }
+    setTimeout(() => { try { child.kill(); } catch { /* gone */ } setTimeout(() => process.exit(0), 1000); }, 15_000).unref();
+  };
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, stopCleanly);
+  /*
+    Started by the tray (SimonSays.exe, SIMONSAYS_CONTROL=stdin): it says "stop" on this one's stdin,
+    as Windows has no signal to send a program without a console. The tray gone (its end of the pipe
+    closed) is a stop too.
   */
   if (process.env.SIMONSAYS_CONTROL === 'stdin') {
-    let asked = false;
-    const stopCleanly = () => {
-      if (asked) return;
-      asked = true;
-      stopping = true;
-      if (!child || child.exitCode !== null || child.signalCode) { process.exit(0); return; }
-      try { child.send({ type: 'simonsays-stop' }); } catch { try { child.kill(); } catch { process.exit(0); } }
-      setTimeout(() => { try { child.kill(); } catch { /* gone */ } setTimeout(() => process.exit(0), 1000); }, 15_000).unref();
-    };
     let typed = '';
     process.stdin.setEncoding('utf8');
     process.stdin.on('data', (d) => {

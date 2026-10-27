@@ -43,6 +43,7 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { appVersion, appEntries, webNotReady } from './app-files.mjs';
+import { packTarGz } from '../server/core/tar.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -95,13 +96,15 @@ const run = (cmd, argv, options = {}) => {
   if (r.status !== 0) fail(`${path.basename(cmd)} ${argv.slice(0, 3).join(' ')} failed: ${(r.stderr || r.stdout || r.error?.message || '').trim().slice(-800)}`);
   return r;
 };
-function unpack(file, into) {
+/** The Node archive unpacked, or only `members` of it: a Linux or Mac archive has symlinks Windows may not make. */
+function unpack(file, into, members = []) {
   fs.mkdirSync(into, { recursive: true });
   if (file.endsWith('.zip')) {
     if (process.platform === 'win32') run(winTar, ['-xf', file, '-C', into]);
     else run('unzip', ['-q', file, '-d', into]);
   } else {
-    run('tar', ['-xf', file, '-C', into]);
+    // Windows' own tar: the one Git Bash puts first reads "C:" as a host to connect to.
+    run(process.platform === 'win32' ? winTar : 'tar', ['-xf', file, '-C', into, ...members]);
   }
 }
 
@@ -115,7 +118,8 @@ fs.mkdirSync(app, { recursive: true });
 const started = Date.now();
 const unpacked = path.join(out, '.node');
 fs.rmSync(unpacked, { recursive: true, force: true });
-unpack(await nodeArchive(), unpacked);
+const inArchive = `node-v${pin.version}-${key}`;
+unpack(await nodeArchive(), unpacked, platform === 'win32' ? [] : [`${inArchive}/bin/node`, `${inArchive}/LICENSE`]);
 const nodeFrom = path.join(unpacked, `node-v${pin.version}-${key}`);
 const nodeExe = platform === 'win32' ? 'node.exe' : 'node';
 fs.mkdirSync(path.join(app, 'node'), { recursive: true });
@@ -137,7 +141,19 @@ if (flag('--installed')) fs.writeFileSync(path.join(app, 'installed.json'), `${J
 // Its dependencies, for the platform built for: npm picks the native pieces by --os and --cpu.
 say(`installing the server's dependencies for ${platform}-${arch}`);
 // One command line: Windows runs npm through its shell, and nothing in it comes from outside (the platform and arch are checked above).
-run(`npm ci --omit=dev --ignore-scripts --no-audit --no-fund --os=${platform} --cpu=${arch}`, [], { cwd: path.join(app, 'server'), shell: true });
+const libc = platform === 'linux' ? ' --libc=glibc' : '';
+run(`npm ci --omit=dev --ignore-scripts --no-audit --no-fund --os=${platform} --cpu=${arch}${libc}`, [], { cwd: path.join(app, 'server'), shell: true });
+// The packages' command shims are npm's for this computer, not the one built for, and nothing here runs them.
+fs.rmSync(path.join(app, 'server', 'node_modules', '.bin'), { recursive: true, force: true });
+// glibc only: npm takes the musl builds too when it is not on Linux itself, and they are for Alpine, not here.
+if (platform === 'linux') {
+  const nm = path.join(app, 'server', 'node_modules');
+  const musl = new RegExp(`-${platform}-${arch}-musl$`);
+  for (const e of fs.readdirSync(nm)) {
+    const inScope = e.startsWith('@') ? fs.readdirSync(path.join(nm, e)).map((n) => path.join(e, n)) : [e];
+    for (const pkg of inScope) if (musl.test(pkg)) fs.rmSync(path.join(nm, pkg), { recursive: true, force: true });
+  }
+}
 // The native pieces are there: one of each package's builds for this platform.
 for (const pkg of ['@resvg/resvg-js', '@snazzah/davey']) {
   const dir = path.join(app, 'server', 'node_modules', ...pkg.split('/'));
@@ -188,6 +204,13 @@ if (platform === 'win32') {
     'exec ./node/node ./start.js',
     '',
   ].join('\n'), { mode: 0o755 });
+  // install.sh puts it in ~/.local/opt with a systemd user service (installer/linux); uninstall.sh takes it away.
+  for (const f of ['install.sh', 'uninstall.sh']) {
+    const from = path.join(folder, 'installer', 'linux', f);
+    if (!fs.existsSync(from)) fail(`${folder} has no installer/linux/${f}`);
+    fs.writeFileSync(path.join(app, f), fs.readFileSync(from, 'utf8').replace(/\r\n/g, '\n'), { mode: 0o755 });
+  }
+  fs.copyFileSync(path.join(folder, 'tray', 'icon', 'simonsays-256.png'), path.join(app, 'simonsays.png'));
 }
 // The tray, for Windows: built from this folder's tray/, on Windows, for its own arch.
 if (platform === 'win32' && !flag('--no-tray')) {
@@ -262,11 +285,27 @@ else {
 
 // ---------------------------------------------------------------- the zip
 
-if (!flag('--no-zip')) {
+/** What has to stay executable where it is unpacked: Node and the scripts. */
+const executable = (rel) => /^SimonSays\/node\/node$|\.sh$/.test(rel);
+
+if (!flag('--no-zip') && platform === 'win32') {
   const zip = path.join(out, `SimonSays-${version}-${key}.zip`);
   fs.rmSync(zip, { force: true });
   if (process.platform === 'win32') run(winTar, ['-a', '-cf', zip, '-C', out, 'SimonSays']);
   else run('zip', ['-qry', zip, 'SimonSays'], { cwd: out });
   say(`zipped ${zip} (${mb(fs.statSync(zip).size)})`);
+} else if (!flag('--no-zip')) {
+  const tgz = path.join(out, `SimonSays-${version}-${key}.tar.gz`);
+  const entries = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(out, rel), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const r = `${rel}/${e.name}`;
+      if (e.isDirectory()) { entries.push({ path: r, dir: true }); walk(r); } else if (e.isFile()) entries.push({ path: r, data: fs.readFileSync(path.join(out, r)), mode: executable(r) ? 0o755 : 0o644 });
+    }
+  };
+  entries.push({ path: 'SimonSays', dir: true });
+  walk('SimonSays');
+  fs.writeFileSync(tgz, packTarGz(entries));
+  say(`packed ${tgz} (${mb(fs.statSync(tgz).size)})`);
 }
 say(`done in ${Math.round((Date.now() - started) / 1000)} s`);

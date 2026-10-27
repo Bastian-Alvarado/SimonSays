@@ -173,11 +173,25 @@ function unpackInto(pkg, dir) {
   }
 }
 
-/** npm ci in the new version's server folder, for dependencies that changed. */
-function installDependencies(dir) {
+/**
+ * npm ci in the new version's server folder, for dependencies that changed. A newer npm than the one the
+ * lock was written with can refuse it as out of step (Termux's, for one, wants optional packages an older
+ * npm left out): then npm install, which keeps to the lock where it can.
+ */
+async function installDependencies(dir) {
+  try {
+    await npmIn(dir, 'ci');
+  } catch (err) {
+    if (!/in sync|EUSAGE/i.test(err.message)) throw err;
+    log.warn('npm ci found the lock out of step with this npm; installing with npm install');
+    await npmIn(dir, 'install');
+  }
+}
+
+function npmIn(dir, how) {
   return new Promise((resolve, reject) => {
     const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const run = spawn(npm, ['ci', '--omit=dev', '--no-audit', '--no-fund'], { cwd: dir, shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+    const run = spawn(npm, [how, '--omit=dev', '--no-audit', '--no-fund'], { cwd: dir, shell: process.platform === 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
     let said = '';
     run.stdout.on('data', (d) => { said = (said + d).slice(-2000); });
     run.stderr.on('data', (d) => { said = (said + d).slice(-2000); });

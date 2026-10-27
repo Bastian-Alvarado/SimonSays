@@ -107,6 +107,7 @@ await import('./smoke/updates.js');
 await import('./smoke/install.js');
 await import('./smoke/portable.js');
 await import('./smoke/tray.js');
+await import('./smoke/linux.js');
 await import('./smoke/vertical.js');
 await import('./smoke/roadmap.js');
 await import('./smoke/user-themes.js');

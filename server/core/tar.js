@@ -45,7 +45,10 @@ function header(name, size, type, mode) {
   return h;
 }
 
-/** Files ({ path, data }) and folders ({ path, dir: true }) as a gzipped tar. Paths use forward slashes, relative. */
+/**
+ * Files ({ path, data }) and folders ({ path, dir: true }) as a gzipped tar. Paths use forward slashes, relative.
+ * A file's `mode` (0o755 for a program) is kept, so one made on Windows still runs where it is unpacked; 0o644 otherwise.
+ */
 export function packTarGz(entries) {
   const parts = [];
   for (const e of entries) {
@@ -56,7 +59,7 @@ export function packTarGz(entries) {
       continue;
     }
     const data = Buffer.isBuffer(e.data) ? e.data : Buffer.from(e.data ?? '');
-    parts.push(header(name, data.length, '0', 0o644), data);
+    parts.push(header(name, data.length, '0', Number.isInteger(e.mode) ? e.mode & 0o7777 : 0o644), data);
     const pad = (BLOCK - (data.length % BLOCK)) % BLOCK;
     if (pad) parts.push(Buffer.alloc(pad, 0));
   }

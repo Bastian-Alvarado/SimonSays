@@ -1,0 +1,52 @@
+#!/bin/sh
+# SimonSays as an AppImage (3.1): what runs when the AppImage is opened.
+#
+# Opened from the file manager it has no window to stop it from, so it opens a terminal for itself: closing
+# that window (or Ctrl+C in it) stops SimonSays, cleanly. On a desktop, the dashboard opens in the browser
+# once it answers. What is yours lives in ~/.local/share/simonsays (installed.json), apart from the
+# AppImage, so a newer AppImage, or one moved somewhere else, finds it all.
+HERE="$(dirname "$(readlink -f "$0")")"
+NODE="$HERE/node/node"
+DESKTOP=""
+[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] && DESKTOP=1
+
+if [ -n "$DESKTOP" ] && [ ! -t 0 ] && [ -z "${SIMONSAYS_IN_TERMINAL:-}" ] && [ -n "${APPIMAGE:-}" ]; then
+  export SIMONSAYS_IN_TERMINAL=1
+  for t in x-terminal-emulator gnome-terminal konsole xfce4-terminal mate-terminal tilix xterm; do
+    command -v "$t" >/dev/null 2>&1 || continue
+    case "$t" in
+      gnome-terminal) exec "$t" --title=SimonSays -- "$APPIMAGE" "$@" ;;
+      *) exec "$t" -e "$APPIMAGE" "$@" ;;
+    esac
+  done
+fi
+
+HOME_DIR="${SIMONSAYS_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/simonsays}"
+mkdir -p "$HOME_DIR"
+# The first time: a port of its own, 8081 or the next one free.
+if [ ! -f "$HOME_DIR/.env" ]; then
+  PORT=$("$NODE" -e '
+    const net = require("net");
+    const free = (p) => new Promise((r) => { const s = net.createServer(); s.once("error", () => r(false)); s.listen(p, "0.0.0.0", () => s.close(() => r(true))); });
+    (async () => { for (let p = 8081; p < 8100; p += 1) if (await free(p)) { console.log(p); return; } console.log(8081); })();
+  ')
+  printf '# SimonSays settings (read at start). See the README for every one.\nPORT=%s\n' "$PORT" > "$HOME_DIR/.env"
+fi
+PORT=$(sed -n 's/^[[:space:]]*PORT[[:space:]]*=[[:space:]]*//p' "$HOME_DIR/.env" | tail -1)
+PORT=${PORT:-8081}
+
+if [ -n "$DESKTOP" ] && [ -z "${SIMONSAYS_NO_BROWSER:-}" ] && command -v xdg-open >/dev/null 2>&1; then
+  (
+    for _ in $(seq 1 90); do
+      if "$NODE" -e "fetch('http://127.0.0.1:$PORT/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))" 2>/dev/null; then
+        xdg-open "http://localhost:$PORT/" >/dev/null 2>&1
+        exit 0
+      fi
+      sleep 1
+    done
+  ) &
+fi
+
+printf '%s\n' "SimonSays is starting on http://localhost:$PORT/ — close this window, or press Ctrl+C, to stop it."
+cd "$HERE" || exit 1
+exec "$NODE" "$HERE/start.js"

@@ -74,8 +74,8 @@ Windows, Linux and Android phones, also in English and Spanish.
 ### What you need
 
 - **A computer to run it on.** The one that runs OBS is simplest: Windows 10
-  or 11 with the installer below. Linux, or an old Android phone on your
-  network, run it from source.
+  or 11 with the installer below, Linux with its own download, or an old
+  Android phone on your network with one command.
 - **[OBS Studio](https://obsproject.com) 28 or newer**, for the overlays.
 - **The accounts you stream from** — Twitch, YouTube, TikTok — and Discord
   or Spotify if you want those too.
@@ -103,7 +103,38 @@ Rather not install anything? **[SimonSays-Windows-Portable.zip](../../releases/l
 is the same, unzipped anywhere: double-click `SimonSays.exe`. It keeps
 everything in its own folder.
 
-#### Or from source (Linux, Android, or with git)
+#### On Linux
+
+Download **[SimonSays-Linux-x64.tar.gz](../../releases/latest/download/SimonSays-Linux-x64.tar.gz)**
+(64-bit Intel or AMD, glibc 2.28 or newer: any Linux from the last few
+years), unpack it, and install it, with no sudo:
+
+```bash
+tar -xzf SimonSays-Linux-x64.tar.gz
+SimonSays/install.sh
+```
+
+It brings everything it needs, Node included, and runs as a service of
+yours that starts by itself: `systemctl --user stop simonsays` stops it,
+`journalctl --user -u simonsays -f` shows what it says. It takes another
+port when 8081 is in use, and on a computer with no screen it listens on
+your network, so you can open it from another device; it prints the
+address. Your things stay in `~/.local/share/simonsays`, apart from the
+program; `~/.local/opt/simonsays/uninstall.sh` keeps them unless you add
+`--purge`. On a desktop,
+**[SimonSays-x86_64.AppImage](../../releases/latest/download/SimonSays-x86_64.AppImage)**
+is the same in one file to double-click: it opens a window to stop it from,
+and the dashboard.
+
+#### On an Android phone
+
+With [Termux](https://f-droid.org/packages/com.termux/) (from F-Droid),
+one command installs it: it is on the SimonSays website, linked under **About**. It
+checks the release as it arrives, takes a port of its own, starts SimonSays
+when the phone boots (with the Termux:Boot app), and never touches a
+SimonSays already on the phone.
+
+#### Or from source (with git, or anywhere else)
 
 You need **[Node.js](https://nodejs.org) 22 or newer** (the LTS, with its
 defaults; `node -v` checks). Download **[SimonSays.zip](../../releases/latest/download/SimonSays.zip)**

@@ -909,6 +909,32 @@ export const GUIDES = [
         es: '¿Algo salió mal? {t:autoBackupsTitle}, en {screen:settings}, devuelve tus datos a como estaban cualquiera de los últimos días.' },
     ],
   },
+  {
+    id: 'linux-android', group: 'more', icon: 'terminal', screens: [],
+    en: {
+      title: 'SimonSays on Linux, or on an Android phone',
+      intro: 'A Linux PC or home server, or a spare phone, runs SimonSays as well as Windows does, each with an install of its own.',
+      worked: 'It prints the address to open; there, the dashboard is this one.',
+    },
+    es: {
+      title: 'SimonSays en Linux, o en un teléfono Android',
+      intro: 'Un PC Linux o un servidor de casa, o un teléfono que sobra, corren SimonSays igual que Windows, cada uno con su propia instalación.',
+      worked: 'Muestra la dirección a abrir; allí, el panel es este mismo.',
+    },
+    steps: [
+      { en: 'Linux: unpack SimonSays-Linux-x64.tar.gz and run SimonSays/install.sh, with no sudo. It runs as a service of yours that starts by itself; systemctl --user stop simonsays stops it.',
+        es: 'Linux: descomprime SimonSays-Linux-x64.tar.gz y ejecuta SimonSays/install.sh, sin sudo. Corre como un servicio tuyo que arranca solo; systemctl --user stop simonsays lo detiene.' },
+      { en: 'On a Linux desktop, SimonSays-x86_64.AppImage is the same in one file: double-click it, and close its window to stop it.',
+        es: 'En un escritorio Linux, SimonSays-x86_64.AppImage es lo mismo en un solo archivo: haz doble clic, y cierra su ventana para detenerlo.' },
+      { en: 'An Android phone: install Termux from F-Droid, then paste the one command on the SimonSays website. It never touches a SimonSays already on the phone.',
+        es: 'Un teléfono Android: instala Termux desde F-Droid y pega el comando que está en la web de SimonSays. Nunca toca un SimonSays que ya esté en el teléfono.' },
+      { en: 'On a phone, keep Android from stopping it: Settings → Apps → Termux → Battery → Unrestricted; and install Termux:Boot for it to start when the phone does.',
+        es: 'En un teléfono, evita que Android lo detenga: Ajustes → Aplicaciones → Termux → Batería → Sin restricciones; e instala Termux:Boot para que arranque con el teléfono.' },
+      { go: 'settings',
+        en: 'Both update themselves from {screen:settings}, under {t:aboutApp}, and back up your data every day.',
+        es: 'Los dos se actualizan solos desde {screen:settings}, en {t:aboutApp}, y respaldan tus datos cada día.' },
+    ],
+  },
 ];
 
 /** The app's own words, each with where it is used. */

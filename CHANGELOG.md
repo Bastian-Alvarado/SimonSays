@@ -2,6 +2,15 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [3.1.0] — 2026-10-27
+
+- On Linux, SimonSays-Linux-x64.tar.gz brings everything it needs, Node included: unpack it and run ./install.sh, with no sudo. It installs just for you, runs as a service that starts by itself (stopped with systemctl --user stop simonsays), takes another port when 8081 is in use, and on a computer with no screen listens on your network so you can open it from another device. Your things stay in ~/.local/share/simonsays, apart from the program; uninstall.sh keeps them unless you add --purge.
+- For a Linux desktop, SimonSays-x86_64.AppImage: one file to double-click. It opens a window to stop it from and the dashboard in your browser, and keeps your things in the same place, so a newer AppImage finds them.
+- On an Android phone with Termux, one command installs SimonSays (the command is on the SimonSays website): the release checked as it arrives, a port of its own, and starting when the phone boots. It never touches a SimonSays already on the phone.
+- Installed Linux copies update themselves from Settings → About like Windows ones, with a package made for Linux.
+- Fixed: on Windows, closing SimonSays.cmd's window, or Ctrl+C in it, stopped the server without saving what it had not saved yet. Every way of stopping it now lets it save and say goodbye first.
+- Fixed: updating a copy from a zip or git on a phone could fail with "npm ci can only install packages when your package.json and package-lock.json are in sync": it now installs anyway, keeping to the lock where it can.
+
 ## [3.0.0] — 2026-10-26
 
 - **After updating:** nothing to redo. A copy from a zip or git keeps everything in its own folder, as before, and keeps updating from Settings → About. To move to the installer instead: close the old SimonSays, run SimonSays-Setup.exe, and in its first setup choose Bring in my existing SimonSays with your old folder. Your layouts, commands, accounts and pictures come with it, and the old folder is left as it was. On Linux and Android phones nothing changes.

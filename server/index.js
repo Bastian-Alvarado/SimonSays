@@ -239,6 +239,8 @@ function installShutdownHandlers(server) {
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+  // Its window closed: a terminal on Linux (the AppImage), a console on Windows (SimonSays.cmd). Saved and said goodbye, not cut off.
+  process.on('SIGHUP', () => shutdown('SIGHUP'));
 
   // A crash must not take the database with it.
   process.on('uncaughtException', (err) => {
