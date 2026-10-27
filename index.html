@@ -2934,9 +2934,9 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 }
 #in-hero .fc-move-text-3 {
   color: #F4F4F5;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: "Montserrat", system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 700;
 }
 #in-hero .fc-move-4 {
   display: flex;
@@ -2967,9 +2967,9 @@ h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 }
 #in-hero .fc-move-text-4 {
   color: #F4F4F5;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: "Montserrat", system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 700;
 }
 #in-hero .fc-paths {
   align-self: stretch;
@@ -3914,31 +3914,31 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 <p class="fc-crumb-label"><span data-l="en">SimonSays · Install guide</span><span data-l="es">SimonSays · Guía de instalación</span></p>
 </div>
 <h1 class="fc-hero-title"><span data-l="en">Install SimonSays.</span><span data-l="es">Instala SimonSays.</span></h1>
-<p class="fc-hero-lede"><span data-l="en">A small server you run on your own machine. On Windows, one installer and five minutes; on Linux and Android, four moves and 15 to 30 minutes, most of it waiting for downloads.</span><span data-l="es">Un pequeño servidor que corre en tu propia máquina. En Windows, un instalador y cinco minutos; en Linux y Android, cuatro pasos y de 15 a 30 minutos, casi todo esperando descargas.</span></p>
+<p class="fc-hero-lede"><span data-l="en">A small server you run on your own machine. One download and its installer on Windows and Linux, one command on an Android phone: a few minutes, most of it downloading.</span><span data-l="es">Un pequeño servidor que corre en tu propia máquina. Una descarga y su instalador en Windows y Linux, un comando en un teléfono Android: unos minutos, casi todo descargando.</span></p>
 <div class="fc-moves">
 <div class="fc-move">
 <div class="fc-move-num">
 <p class="fc-move-num-text">1</p>
 </div>
-<p class="fc-move-text"><span data-l="en">Get Node.js 22+</span><span data-l="es">Instala Node.js 22+</span></p>
+<p class="fc-move-text"><span data-l="en">Download it</span><span data-l="es">Descárgalo</span></p>
 </div>
 <div class="fc-move-2">
 <div class="fc-move-num-2">
 <p class="fc-move-num-text-2">2</p>
 </div>
-<p class="fc-move-text-2"><span data-l="en">Download the app</span><span data-l="es">Descarga la app</span></p>
+<p class="fc-move-text-2"><span data-l="en">Run its installer</span><span data-l="es">Ejecuta su instalador</span></p>
 </div>
 <div class="fc-move-3">
 <div class="fc-move-num-3">
 <p class="fc-move-num-text-3">3</p>
 </div>
-<p class="fc-move-text-3">npm install</p>
+<p class="fc-move-text-3"><span data-l="en">Open the address</span><span data-l="es">Abre la dirección</span></p>
 </div>
 <div class="fc-move-4">
 <div class="fc-move-num-4">
 <p class="fc-move-num-text-4">4</p>
 </div>
-<p class="fc-move-text-4">npm run serve</p>
+<p class="fc-move-text-4"><span data-l="en">Follow the first setup</span><span data-l="es">Sigue la configuración inicial</span></p>
 </div>
 </div>
 </div>
@@ -3958,7 +3958,7 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 <div class="fc-path-icon-2">
 <div class="fc-icon-linux"><svg aria-hidden="true" class="lucide lucide-terminal" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M12 19h8"></path><path d="m4 17 6-6-6-6"></path></svg></div>
 </div>
-<p class="fc-path-time-2">~15 min</p>
+<p class="fc-path-time-2">~5 min</p>
 </div>
 <p class="fc-path-name-2">Linux</p>
 <p class="fc-path-blurb-2"><span data-l="en">A PC, laptop or home server, always on.</span><span data-l="es">Un PC, portátil o servidor de casa, siempre encendido.</span></p>
@@ -3968,7 +3968,7 @@ html[data-lang="es"] #ss [data-l="en"], html:not([data-lang="es"]) #ss [data-l="
 <div class="fc-path-icon-3">
 <div class="fc-icon-android"><svg aria-hidden="true" class="lucide lucide-smartphone" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><rect height="20" rx="2" ry="2" width="14" x="5" y="2"></rect><path d="M12 18h.01"></path></svg></div>
 </div>
-<p class="fc-path-time-3">~30 min</p>
+<p class="fc-path-time-3">~10 min</p>
 </div>
 <p class="fc-path-name-3">Android</p>
 <p class="fc-path-blurb-3"><span data-l="en">A spare phone with Termux, plugged in on your Wi-Fi.</span><span data-l="es">Un teléfono que sobra con Termux, enchufado y en tu Wi-Fi.</span></p>
@@ -4068,8 +4068,30 @@ npm start</code></pre></div>
 </section>
 <section class="in-chapter in-linux" id="in-en-linux" data-os="linux">
 <h2>Linux</h2>
-<p>Any distribution with Node.js 22 or newer works, desktop or headless. These steps were run end to end on a clean Linux machine with Node 22: <code>npm install</code> finished in under a minute, the first build in about 30 seconds, and <code>/api/health</code> answered right away.</p>
-<div class="in-step" id="in-en-linux-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Install Node.js 22+ and Git">Install Node.js 22+ and Git</h3>
+<p>Any 64-bit Linux from the last few years works, desktop or headless: the download brings everything SimonSays needs, Node.js included, and installs it just for you, with no sudo.</p>
+<div class="in-step" id="in-en-linux-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Download it">Download it</h3>
+<p>Download <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Linux-x64.tar.gz" target="_blank" rel="noopener">SimonSays-Linux-x64.tar.gz</a> (64-bit Intel or AMD). On a desktop, <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-x86_64.AppImage" target="_blank" rel="noopener">SimonSays-x86_64.AppImage</a> is the same in one file: see below.</p>
+</div></div>
+<div class="in-step" id="in-en-linux-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Install it">Install it</h3>
+<p>Unpack it and run its installer, as yourself:</p>
+<div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>tar -xzf SimonSays-Linux-x64.tar.gz
+SimonSays/install.sh</code></pre></div>
+<p>It installs to <code>~/.local/opt/simonsays</code>, runs as a service of yours that starts by itself, and takes another port when 8081 is in use. On a computer with no screen it listens on your network, so you can open it from another device.</p>
+</div></div>
+<div class="in-step" id="in-en-linux-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Open it">Open it</h3>
+<p>When it is ready it prints the address: <code>http://localhost:8081</code> on this computer, or the one it shows from another device. Continue at After installing.</p>
+<div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>systemctl --user stop simonsays<span class="c">       # stop it</span>
+journalctl --user -u simonsays -f<span class="c">     # what it says</span>
+~/.local/opt/simonsays/uninstall.sh<span class="c">   # remove it (your things are kept)</span></code></pre></div>
+<p>A home server that should keep it running after you log out: <code>loginctl enable-linger $USER</code>.</p>
+</div></div>
+<div class="in-sub" id="in-en-linux-4"><h3 data-toc="The AppImage, on a desktop">The AppImage, on a desktop</h3>
+<p>Download <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-x86_64.AppImage" target="_blank" rel="noopener">SimonSays-x86_64.AppImage</a>, make it executable (right-click → Properties → Allow executing as program, or <code>chmod +x SimonSays-x86_64.AppImage</code>), and double-click it. It opens a window to stop it from, and the dashboard in your browser. Your things are kept in <code>~/.local/share/simonsays</code>, so a newer AppImage finds them.</p>
+</div>
+<div class="in-sub" id="in-en-linux-5"><h3 data-toc="The manual way, with Node.js and Git">The manual way, with Node.js and Git</h3>
+<p>Rather run it from source, or keep it in a Git folder? These were the steps before the download, and still work.</p>
+</div>
+<div class="in-sub" id="in-en-linux-6"><h3 data-toc="Install Node.js 22+ and Git">Install Node.js 22+ and Git</h3>
 <p>Your distribution&#x27;s own Node.js is often too old, so check first with <code>node -v</code>. Pick the line for your system:</p>
 <div class="in-table"><table><thead><tr><th>System</th><th>Commands</th></tr></thead><tbody><tr><td>Ubuntu, Debian, Mint, Pop!_OS</td><td><code>curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -</code> then <code>sudo apt install -y nodejs git</code></td></tr><tr><td>Fedora</td><td><code>sudo dnf install nodejs22 git</code> (or <code>nodejs</code> when it is already 22+)</td></tr><tr><td>Arch, Manjaro, EndeavourOS</td><td><code>sudo pacman -S nodejs npm git</code></td></tr><tr><td>openSUSE</td><td><code>sudo zypper install nodejs22 git</code></td></tr><tr><td>Any distro, no root needed</td><td>nvm, below</td></tr></tbody></table></div>
 <p>With <strong>nvm</strong> (installs Node.js in your home folder):</p>
@@ -4078,20 +4100,20 @@ npm start</code></pre></div>
 nvm install 22
 nvm alias default 22</code></pre></div>
 <p>Then check: <code>node -v</code> must say <strong>v22</strong> or higher.</p>
-</div></div>
-<div class="in-step" id="in-en-linux-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Download SimonSays">Download SimonSays</h3>
+</div>
+<div class="in-sub" id="in-en-linux-7"><h3 data-toc="Download SimonSays">Download SimonSays</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>cd ~
 git clone https://github.com/Bastian-Alvarado/SimonSays.git
 cd SimonSays</code></pre></div>
 <p>No Git? <code>curl -L -o SimonSays.zip https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays.zip</code>, then <code>unzip SimonSays.zip &amp;&amp; cd SimonSays</code>.</p>
-</div></div>
-<div class="in-step" id="in-en-linux-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Install and start">Install and start</h3>
+</div>
+<div class="in-sub" id="in-en-linux-8"><h3 data-toc="Install and start">Install and start</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>npm install
 npm run serve</code></pre></div>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p>Never run these with <code>sudo</code>. Files created as root break later installs and updates. When you see <code>listening on http://0.0.0.0:8081</code>, the app is running. Leave that terminal open, or set up the service in step 5.</p></div>
 <p>After the first time, start it with <code>npm start</code>.</p>
-</div></div>
-<div class="in-step" id="in-en-linux-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Open the firewall (only for other devices)">Open the firewall (only for other devices)</h3>
+</div>
+<div class="in-sub" id="in-en-linux-9"><h3 data-toc="Open the firewall (only for other devices)">Open the firewall (only for other devices)</h3>
 <p>Most desktops have no firewall on by default. If yours does:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code><span class="c"># Ubuntu and friends (ufw)</span>
 sudo ufw allow 8081/tcp
@@ -4099,8 +4121,8 @@ sudo ufw allow 8081/tcp
 <span class="c"># Fedora, openSUSE (firewalld)</span>
 sudo firewall-cmd --add-port=8081/tcp --permanent
 sudo firewall-cmd --reload</code></pre></div>
-</div></div>
-<div class="in-step" id="in-en-linux-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Run it as a service (recommended for a home server)">Run it as a service (recommended for a home server)</h3>
+</div>
+<div class="in-sub" id="in-en-linux-10"><h3 data-toc="Run it as a service (recommended for a home server)">Run it as a service (recommended for a home server)</h3>
 <p>A systemd user service starts SimonSays when the machine boots, restarts it if it crashes, and keeps it running after you log out. First find your Node.js path:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>which node</code></pre></div>
 <p>Create <code>~/.config/systemd/user/simonsays.service</code>, putting that path after <code>ExecStart=</code>:</p>
@@ -4127,13 +4149,13 @@ journalctl --user -u simonsays -f<span class="c">     # live log (Ctrl+C to leav
 systemctl --user restart simonsays<span class="c">    # after editing .env</span></code></pre></div>
 <p><code>node start.js</code> is exactly what <code>npm start</code> runs. The built-in updater restarts the app by itself, so the service needs no changes when you update from Settings.</p>
 <p>No systemd, or just want it in the background? <code>tmux new -s simonsays</code>, run <code>npm start</code>, then press <strong>Ctrl+B</strong> then <strong>D</strong> to leave it running. <code>tmux attach -t simonsays</code> brings it back.</p>
-</div></div>
-<div class="in-step" id="in-en-linux-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Check it works">Check it works</h3>
+</div>
+<div class="in-sub" id="in-en-linux-11"><h3 data-toc="Check it works">Check it works</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>curl localhost:8081/api/health</code></pre></div>
 <p>An answer starting <code>{&quot;ok&quot;:true</code> means it is up. Continue at <strong>After installing</strong>.</p>
-</div></div>
-<div class="in-sub in-trouble" id="in-en-linux-7"><h3 data-toc="Linux problems">Linux problems</h3>
-<ul class="in-list"><li><strong><code>EACCES: permission denied</code></strong> during <code>npm install</code>: the folder or <code>~/.npm</code> was touched by <code>sudo</code>. Fix with <code>sudo chown -R $USER: ~/SimonSays ~/.npm</code> and run it again without <code>sudo</code>.</li><li><strong><code>SyntaxError</code></strong><strong> or </strong><strong><code>Unsupported engine</code></strong><strong> on start</strong>: Node.js is older than 22. With nvm, <code>nvm use 22</code>; under systemd, check the <code>ExecStart</code> path points at the new Node.</li><li><strong>Service starts but can&#x27;t find </strong><strong><code>node</code></strong>: systemd doesn&#x27;t load your shell&#x27;s <code>PATH</code>. Use the full path from <code>which node</code> in <code>ExecStart</code>.</li><li><strong><code>EADDRINUSE</code></strong><strong> / port 8081 in use</strong>: another copy is running (<code>systemctl --user stop simonsays</code>), or set <code>PORT=</code> in <code>.env</code>.</li><li><strong>Build killed on a small machine</strong> (1 GB RAM or less): add swap, or build on another computer and copy the <code>web/dist</code> folder over.</li></ul>
+</div>
+<div class="in-sub in-trouble" id="in-en-linux-12"><h3 data-toc="Linux problems">Linux problems</h3>
+<ul class="in-list"><li><strong>No free port between 8081 and 8099</strong>: set <code>PORT=</code> in <code>~/.local/share/simonsays/.env</code> and run install.sh again.</li><li><strong>The AppImage does nothing</strong> when double-clicked: make it executable first (see above).</li><li><strong><code>EACCES: permission denied</code></strong> during <code>npm install</code>: the folder or <code>~/.npm</code> was touched by <code>sudo</code>. Fix with <code>sudo chown -R $USER: ~/SimonSays ~/.npm</code> and run it again without <code>sudo</code>.</li><li><strong><code>SyntaxError</code></strong><strong> or </strong><strong><code>Unsupported engine</code></strong><strong> on start</strong>: Node.js is older than 22. With nvm, <code>nvm use 22</code>; under systemd, check the <code>ExecStart</code> path points at the new Node.</li><li><strong>Service starts but can&#x27;t find </strong><strong><code>node</code></strong>: systemd doesn&#x27;t load your shell&#x27;s <code>PATH</code>. Use the full path from <code>which node</code> in <code>ExecStart</code>.</li><li><strong><code>EADDRINUSE</code></strong><strong> / port 8081 in use</strong>: another copy is running (<code>systemctl --user stop simonsays</code>), or set <code>PORT=</code> in <code>.env</code>.</li><li><strong>Build killed on a small machine</strong> (1 GB RAM or less): add swap, or build on another computer and copy the <code>web/dist</code> folder over.</li></ul>
 </div>
 <a class="in-pics" href="install-en-2-linux.png" target="_blank" rel="noopener"><div class="in-pics-copy"><strong>Prefer pictures?</strong><span>The same install as a picture guide, with Pixel Simon pointing things out.</span><em>Open the picture guide →</em></div><div class="in-pics-img"><img src="install-en-2-linux.png" alt="Installing SimonSays on Linux, step by step" loading="lazy"></div></a>
 </section>
@@ -4145,42 +4167,59 @@ systemctl --user restart simonsays<span class="c">    # after editing .env</span
 <p>Get Termux from <strong><a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noopener">F-Droid</a></strong> or the project&#x27;s <strong><a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener">GitHub releases</a></strong> (the <code>arm64-v8a</code> APK for most phones). Android asks you to allow installing apps from that source; allow it.</p>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p>Don&#x27;t mix sources: Termux and its add-ons (Termux:Boot, Termux:API) must all come from the same place, or they won&#x27;t work together.</p></div>
 </div></div>
-<div class="in-step" id="in-en-android-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Update Termux and install Node.js and Git">Update Termux and install Node.js and Git</h3>
+<div class="in-step" id="in-en-android-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Install SimonSays with one command">Install SimonSays with one command</h3>
+<p>Open Termux and paste:</p>
+<div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>curl -fsSL https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/install-termux.sh | sh</code></pre></div>
+<p>It installs Node.js if the phone has none, downloads the latest release and checks it, takes a port of its own, and starts SimonSays: a few minutes. It never touches a SimonSays already on the phone; for a second copy, put <code>SIMONSAYS_DIR=~/another-folder</code> before <code>sh</code>.</p>
+</div></div>
+<div class="in-step" id="in-en-android-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Note its address">Note its address</h3>
+<p>Open <strong>Settings → Wi-Fi</strong>, tap your network, and note the <strong>IP address</strong>, such as <code>192.168.1.42</code>. You&#x27;ll use it on the PC:</p>
+<ul class="in-list"><li>The dashboard: <code>http://192.168.1.42:8081</code></li><li>OBS&#x27;s browser source: <code>http://192.168.1.42:8081/?mode=canvas</code></li><li>OBS&#x27;s dock: <code>http://192.168.1.42:8081/?mode=dock</code></li></ul>
+<p>In your router&#x27;s settings, give the phone a <strong>fixed (reserved) address</strong> so it stays the same after a restart. Otherwise OBS loses the app whenever the address changes.</p>
+</div></div>
+<div class="in-step" id="in-en-android-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Keep Android from stopping it">Keep Android from stopping it</h3>
+<p>Android closes background apps to save battery. Do all of these:</p>
+<ol class="in-list"><li><strong>Wake lock:</strong> pull down Termux&#x27;s notification and tap <strong>Acquire wakelock</strong>, or run <code>termux-wake-lock</code>. The CPU then stays awake with the screen off.</li><li><strong>Battery:</strong> Settings → Apps → Termux → Battery → <strong>Unrestricted</strong> (sometimes called <i>Don&#x27;t optimise</i>).</li><li><strong>Phone makers&#x27; own killers:</strong> Samsung, Xiaomi, Huawei, OnePlus and others add their own. Allow Termux to autostart and run in the background, and lock it in the recent-apps list. <a href="https://dontkillmyapp.com" target="_blank" rel="noopener">dontkillmyapp.com</a> has steps for each brand.</li><li><strong>Android 12 and newer</strong> may kill apps with many processes (the <i>phantom process killer</i>). On Android 14+, open Developer options and turn on <strong>Disable child process restrictions</strong>. On Android 12 and 13, run from a PC with ADB: <code>adb shell device_config put activity_manager max_phantom_processes 2147483647</code>.</li></ol>
+</div></div>
+<div class="in-step" id="in-en-android-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Start it when the phone boots">Start it when the phone boots</h3>
+<p>Install Termux:Boot from the same place as Termux and open it once: the command already left SimonSays&#x27;s start-up in <code>~/.termux/boot</code>.</p>
+</div></div>
+<div class="in-step" id="in-en-android-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Sign in to Twitch on the phone itself">Sign in to Twitch on the phone itself</h3>
+<p>Twitch only accepts a plain <code>http://</code> sign-in address for <code>localhost</code>. Do the Twitch sign-in once in the <strong>phone&#x27;s own browser</strong> at <code>http://localhost:8081</code>, with <code>http://localhost:8081/</code> as the redirect URL in your Twitch app. Every other device then shares that sign-in. The rest of the setup can be done from the PC.</p>
+</div></div>
+<div class="in-step" id="in-en-android-7"><span class="in-step-num">7</span><div class="in-step-body"><h3 data-toc="7. Point the app at OBS on your PC">Point the app at OBS on your PC</h3>
+<p>In OBS (on the PC): <strong>Tools → WebSocket Server Settings</strong>, tick <strong>Enable WebSocket server</strong>, and press <strong>Show Connect Info</strong>. On the app&#x27;s Connections screen, use the <strong>PC&#x27;s</strong> IP address (not <code>localhost</code>), port <code>4455</code> and that password. If Windows asks, allow OBS through the firewall on private networks.</p>
+</div></div>
+<div class="in-sub" id="in-en-android-8"><h3 data-toc="The manual way, with Node.js and Git">The manual way, with Node.js and Git</h3>
+<p>Rather set it up by hand, or with Git? These were the steps before the one command, and still work.</p>
+</div>
+<div class="in-sub" id="in-en-android-9"><h3 data-toc="Update Termux and install Node.js and Git">Update Termux and install Node.js and Git</h3>
 <p>Open Termux and run:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>pkg update &amp;&amp; pkg upgrade -y
 pkg install -y nodejs-lts git
 node -v</code></pre></div>
 <p>Press <strong>Enter</strong> to accept the default when it asks about config files. <code>node -v</code> must say <strong>v22</strong> or higher; if <code>nodejs-lts</code> is older, run <code>pkg install nodejs</code> instead (the current release).</p>
-</div></div>
-<div class="in-step" id="in-en-android-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Download SimonSays into Termux&#x27;s home">Download SimonSays into Termux&#x27;s home</h3>
+</div>
+<div class="in-sub" id="in-en-android-10"><h3 data-toc="Download SimonSays into Termux&#x27;s home">Download SimonSays into Termux&#x27;s home</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>cd ~
 git clone https://github.com/Bastian-Alvarado/SimonSays.git
 cd SimonSays</code></pre></div>
 <p>Keep it in Termux&#x27;s home folder (<code>~</code>). Your phone&#x27;s shared storage (<code>/sdcard</code>, Downloads) doesn&#x27;t allow the links and permissions <code>node_modules</code> needs, and installing there fails.</p>
-</div></div>
-<div class="in-step" id="in-en-android-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Install and start">Install and start</h3>
+</div>
+<div class="in-sub" id="in-en-android-11"><h3 data-toc="Install and start">Install and start</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>npm install
 npm run serve</code></pre></div>
 <p>On a phone this takes longer than on a PC: allow 5 to 15 minutes for <code>npm install</code> and a few minutes for the first build. Keep the screen on and Termux in front while it runs. When you see <code>listening on http://0.0.0.0:8081</code>, it&#x27;s running.</p>
 <p>After the first time, <code>npm start</code> is enough.</p>
-</div></div>
-<div class="in-step" id="in-en-android-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Find the phone&#x27;s address">Find the phone&#x27;s address</h3>
-<p>Open <strong>Settings → Wi-Fi</strong>, tap your network, and note the <strong>IP address</strong>, such as <code>192.168.1.42</code>. You&#x27;ll use it on the PC:</p>
-<ul class="in-list"><li>The dashboard: <code>http://192.168.1.42:8081</code></li><li>OBS&#x27;s browser source: <code>http://192.168.1.42:8081/?mode=canvas</code></li><li>OBS&#x27;s dock: <code>http://192.168.1.42:8081/?mode=dock</code></li></ul>
-<p>In your router&#x27;s settings, give the phone a <strong>fixed (reserved) address</strong> so it stays the same after a restart. Otherwise OBS loses the app whenever the address changes.</p>
-</div></div>
-<div class="in-step" id="in-en-android-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Keep Android from stopping it">Keep Android from stopping it</h3>
-<p>Android closes background apps to save battery. Do all of these:</p>
-<ol class="in-list"><li><strong>Wake lock:</strong> pull down Termux&#x27;s notification and tap <strong>Acquire wakelock</strong>, or run <code>termux-wake-lock</code>. The CPU then stays awake with the screen off.</li><li><strong>Battery:</strong> Settings → Apps → Termux → Battery → <strong>Unrestricted</strong> (sometimes called <i>Don&#x27;t optimise</i>).</li><li><strong>Phone makers&#x27; own killers:</strong> Samsung, Xiaomi, Huawei, OnePlus and others add their own. Allow Termux to autostart and run in the background, and lock it in the recent-apps list. <a href="https://dontkillmyapp.com" target="_blank" rel="noopener">dontkillmyapp.com</a> has steps for each brand.</li><li><strong>Android 12 and newer</strong> may kill apps with many processes (the <i>phantom process killer</i>). On Android 14+, open Developer options and turn on <strong>Disable child process restrictions</strong>. On Android 12 and 13, run from a PC with ADB: <code>adb shell device_config put activity_manager max_phantom_processes 2147483647</code>.</li></ol>
-</div></div>
-<div class="in-step" id="in-en-android-7"><span class="in-step-num">7</span><div class="in-step-body"><h3 data-toc="7. Keep it running in the background">Keep it running in the background</h3>
+</div>
+<div class="in-sub" id="in-en-android-12"><h3 data-toc="Keep it running in the background">Keep it running in the background</h3>
 <p>Run the app inside <strong>tmux</strong>, so it survives Termux&#x27;s window being closed by mistake:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>pkg install -y tmux
 tmux new -s simonsays
 cd ~/SimonSays &amp;&amp; npm start</code></pre></div>
 <p>Press <strong>Ctrl+B</strong> then <strong>D</strong> to leave it running (Termux&#x27;s extra-keys row has <strong>CTRL</strong>). <code>tmux attach -t simonsays</code> brings it back.</p>
-</div></div>
-<div class="in-step" id="in-en-android-8"><span class="in-step-num">8</span><div class="in-step-body"><h3 data-toc="8. Start it when the phone boots (optional)">Start it when the phone boots (optional)</h3>
+</div>
+<div class="in-sub" id="in-en-android-13"><h3 data-toc="Start it when the phone boots (optional)">Start it when the phone boots (optional)</h3>
 <p>Install <strong>Termux:Boot</strong> from the same place as Termux and open it once. Then in Termux:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copied"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copy</span></button></div><pre><code>mkdir -p ~/.termux/boot
 cat &gt; ~/.termux/boot/simonsays &lt;&lt;&#x27;EOF&#x27;
@@ -4191,15 +4230,9 @@ npm start &gt; ~/simonsays.log 2&gt;&amp;1
 EOF
 chmod +x ~/.termux/boot/simonsays</code></pre></div>
 <p>After a restart, SimonSays comes up on its own. <code>tail -f ~/simonsays.log</code> shows its log.</p>
-</div></div>
-<div class="in-step" id="in-en-android-9"><span class="in-step-num">9</span><div class="in-step-body"><h3 data-toc="9. Sign in to Twitch on the phone itself">Sign in to Twitch on the phone itself</h3>
-<p>Twitch only accepts a plain <code>http://</code> sign-in address for <code>localhost</code>. Do the Twitch sign-in once in the <strong>phone&#x27;s own browser</strong> at <code>http://localhost:8081</code>, with <code>http://localhost:8081/</code> as the redirect URL in your Twitch app. Every other device then shares that sign-in. The rest of the setup can be done from the PC.</p>
-</div></div>
-<div class="in-step" id="in-en-android-10"><span class="in-step-num">10</span><div class="in-step-body"><h3 data-toc="10. Point the app at OBS on your PC">Point the app at OBS on your PC</h3>
-<p>In OBS (on the PC): <strong>Tools → WebSocket Server Settings</strong>, tick <strong>Enable WebSocket server</strong>, and press <strong>Show Connect Info</strong>. On the app&#x27;s Connections screen, use the <strong>PC&#x27;s</strong> IP address (not <code>localhost</code>), port <code>4455</code> and that password. If Windows asks, allow OBS through the firewall on private networks.</p>
-</div></div>
-<div class="in-sub in-trouble" id="in-en-android-11"><h3 data-toc="Termux problems">Termux problems</h3>
-<ul class="in-list"><li><strong><code>Repository is under maintenance or down</code></strong>: run <code>termux-change-repo</code>, pick a mirror near you, then <code>pkg update</code> again.</li><li><strong><code>CANNOT LINK EXECUTABLE</code></strong><strong> or library errors after an update</strong>: run <code>pkg upgrade -y</code>. Termux needs all its packages at the same level.</li><li><strong><code>npm install</code></strong><strong> fails on </strong><strong><code>/sdcard</code></strong><strong> with </strong><strong><code>EPERM</code></strong><strong> or </strong><strong><code>symlink</code></strong>: the app is in shared storage. Move it to <code>~</code> (step 3).</li><li><strong>The app stops after the screen turns off</strong>: the wake lock is missing or the battery setting is still optimised (step 6).</li><li><strong><code>[Process completed (signal 9)]</code></strong>: Android&#x27;s phantom process killer. See step 6.4.</li><li><strong>Build runs out of memory</strong>: close other apps and run <code>npm run build</code> again. Or build on a PC and copy the <code>web/dist</code> folder into the phone&#x27;s <code>~/SimonSays/web/</code>.</li></ul>
+</div>
+<div class="in-sub in-trouble" id="in-en-android-14"><h3 data-toc="Termux problems">Termux problems</h3>
+<ul class="in-list"><li><strong>It says the folder is already there</strong>: SimonSays is installed; it updates itself from Settings → About.</li><li><strong><code>Repository is under maintenance or down</code></strong>: run <code>termux-change-repo</code>, pick a mirror near you, then <code>pkg update</code> again.</li><li><strong><code>CANNOT LINK EXECUTABLE</code></strong><strong> or library errors after an update</strong>: run <code>pkg upgrade -y</code>. Termux needs all its packages at the same level.</li><li><strong><code>npm install</code></strong><strong> fails on </strong><strong><code>/sdcard</code></strong><strong> with </strong><strong><code>EPERM</code></strong><strong> or </strong><strong><code>symlink</code></strong>: the app is in shared storage. Move it to <code>~</code> (step 3).</li><li><strong>The app stops after the screen turns off</strong>: the wake lock is missing or the battery setting is still optimised (step 6).</li><li><strong><code>[Process completed (signal 9)]</code></strong>: Android&#x27;s phantom process killer. See step 6.4.</li><li><strong>Build runs out of memory</strong>: close other apps and run <code>npm run build</code> again. Or build on a PC and copy the <code>web/dist</code> folder into the phone&#x27;s <code>~/SimonSays/web/</code>.</li></ul>
 </div>
 <a class="in-pics" href="install-en-3-android.png" target="_blank" rel="noopener"><div class="in-pics-copy"><strong>Prefer pictures?</strong><span>The same install as a picture guide, with Pixel Simon pointing things out.</span><em>Open the picture guide →</em></div><div class="in-pics-img"><img src="install-en-3-android.png" alt="Installing SimonSays on an Android phone with Termux, step by step" loading="lazy"></div></a>
 </section>
@@ -4330,8 +4363,30 @@ npm start</code></pre></div>
 </section>
 <section class="in-chapter in-linux" id="in-es-linux" data-os="linux">
 <h2>Linux</h2>
-<p>Sirve cualquier distribución con Node.js 22 o más nuevo, con o sin escritorio. Estos pasos se probaron de principio a fin en un Linux limpio con Node 22: <code>npm install</code> terminó en menos de un minuto, la primera compilación en unos 30 segundos, y <code>/api/health</code> respondió de inmediato.</p>
-<div class="in-step" id="in-es-linux-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Instala Node.js 22+ y Git">Instala Node.js 22+ y Git</h3>
+<p>Sirve cualquier Linux de 64 bits de los últimos años, con escritorio o sin él: la descarga trae todo lo que SimonSays necesita, Node.js incluido, y lo instala solo para ti, sin sudo.</p>
+<div class="in-step" id="in-es-linux-1"><span class="in-step-num">1</span><div class="in-step-body"><h3 data-toc="1. Descárgalo">Descárgalo</h3>
+<p>Descarga <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-Linux-x64.tar.gz" target="_blank" rel="noopener">SimonSays-Linux-x64.tar.gz</a> (Intel o AMD de 64 bits). En un escritorio, <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-x86_64.AppImage" target="_blank" rel="noopener">SimonSays-x86_64.AppImage</a> es lo mismo en un solo archivo: mira más abajo.</p>
+</div></div>
+<div class="in-step" id="in-es-linux-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Instálalo">Instálalo</h3>
+<p>Descomprímelo y ejecuta su instalador, con tu usuario:</p>
+<div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>tar -xzf SimonSays-Linux-x64.tar.gz
+SimonSays/install.sh</code></pre></div>
+<p>Se instala en <code>~/.local/opt/simonsays</code>, corre como un servicio tuyo que arranca solo y usa otro puerto si el 8081 está ocupado. En un ordenador sin pantalla escucha en tu red, para que lo abras desde otro dispositivo.</p>
+</div></div>
+<div class="in-step" id="in-es-linux-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Ábrelo">Ábrelo</h3>
+<p>Cuando está listo muestra la dirección: <code>http://localhost:8081</code> en este ordenador, o la que indica desde otro dispositivo. Sigue en Después de instalar.</p>
+<div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>systemctl --user stop simonsays<span class="c">       # detenerlo</span>
+journalctl --user -u simonsays -f<span class="c">     # lo que dice</span>
+~/.local/opt/simonsays/uninstall.sh<span class="c">   # quitarlo (tus cosas se conservan)</span></code></pre></div>
+<p>Un servidor de casa que debe seguir corriendo al cerrar sesión: <code>loginctl enable-linger $USER</code>.</p>
+</div></div>
+<div class="in-sub" id="in-es-linux-4"><h3 data-toc="La AppImage, en un escritorio">La AppImage, en un escritorio</h3>
+<p>Descarga <a href="https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays-x86_64.AppImage" target="_blank" rel="noopener">SimonSays-x86_64.AppImage</a>, hazla ejecutable (clic derecho → Propiedades → Permitir ejecutar como programa, o <code>chmod +x SimonSays-x86_64.AppImage</code>) y haz doble clic. Abre una ventana desde la que detenerlo, y el panel en tu navegador. Tus cosas se guardan en <code>~/.local/share/simonsays</code>, así que una AppImage más nueva las encuentra.</p>
+</div>
+<div class="in-sub" id="in-es-linux-5"><h3 data-toc="A mano, con Node.js y Git">A mano, con Node.js y Git</h3>
+<p>¿Prefieres correrlo desde el código, o tenerlo en una carpeta de Git? Estos eran los pasos antes de la descarga, y siguen funcionando.</p>
+</div>
+<div class="in-sub" id="in-es-linux-6"><h3 data-toc="Instala Node.js 22+ y Git">Instala Node.js 22+ y Git</h3>
 <p>El Node.js de tu distribución suele ser demasiado antiguo, así que primero revisa con <code>node -v</code>. Elige la línea de tu sistema:</p>
 <div class="in-table"><table><thead><tr><th>Sistema</th><th>Comandos</th></tr></thead><tbody><tr><td>Ubuntu, Debian, Mint, Pop!_OS</td><td><code>curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -</code> y luego <code>sudo apt install -y nodejs git</code></td></tr><tr><td>Fedora</td><td><code>sudo dnf install nodejs22 git</code> (o <code>nodejs</code> si ya es 22+)</td></tr><tr><td>Arch, Manjaro, EndeavourOS</td><td><code>sudo pacman -S nodejs npm git</code></td></tr><tr><td>openSUSE</td><td><code>sudo zypper install nodejs22 git</code></td></tr><tr><td>Cualquier distro, sin root</td><td>nvm, abajo</td></tr></tbody></table></div>
 <p>Con <strong>nvm</strong> (instala Node.js en tu carpeta personal):</p>
@@ -4340,20 +4395,20 @@ npm start</code></pre></div>
 nvm install 22
 nvm alias default 22</code></pre></div>
 <p>Luego comprueba: <code>node -v</code> tiene que decir <strong>v22</strong> o más.</p>
-</div></div>
-<div class="in-step" id="in-es-linux-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Descarga SimonSays">Descarga SimonSays</h3>
+</div>
+<div class="in-sub" id="in-es-linux-7"><h3 data-toc="Descarga SimonSays">Descarga SimonSays</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>cd ~
 git clone https://github.com/Bastian-Alvarado/SimonSays.git
 cd SimonSays</code></pre></div>
 <p>¿Sin Git? <code>curl -L -o SimonSays.zip https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/SimonSays.zip</code>, y luego <code>unzip SimonSays.zip &amp;&amp; cd SimonSays</code>.</p>
-</div></div>
-<div class="in-step" id="in-es-linux-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Instala e inicia">Instala e inicia</h3>
+</div>
+<div class="in-sub" id="in-es-linux-8"><h3 data-toc="Instala e inicia">Instala e inicia</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>npm install
 npm run serve</code></pre></div>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p>Nunca los ejecutes con <code>sudo</code>. Los archivos creados como root rompen las instalaciones y actualizaciones posteriores. Cuando veas <code>listening on http://0.0.0.0:8081</code>, la app está corriendo. Deja esa terminal abierta, o configura el servicio del paso 5.</p></div>
 <p>Después de la primera vez, iníciala con <code>npm start</code>.</p>
-</div></div>
-<div class="in-step" id="in-es-linux-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Abre el firewall (solo para otros dispositivos)">Abre el firewall (solo para otros dispositivos)</h3>
+</div>
+<div class="in-sub" id="in-es-linux-9"><h3 data-toc="Abre el firewall (solo para otros dispositivos)">Abre el firewall (solo para otros dispositivos)</h3>
 <p>La mayoría de los escritorios no traen el firewall activado. Si el tuyo sí:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code><span class="c"># Ubuntu y derivados (ufw)</span>
 sudo ufw allow 8081/tcp
@@ -4361,8 +4416,8 @@ sudo ufw allow 8081/tcp
 <span class="c"># Fedora, openSUSE (firewalld)</span>
 sudo firewall-cmd --add-port=8081/tcp --permanent
 sudo firewall-cmd --reload</code></pre></div>
-</div></div>
-<div class="in-step" id="in-es-linux-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Como servicio (recomendado en un servidor de casa)">Como servicio (recomendado en un servidor de casa)</h3>
+</div>
+<div class="in-sub" id="in-es-linux-10"><h3 data-toc="Como servicio (recomendado en un servidor de casa)">Como servicio (recomendado en un servidor de casa)</h3>
 <p>Un servicio de usuario de systemd inicia SimonSays al arrancar la máquina, lo reinicia si se cae y lo mantiene corriendo aunque cierres sesión. Primero busca la ruta de Node.js:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>which node</code></pre></div>
 <p>Crea <code>~/.config/systemd/user/simonsays.service</code> y pon esa ruta después de <code>ExecStart=</code>:</p>
@@ -4389,13 +4444,13 @@ journalctl --user -u simonsays -f<span class="c">     # registro en vivo (Ctrl+C
 systemctl --user restart simonsays<span class="c">    # después de editar .env</span></code></pre></div>
 <p><code>node start.js</code> es exactamente lo que ejecuta <code>npm start</code>. El actualizador integrado reinicia la app por sí mismo, así que el servicio no necesita cambios cuando actualizas desde Ajustes.</p>
 <p>¿Sin systemd, o solo lo quieres en segundo plano? <code>tmux new -s simonsays</code>, ejecuta <code>npm start</code> y pulsa <strong>Ctrl+B</strong> y luego <strong>D</strong> para dejarlo corriendo. <code>tmux attach -t simonsays</code> lo trae de vuelta.</p>
-</div></div>
-<div class="in-step" id="in-es-linux-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Comprueba que funciona">Comprueba que funciona</h3>
+</div>
+<div class="in-sub" id="in-es-linux-11"><h3 data-toc="Comprueba que funciona">Comprueba que funciona</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>curl localhost:8081/api/health</code></pre></div>
 <p>Una respuesta que empieza con <code>{&quot;ok&quot;:true</code> significa que está funcionando. Sigue en <strong>Después de instalar</strong>.</p>
-</div></div>
-<div class="in-sub in-trouble" id="in-es-linux-7"><h3 data-toc="Problemas en Linux">Problemas en Linux</h3>
-<ul class="in-list"><li><strong><code>EACCES: permission denied</code></strong> durante <code>npm install</code>: la carpeta o <code>~/.npm</code> se tocaron con <code>sudo</code>. Arréglalo con <code>sudo chown -R $USER: ~/SimonSays ~/.npm</code> y vuelve a ejecutarlo sin <code>sudo</code>.</li><li><strong><code>SyntaxError</code></strong><strong> o </strong><strong><code>Unsupported engine</code></strong><strong> al iniciar</strong>: Node.js es anterior a 22. Con nvm, <code>nvm use 22</code>; con systemd, revisa que la ruta de <code>ExecStart</code> apunte al Node nuevo.</li><li><strong>El servicio arranca pero no encuentra </strong><strong><code>node</code></strong>: systemd no carga el <code>PATH</code> de tu shell. Usa la ruta completa de <code>which node</code> en <code>ExecStart</code>.</li><li><strong><code>EADDRINUSE</code></strong><strong> / el puerto 8081 está en uso</strong>: hay otra copia corriendo (<code>systemctl --user stop simonsays</code>), o define <code>PORT=</code> en <code>.env</code>.</li><li><strong>La compilación se corta en una máquina pequeña</strong> (1 GB de RAM o menos): agrega swap, o compila en otro computador y copia la carpeta <code>web/dist</code>.</li></ul>
+</div>
+<div class="in-sub in-trouble" id="in-es-linux-12"><h3 data-toc="Problemas en Linux">Problemas en Linux</h3>
+<ul class="in-list"><li><strong>No hay un puerto libre entre 8081 y 8099</strong>: pon <code>PORT=</code> en <code>~/.local/share/simonsays/.env</code> y vuelve a ejecutar install.sh.</li><li><strong>La AppImage no hace nada</strong> al hacer doble clic: hazla ejecutable primero (mira arriba).</li><li><strong><code>EACCES: permission denied</code></strong> durante <code>npm install</code>: la carpeta o <code>~/.npm</code> se tocaron con <code>sudo</code>. Arréglalo con <code>sudo chown -R $USER: ~/SimonSays ~/.npm</code> y vuelve a ejecutarlo sin <code>sudo</code>.</li><li><strong><code>SyntaxError</code></strong><strong> o </strong><strong><code>Unsupported engine</code></strong><strong> al iniciar</strong>: Node.js es anterior a 22. Con nvm, <code>nvm use 22</code>; con systemd, revisa que la ruta de <code>ExecStart</code> apunte al Node nuevo.</li><li><strong>El servicio arranca pero no encuentra </strong><strong><code>node</code></strong>: systemd no carga el <code>PATH</code> de tu shell. Usa la ruta completa de <code>which node</code> en <code>ExecStart</code>.</li><li><strong><code>EADDRINUSE</code></strong><strong> / el puerto 8081 está en uso</strong>: hay otra copia corriendo (<code>systemctl --user stop simonsays</code>), o define <code>PORT=</code> en <code>.env</code>.</li><li><strong>La compilación se corta en una máquina pequeña</strong> (1 GB de RAM o menos): agrega swap, o compila en otro computador y copia la carpeta <code>web/dist</code>.</li></ul>
 </div>
 <a class="in-pics" href="install-es-2-linux.png" target="_blank" rel="noopener"><div class="in-pics-copy"><strong>¿Prefieres imágenes?</strong><span>La misma instalación como guía en imágenes, con Pixel Simon señalando lo importante.</span><em>Abrir la guía en imágenes →</em></div><div class="in-pics-img"><img src="install-es-2-linux.png" alt="Instalación de SimonSays en Linux, paso a paso" loading="lazy"></div></a>
 </section>
@@ -4407,42 +4462,59 @@ systemctl --user restart simonsays<span class="c">    # después de editar .env<
 <p>Descarga Termux desde <strong><a href="https://f-droid.org/packages/com.termux/" target="_blank" rel="noopener">F-Droid</a></strong> o desde las <strong><a href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener">versiones en GitHub</a></strong> del proyecto (el APK <code>arm64-v8a</code> para la mayoría de los teléfonos). Android te pedirá permitir instalar apps desde ese origen; permítelo.</p>
 <div class="in-note"><img src="pixel-simon.png" alt="" width="36" height="36"><p>No mezcles orígenes: Termux y sus complementos (Termux:Boot, Termux:API) tienen que venir todos del mismo lugar, o no funcionan juntos.</p></div>
 </div></div>
-<div class="in-step" id="in-es-android-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Actualiza Termux e instala Node.js y Git">Actualiza Termux e instala Node.js y Git</h3>
+<div class="in-step" id="in-es-android-2"><span class="in-step-num">2</span><div class="in-step-body"><h3 data-toc="2. Instala SimonSays con un comando">Instala SimonSays con un comando</h3>
+<p>Abre Termux y pega:</p>
+<div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>curl -fsSL https://github.com/Bastian-Alvarado/SimonSays/releases/latest/download/install-termux.sh | sh</code></pre></div>
+<p>Instala Node.js si el teléfono no lo tiene, descarga la última versión y la comprueba, usa un puerto propio e inicia SimonSays: unos minutos. Nunca toca un SimonSays que ya esté en el teléfono; para una segunda copia, pon <code>SIMONSAYS_DIR=~/otra-carpeta</code> antes de <code>sh</code>.</p>
+</div></div>
+<div class="in-step" id="in-es-android-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Anota su dirección">Anota su dirección</h3>
+<p>Abre <strong>Ajustes → Wi-Fi</strong>, toca tu red y anota la <strong>dirección IP</strong>, por ejemplo <code>192.168.1.42</code>. La usarás en el PC:</p>
+<ul class="in-list"><li>El panel: <code>http://192.168.1.42:8081</code></li><li>La fuente de navegador de OBS: <code>http://192.168.1.42:8081/?mode=canvas</code></li><li>El dock de OBS: <code>http://192.168.1.42:8081/?mode=dock</code></li></ul>
+<p>En la configuración de tu router, dale al teléfono una <strong>dirección fija (reservada)</strong> para que no cambie después de un reinicio. Si no, OBS pierde la app cada vez que cambia la dirección.</p>
+</div></div>
+<div class="in-step" id="in-es-android-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Evita que Android lo detenga">Evita que Android lo detenga</h3>
+<p>Android cierra las apps en segundo plano para ahorrar batería. Haz todo esto:</p>
+<ol class="in-list"><li><strong>Wake lock:</strong> baja la notificación de Termux y toca <strong>Acquire wakelock</strong>, o ejecuta <code>termux-wake-lock</code>. Así el procesador sigue despierto con la pantalla apagada.</li><li><strong>Batería:</strong> Ajustes → Aplicaciones → Termux → Batería → <strong>Sin restricciones</strong> (a veces <i>No optimizar</i>).</li><li><strong>Los cierres propios de cada marca:</strong> Samsung, Xiaomi, Huawei, OnePlus y otras agregan los suyos. Permite que Termux se inicie solo y corra en segundo plano, y bloquéalo en la lista de apps recientes. <a href="https://dontkillmyapp.com" target="_blank" rel="noopener">dontkillmyapp.com</a> tiene los pasos para cada marca.</li><li><strong>Android 12 y más nuevos</strong> pueden cerrar apps con muchos procesos (el <i>phantom process killer</i>). En Android 14+, abre las Opciones de desarrollador y activa <strong>Desactivar restricciones de procesos secundarios</strong>. En Android 12 y 13, ejecuta desde un PC con ADB: <code>adb shell device_config put activity_manager max_phantom_processes 2147483647</code>.</li></ol>
+</div></div>
+<div class="in-step" id="in-es-android-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Que arranque con el teléfono">Que arranque con el teléfono</h3>
+<p>Instala Termux:Boot desde el mismo sitio que Termux y ábrelo una vez: el comando ya dejó el arranque de SimonSays en <code>~/.termux/boot</code>.</p>
+</div></div>
+<div class="in-step" id="in-es-android-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Inicia sesión en Twitch en el propio teléfono">Inicia sesión en Twitch en el propio teléfono</h3>
+<p>Twitch solo acepta una dirección <code>http://</code> simple para <code>localhost</code>. Inicia sesión en Twitch una vez desde el <strong>navegador del propio teléfono</strong> en <code>http://localhost:8081</code>, con <code>http://localhost:8081/</code> como URL de redirección en tu app de Twitch. Todos los demás dispositivos comparten esa sesión. El resto de la configuración puedes hacerla desde el PC.</p>
+</div></div>
+<div class="in-step" id="in-es-android-7"><span class="in-step-num">7</span><div class="in-step-body"><h3 data-toc="7. Apunta la app a OBS en tu PC">Apunta la app a OBS en tu PC</h3>
+<p>En OBS (en el PC): <strong>Herramientas → Configuración del servidor WebSocket</strong><strong> (Tools → WebSocket Server Settings)</strong>, marca <strong>Habilitar servidor WebSocket</strong> y pulsa <strong>Mostrar información de conexión</strong>. En la pantalla Conexiones de la app, usa la dirección IP <strong>del PC</strong> (no <code>localhost</code>), el puerto <code>4455</code> y esa contraseña. Si Windows pregunta, permite OBS en el firewall para redes privadas.</p>
+</div></div>
+<div class="in-sub" id="in-es-android-8"><h3 data-toc="A mano, con Node.js y Git">A mano, con Node.js y Git</h3>
+<p>¿Prefieres hacerlo a mano, o con Git? Estos eran los pasos antes del comando, y siguen funcionando.</p>
+</div>
+<div class="in-sub" id="in-es-android-9"><h3 data-toc="Actualiza Termux e instala Node.js y Git">Actualiza Termux e instala Node.js y Git</h3>
 <p>Abre Termux y ejecuta:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>pkg update &amp;&amp; pkg upgrade -y
 pkg install -y nodejs-lts git
 node -v</code></pre></div>
 <p>Pulsa <strong>Enter</strong> para aceptar la opción por defecto cuando pregunte por archivos de configuración. <code>node -v</code> tiene que decir <strong>v22</strong> o más; si <code>nodejs-lts</code> es más antiguo, ejecuta <code>pkg install nodejs</code> (la versión actual).</p>
-</div></div>
-<div class="in-step" id="in-es-android-3"><span class="in-step-num">3</span><div class="in-step-body"><h3 data-toc="3. Descarga SimonSays en la carpeta personal de Termux">Descarga SimonSays en la carpeta personal de Termux</h3>
+</div>
+<div class="in-sub" id="in-es-android-10"><h3 data-toc="Descarga SimonSays en la carpeta personal de Termux">Descarga SimonSays en la carpeta personal de Termux</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>cd ~
 git clone https://github.com/Bastian-Alvarado/SimonSays.git
 cd SimonSays</code></pre></div>
 <p>Déjalo en la carpeta personal de Termux (<code>~</code>). El almacenamiento compartido del teléfono (<code>/sdcard</code>, Descargas) no permite los enlaces y permisos que necesita <code>node_modules</code>, y la instalación falla ahí.</p>
-</div></div>
-<div class="in-step" id="in-es-android-4"><span class="in-step-num">4</span><div class="in-step-body"><h3 data-toc="4. Instala e inicia">Instala e inicia</h3>
+</div>
+<div class="in-sub" id="in-es-android-11"><h3 data-toc="Instala e inicia">Instala e inicia</h3>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>npm install
 npm run serve</code></pre></div>
 <p>En un teléfono tarda más que en un PC: calcula entre 5 y 15 minutos para <code>npm install</code> y algunos minutos para la primera compilación. Mantén la pantalla encendida y Termux al frente mientras corre. Cuando veas <code>listening on http://0.0.0.0:8081</code>, está funcionando.</p>
 <p>Después de la primera vez, basta con <code>npm start</code>.</p>
-</div></div>
-<div class="in-step" id="in-es-android-5"><span class="in-step-num">5</span><div class="in-step-body"><h3 data-toc="5. Busca la dirección del teléfono">Busca la dirección del teléfono</h3>
-<p>Abre <strong>Ajustes → Wi-Fi</strong>, toca tu red y anota la <strong>dirección IP</strong>, por ejemplo <code>192.168.1.42</code>. La usarás en el PC:</p>
-<ul class="in-list"><li>El panel: <code>http://192.168.1.42:8081</code></li><li>La fuente de navegador de OBS: <code>http://192.168.1.42:8081/?mode=canvas</code></li><li>El dock de OBS: <code>http://192.168.1.42:8081/?mode=dock</code></li></ul>
-<p>En la configuración de tu router, dale al teléfono una <strong>dirección fija (reservada)</strong> para que no cambie después de un reinicio. Si no, OBS pierde la app cada vez que cambia la dirección.</p>
-</div></div>
-<div class="in-step" id="in-es-android-6"><span class="in-step-num">6</span><div class="in-step-body"><h3 data-toc="6. Evita que Android la detenga">Evita que Android la detenga</h3>
-<p>Android cierra las apps en segundo plano para ahorrar batería. Haz todo esto:</p>
-<ol class="in-list"><li><strong>Wake lock:</strong> baja la notificación de Termux y toca <strong>Acquire wakelock</strong>, o ejecuta <code>termux-wake-lock</code>. Así el procesador sigue despierto con la pantalla apagada.</li><li><strong>Batería:</strong> Ajustes → Aplicaciones → Termux → Batería → <strong>Sin restricciones</strong> (a veces <i>No optimizar</i>).</li><li><strong>Los cierres propios de cada marca:</strong> Samsung, Xiaomi, Huawei, OnePlus y otras agregan los suyos. Permite que Termux se inicie solo y corra en segundo plano, y bloquéalo en la lista de apps recientes. <a href="https://dontkillmyapp.com" target="_blank" rel="noopener">dontkillmyapp.com</a> tiene los pasos para cada marca.</li><li><strong>Android 12 y más nuevos</strong> pueden cerrar apps con muchos procesos (el <i>phantom process killer</i>). En Android 14+, abre las Opciones de desarrollador y activa <strong>Desactivar restricciones de procesos secundarios</strong>. En Android 12 y 13, ejecuta desde un PC con ADB: <code>adb shell device_config put activity_manager max_phantom_processes 2147483647</code>.</li></ol>
-</div></div>
-<div class="in-step" id="in-es-android-7"><span class="in-step-num">7</span><div class="in-step-body"><h3 data-toc="7. Que siga corriendo en segundo plano">Que siga corriendo en segundo plano</h3>
+</div>
+<div class="in-sub" id="in-es-android-12"><h3 data-toc="Que siga corriendo en segundo plano">Que siga corriendo en segundo plano</h3>
 <p>Corre la app dentro de <strong>tmux</strong>, para que sobreviva si cierras la ventana de Termux por error:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>pkg install -y tmux
 tmux new -s simonsays
 cd ~/SimonSays &amp;&amp; npm start</code></pre></div>
 <p>Pulsa <strong>Ctrl+B</strong> y luego <strong>D</strong> para dejarla corriendo (la fila de teclas extra de Termux tiene <strong>CTRL</strong>). <code>tmux attach -t simonsays</code> la trae de vuelta.</p>
-</div></div>
-<div class="in-step" id="in-es-android-8"><span class="in-step-num">8</span><div class="in-step-body"><h3 data-toc="8. Que arranque al encender el teléfono (opcional)">Que arranque al encender el teléfono (opcional)</h3>
+</div>
+<div class="in-sub" id="in-es-android-13"><h3 data-toc="Que arranque al encender el teléfono (opcional)">Que arranque al encender el teléfono (opcional)</h3>
 <p>Instala <strong>Termux:Boot</strong> desde el mismo lugar que Termux y ábrelo una vez. Luego, en Termux:</p>
 <div class="in-code"><div class="in-code-bar"><span>bash</span><button type="button" class="in-copy" data-done="Copiado"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span>Copiar</span></button></div><pre><code>mkdir -p ~/.termux/boot
 cat &gt; ~/.termux/boot/simonsays &lt;&lt;&#x27;EOF&#x27;
@@ -4453,15 +4525,9 @@ npm start &gt; ~/simonsays.log 2&gt;&amp;1
 EOF
 chmod +x ~/.termux/boot/simonsays</code></pre></div>
 <p>Después de un reinicio, SimonSays arranca sola. <code>tail -f ~/simonsays.log</code> muestra su registro.</p>
-</div></div>
-<div class="in-step" id="in-es-android-9"><span class="in-step-num">9</span><div class="in-step-body"><h3 data-toc="9. Inicia sesión en Twitch desde el mismo teléfono">Inicia sesión en Twitch desde el mismo teléfono</h3>
-<p>Twitch solo acepta una dirección <code>http://</code> simple para <code>localhost</code>. Inicia sesión en Twitch una vez desde el <strong>navegador del propio teléfono</strong> en <code>http://localhost:8081</code>, con <code>http://localhost:8081/</code> como URL de redirección en tu app de Twitch. Todos los demás dispositivos comparten esa sesión. El resto de la configuración puedes hacerla desde el PC.</p>
-</div></div>
-<div class="in-step" id="in-es-android-10"><span class="in-step-num">10</span><div class="in-step-body"><h3 data-toc="10. Conecta la app con OBS en tu PC">Conecta la app con OBS en tu PC</h3>
-<p>En OBS (en el PC): <strong>Herramientas → Configuración del servidor WebSocket</strong><strong> (Tools → WebSocket Server Settings)</strong>, marca <strong>Habilitar servidor WebSocket</strong> y pulsa <strong>Mostrar información de conexión</strong>. En la pantalla Conexiones de la app, usa la dirección IP <strong>del PC</strong> (no <code>localhost</code>), el puerto <code>4455</code> y esa contraseña. Si Windows pregunta, permite OBS en el firewall para redes privadas.</p>
-</div></div>
-<div class="in-sub in-trouble" id="in-es-android-11"><h3 data-toc="Problemas en Termux">Problemas en Termux</h3>
-<ul class="in-list"><li><strong><code>Repository is under maintenance or down</code></strong>: ejecuta <code>termux-change-repo</code>, elige un espejo cercano y vuelve a ejecutar <code>pkg update</code>.</li><li><strong><code>CANNOT LINK EXECUTABLE</code></strong><strong> o errores de bibliotecas después de actualizar</strong>: ejecuta <code>pkg upgrade -y</code>. Termux necesita todos sus paquetes al mismo nivel.</li><li><strong><code>npm install</code></strong><strong> falla en </strong><strong><code>/sdcard</code></strong><strong> con </strong><strong><code>EPERM</code></strong><strong> o </strong><strong><code>symlink</code></strong>: la app está en el almacenamiento compartido. Muévela a <code>~</code> (paso 3).</li><li><strong>La app se detiene al apagarse la pantalla</strong>: falta el wake lock o la batería sigue optimizada (paso 6).</li><li><strong><code>[Process completed (signal 9)]</code></strong>: el phantom process killer de Android. Mira el paso 6.4.</li><li><strong>La compilación se queda sin memoria</strong>: cierra otras apps y vuelve a ejecutar <code>npm run build</code>. O compila en un PC y copia la carpeta <code>web/dist</code> a <code>~/SimonSays/web/</code> en el teléfono.</li></ul>
+</div>
+<div class="in-sub in-trouble" id="in-es-android-14"><h3 data-toc="Problemas en Termux">Problemas en Termux</h3>
+<ul class="in-list"><li><strong>Dice que la carpeta ya existe</strong>: SimonSays está instalado; se actualiza solo desde Ajustes → Acerca de.</li><li><strong><code>Repository is under maintenance or down</code></strong>: ejecuta <code>termux-change-repo</code>, elige un espejo cercano y vuelve a ejecutar <code>pkg update</code>.</li><li><strong><code>CANNOT LINK EXECUTABLE</code></strong><strong> o errores de bibliotecas después de actualizar</strong>: ejecuta <code>pkg upgrade -y</code>. Termux necesita todos sus paquetes al mismo nivel.</li><li><strong><code>npm install</code></strong><strong> falla en </strong><strong><code>/sdcard</code></strong><strong> con </strong><strong><code>EPERM</code></strong><strong> o </strong><strong><code>symlink</code></strong>: la app está en el almacenamiento compartido. Muévela a <code>~</code> (paso 3).</li><li><strong>La app se detiene al apagarse la pantalla</strong>: falta el wake lock o la batería sigue optimizada (paso 6).</li><li><strong><code>[Process completed (signal 9)]</code></strong>: el phantom process killer de Android. Mira el paso 6.4.</li><li><strong>La compilación se queda sin memoria</strong>: cierra otras apps y vuelve a ejecutar <code>npm run build</code>. O compila en un PC y copia la carpeta <code>web/dist</code> a <code>~/SimonSays/web/</code> en el teléfono.</li></ul>
 </div>
 <a class="in-pics" href="install-es-3-android.png" target="_blank" rel="noopener"><div class="in-pics-copy"><strong>¿Prefieres imágenes?</strong><span>La misma instalación como guía en imágenes, con Pixel Simon señalando lo importante.</span><em>Abrir la guía en imágenes →</em></div><div class="in-pics-img"><img src="install-es-3-android.png" alt="Instalación de SimonSays en un teléfono Android con Termux, paso a paso" loading="lazy"></div></a>
 </section>
