@@ -120,7 +120,7 @@ export const CountdownView: React.FC<CountdownViewProps> = ({ state, control, ac
           {/* One line for the label here, so it can be measured and fitted rather than broken in two. */}
           <style>{'.cd-preview [data-countdown="label"] { white-space: nowrap; }'}</style>
           <Countdown state={state} previewScale={preview.scale} t={t} />
-          <span className="absolute top-3 right-4 text-[9px] font-black uppercase tracking-widest text-zinc-600">
+          <span className="absolute top-3 right-4 text-[9px] font-black uppercase tracking-widest text-zinc-400">
             {state?.mode === 'running' ? t.countdownRunning
               : state?.mode === 'paused' ? t.countdownPaused
                 : state?.mode === 'finished' ? t.countdownFinished : t.countdownIdle}

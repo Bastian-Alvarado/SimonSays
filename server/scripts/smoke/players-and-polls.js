@@ -24,13 +24,13 @@ test('a players list is held to fifty, named, coloured, in a known state, and no
   const many = cleanPlayers({ items: Array.from({ length: 70 }, (_, i) => ({ name: `P${i}` })) });
   assert.equal(many.items.length, 50, 'more than fifty were kept');
   const one = cleanPlayers({ items: [
-    { name: '  Rowan  ', colour: 'red', state: 'dead' },
-    { name: '@rowan', colour: 'blue' },
+    { name: '  Simon  ', colour: 'red', state: 'dead' },
+    { name: '@simon', colour: 'blue' },
     { name: '', colour: 'lime' },
     { name: 'Nolan', colour: 'not a colour', state: 'flying' },
   ] }).items;
   assert.equal(one.length, 2, 'a blank name or the same name twice was kept');
-  assert.deepEqual([one[0].name, one[0].colour, one[0].state], ['Rowan', PLAYER_COLOURS.red, 'dead']);
+  assert.deepEqual([one[0].name, one[0].colour, one[0].state], ['Simon', PLAYER_COLOURS.red, 'dead']);
   // No colour, or a bad one: one from the name, the same every time.
   assert.equal(one[1].colour, colourFor('Nolan'));
   assert.equal(colourFor('Nolan'), colourFor('Nolan'));

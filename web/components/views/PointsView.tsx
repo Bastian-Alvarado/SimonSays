@@ -191,7 +191,7 @@ export const PointsView = ({ settings, control, actions, channels, emojis, botCo
                   <label className="flex items-center gap-1 cursor-pointer text-[10px] text-zinc-400"><input type="checkbox" checked={it.liveOnly} onChange={(e) => set({ liveOnly: e.target.checked })} className="accent-current-accent" /> {t.pointsLiveOnly || 'Only while live'}</label>
                   <label className="flex items-center gap-1 cursor-pointer text-[10px] text-zinc-400"><input type="checkbox" checked={it.enabled} onChange={(e) => set({ enabled: e.target.checked })} className="accent-current-accent" /> {t.pointsItemOn || 'On'}</label>
                 </div>
-                <input value={it.description} onChange={(e) => set({ description: e.target.value.slice(0, 200) })} placeholder={t.pointsItemDescription || 'A line about it (shown in Discord, and as the box\'s label when it asks for words)'} className={`${box} ml-6 w-[calc(100%-1.5rem)]`} />
+                <input value={it.description} onChange={(e) => set({ description: e.target.value.slice(0, 200) })} placeholder={t.pointsItemDescription || 'A line about it (shown in Discord, and as the box\'s label when it asks for words)'} className={`${box} ml-6 !w-[calc(100%-1.5rem)]`} />
               </div>
             );
           })}

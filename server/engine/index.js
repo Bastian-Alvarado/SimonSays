@@ -13,7 +13,7 @@
 import { collection } from '../core/store.js';
 import { bus, EVENTS, normaliseEvent } from '../core/bus.js';
 import { onTwitchLive } from '../core/twitch-live.js';
-import { DEFAULT_CHAT, cleanChatSettings, normaliseChatLayer, isWholeChat } from './chat-settings.js';
+import { DEFAULT_CHAT, DEFAULT_DOCK_CHAT, cleanChatSettings, normaliseChatLayer, isWholeChat } from './chat-settings.js';
 import { dockBuiltin, DOCK_FACE_SECONDS } from '../../shared/dock-builtins.js';
 import { MAX_DOCK_PAGES, pageCount, cleanPageNames, pagerPlace, sidewaysMode } from '../../shared/dock-pages.js';
 import { AVATAR_ACTIONS_LIST } from '../../shared/avatar.js';
@@ -539,7 +539,7 @@ export function initEngine(platformServices) {
       profiles, since a collection is the unit a profile captures — switch to
       a different look for the stream and the desk stays where it was.
     */
-    chatDock: collection('chat_dock_settings', DEFAULT_CHAT),
+    chatDock: collection('chat_dock_settings', DEFAULT_DOCK_CHAT),
   };
 
   // Heal anything stored before these defaults existed, and persist it so the
@@ -1899,7 +1899,7 @@ export const store = {
   /**
    * Validate and store the dock's chat settings. The same rules as a chat
    * layer's — except the look, which is not the dock's to choose: it is
-   * always Marathon's chat, drawn by the client, so the dock keeps no theme
+   * always the CHAT.LOG look, drawn by the client, so the dock keeps no theme
    * and no stylesheet of its own.
    */
   setChatDockSettings(incoming) {
@@ -2196,6 +2196,11 @@ export async function runDockBuiltin(id) {
   if (builtin.category === 'alerts') {
     // Skip says so when nothing is on screen; pause and resume are one button.
     return controlAlerts(builtin.op);
+  }
+  if (builtin.category === 'droidcam') {
+    // Through the same connection as the DroidCam step; a phone that does not answer says why (platforms/droidcam.js).
+    if (!services.droidcam?.control) throw refusal('droidcam_no_address', 'DroidCam: no address set — add the phone on the Connections screen');
+    return services.droidcam.control(builtin.op);
   }
   if (builtin.category === 'questions') {
     // Says so when nothing approved is left to put up, and the button shows it failing.

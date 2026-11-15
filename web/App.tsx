@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0 AND LicenseRef-Commons-Clause-1.0
 */
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { VERSION } from '../shared/version.js';
 import { 
   Layout, Package, MessageSquare, ListOrdered, MessageCircleQuestion, Menu, X, Terminal, Share2, Zap, Monitor, Bell, Settings as SettingsIcon, GitBranch, ShieldCheck, Tag, 
   Wifi, WifiOff, LogOut, Send, Bot, User, Check, Eye, EyeOff, Ghost, Link as LinkIcon, Loader2, Copy, ExternalLink,
   HelpCircle, Info, AlertTriangle, List, ChevronDown, Shield, Trash2, Clock, MousePointerClick, DoorOpen, GripHorizontal, Trophy, Newspaper, Coins, History
 , Smile, LayoutGrid, Sword, Gem, Star, Video, Radio, Layers, Gamepad2, Palette, Users, BarChart3, Gift, Headphones, Megaphone, Mic, Sparkles, Inbox, Cast, BookOpen, Tv
 } from 'lucide-react';
-import { NavSections, StatusRow, NavSearch, SearchButton, ScreenTabs, PhoneBar, type NavSection, type SearchEntry } from './components/NavMenu';
+import { specIndex, NavSections, StatusRow, NavSearch, SearchButton, ScreenTabs, PhoneBar, type NavSection, type SearchEntry } from './components/NavMenu';
 import { useReloadAfterUpdate } from './components/UpdatesPanel';
 import { FirstRun } from './components/FirstRun';
 import { formatLayout } from '../shared/layout-formats.js';
@@ -37,6 +38,7 @@ import { ViewerCount } from './components/ViewerCount';
 import { Stopwatch } from './components/Stopwatch';
 import { OmnibarBarPicker } from './components/OmnibarBarPicker';
 import { ProfileSwitcher } from './components/ProfileSwitcher';
+import { LinkNotice } from './components/LinkNotice';
 import { AppView, Command, StreamAction, ActionStep, ActionTrigger, TriggerCategory, TriggerType, ActionStepType, AlertConfig, ActiveAlert, AlertType, ChatMessage } from './types';
 import { THEMES, TRANSLATIONS, CHAT_THEMES, CHAT_RANKS } from './constants';
 import { liveLayout } from '../shared/live-layout.js';
@@ -275,6 +277,14 @@ export default function App() {
   const unknownPath = !APP_PATHS.includes(window.location.pathname);
   const notFound = unknownPath || (mode !== null && !PAGE_MODES.includes(mode));
   const activeTheme = useMemo(() => THEMES.find(t => t.id === system.settings.activeThemeId) || THEMES[0], [system.settings.activeThemeId]);
+  // Which Simon Systems edition the reskin draws (ss-ui.css): paper for the light theme, zinc for the rest.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-ss-edition', activeTheme.isLight ? 'paper' : 'zinc');
+    // The Zerotype cartridges draw the concept on top (ss-concept.css).
+    if (activeTheme.concept) root.setAttribute('data-ss-concept', activeTheme.concept);
+    else root.removeAttribute('data-ss-concept');
+  }, [activeTheme]);
   // The dashboard, once up, fetches every screen in the background so moving between them is instant;
   // the pages OBS shows never do.
   useEffect(() => {
@@ -1074,7 +1084,7 @@ export default function App() {
   */
   if (mode === 'overlay') return <style>{'body, html { background: transparent !important; }'}</style>;
 
-  if (mode === 'dock') { return ( <div className={`min-h-dvh font-sans ${system.settings.transparentBackground ? 'bg-transparent' : ''} overflow-hidden`} style={{ backgroundColor: system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor }}> <style>{` body, html { background-color: ${system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor} !important; ${system.settings.transparentBackground ? 'background-image: none !important;' : ''} height: 100%; overflow: hidden; } `}</style> {accentStyles}<div className={`${dockWide ? '' : `flex ${dockSideways ? 'flex-row gap-2' : 'flex-col'}`} h-dvh p-2 relative`} data-dock-layout={dockWide ? 'wide' : dockSideways ? 'sideways' : 'upright'}> {dockWide && <style>{DOCK_WIDE_CSS}</style>} <HoldAwake /> {pickerState && (<><div className="fixed inset-0 z-[9990] bg-transparent" onClick={() => setPickerState(null)} /><EmojiPicker style={{ top: pickerState.top, left: pickerState.left }} onSelect={(emoji: string) => setMessageInput(insertAtCursor(chatInputRef.current, messageInput, emoji))} onClose={() => setPickerState(null)} /></>)}
+  if (mode === 'dock') { return ( <div className={`min-h-dvh font-sans ${system.settings.transparentBackground ? 'bg-transparent' : 'ss-dock'} overflow-hidden`} style={{ backgroundColor: system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor }}> <style>{` body, html { background-color: ${system.settings.transparentBackground ? 'transparent' : system.settings.dockBackgroundColor} !important; ${system.settings.transparentBackground ? 'background-image: none !important;' : ''} height: 100%; overflow: hidden; } `}</style> {accentStyles}<div className={`${dockWide ? '' : `flex ${dockSideways ? 'flex-row gap-2' : 'flex-col'}`} h-dvh p-2 relative`} data-dock-layout={dockWide ? 'wide' : dockSideways ? 'sideways' : 'upright'}> {dockWide && <style>{DOCK_WIDE_CSS}</style>} <HoldAwake /> {pickerState && (<><div className="fixed inset-0 z-[9990] bg-transparent" onClick={() => setPickerState(null)} /><EmojiPicker style={{ top: pickerState.top, left: pickerState.left }} onSelect={(emoji: string) => setMessageInput(insertAtCursor(chatInputRef.current, messageInput, emoji))} onClose={() => setPickerState(null)} /></>)}
       {mode === 'dock' && <DockTabs tabs={DOCK_TABS} active={panel} onPick={setDockTab} vertical={dockSideways} footer={dockSideways ? <ScreenControls t={t} /> : null} extra={dockSideways ? watchButton : <>{watchButton}{isTouchScreen() && <ScreenControls t={t} row />}</>} extraWidth={isTouchScreen() ? 104 : 40} />}
       {mode === 'dock' && watching && (
         <DockPlayer channel={system.connections.twitchChannel} beside={dockSideways || dockWide} topRoom={dockWide ? 56 : 16} t={t}>
@@ -1084,8 +1094,8 @@ export default function App() {
         </DockPlayer>
       )}
       {/* The panels, in a column of their own: beside the tabs when the phone is sideways, under them otherwise. */}
-      <div className="flex-1 min-w-0 min-h-0 flex flex-col">
-      {/* No alerts here: the dock is chat. Alerts belong to the alerts page and the alerts layer on a layout. */} <div className="flex-1 min-h-0 flex relative" style={mode === 'dock' && panel !== 'chat' ? { display: 'none' } : undefined}><div className="flex-1 overflow-y-auto flex flex-col-reverse relative scroll-smooth" ref={chatScrollRef} onScroll={onChatScroll} style={{ gap: `${system.settings.messageGap}px` }}> {<ChatStyle settings={system.settings} />} {/* The placeholders are for somebody looking at the dock. On stream they were a caption nobody asked for, in English, and "Connecting…" took the place of the whole chat whenever the page loaded or the server restarted. */}{(mode === 'dock' && system.status.twitch === 'disconnected' && system.status.tiktok === 'disconnected' && system.status.discord === 'disconnected' && system.status.youtube !== 'connected') ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <div className="w-12 h-12 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4 border border-zinc-700/50"> <WifiOff size={24} className="text-zinc-500" /> </div> <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.connecting}</p> </div> ) : (mode === 'dock' && system.data.chatMessages.length === 0) ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <Loader2 className="w-8 h-8 text-current-accent animate-spin mb-4" /> <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.noMessages}</p> </div> ) : ( system.data.chatMessages.map((chat, idx) => renderChatMessageHelper(chat, idx)) )} </div> {mode === 'dock' && !chatPinned && (
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col" data-dock-window={panel === 'chat' ? '' : undefined}>
+      {panel === 'chat' && <div className="ss-winbar hidden"><MessageSquare size={14} /><span>CHAT.LOG // {t.ssAllPlatforms || 'All platforms'} チャット</span></div>} {/* No alerts here: the dock is chat. Alerts belong to the alerts page and the alerts layer on a layout. */} <div className="flex-1 min-h-0 flex relative" style={mode === 'dock' && panel !== 'chat' ? { display: 'none' } : undefined}><div className="flex-1 overflow-y-auto flex flex-col-reverse relative scroll-smooth" ref={chatScrollRef} onScroll={onChatScroll} style={{ gap: `${system.settings.messageGap}px` }}> {<ChatStyle settings={system.settings} />} {/* The placeholders are for somebody looking at the dock. On stream they were a caption nobody asked for, in English, and "Connecting…" took the place of the whole chat whenever the page loaded or the server restarted. */}{(mode === 'dock' && system.status.twitch === 'disconnected' && system.status.tiktok === 'disconnected' && system.status.discord === 'disconnected' && system.status.youtube !== 'connected') ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <div className="w-12 h-12 bg-zinc-800/50 rounded-full flex items-center justify-center mb-4 border border-zinc-700/50"> <WifiOff size={24} className="text-zinc-500" /> </div> <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{t.connecting}</p> </div> ) : (mode === 'dock' && system.data.chatMessages.length === 0) ? ( <div className="flex flex-col items-center justify-center h-full text-center p-4"> <Loader2 className="w-8 h-8 text-current-accent animate-spin mb-4" /> <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.noMessages}</p> </div> ) : ( system.data.chatMessages.map((chat, idx) => renderChatMessageHelper(chat, idx)) )} </div> {mode === 'dock' && !chatPinned && (
         <button onClick={jumpToNewest} className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-current-accent text-white text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5 hover:brightness-110 transition-all">
           <ChevronDown size={12} />
           {missedCount > 0 ? `${missedCount} ${t.newMessages}` : t.jumpToNewest}
@@ -1111,7 +1121,7 @@ export default function App() {
           {dockPanelBody('plan')}
         </div>
       )}
-      {mode === 'dock' && panel === 'chat' && ( <div className="mt-2 pt-3 border-t border-white/10 flex flex-col"> <div className="mb-2"><AutomodQueue held={(system.data as any).automodHeld || []} ask={system.actions.twitchMod} t={t} /></div> <div className="flex items-center gap-2 px-1 mb-1.5"> <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 opacity-60">{t.sendingAs}:</span>{system.status.twitchBot === 'connected' ? ( <div className="flex bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800 shadow-sm"> <button onClick={() => system.settings.setSenderRole('main')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'main' ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {chatT.mainAccount} </button> <button onClick={() => system.settings.setSenderRole('bot')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'bot' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.botAccount} </button> </div> ) : ( <span className="text-[8px] font-black uppercase tracking-widest text-current-accent opacity-60"> {chatT.mainAccount} {chatTwitchUser?.display_name ? `(${chatTwitchUser.display_name})` : ''} </span> )} <SendToPicker value={(system.settings as any).sendTo} set={(system.settings as any).setSendTo} authorised={Boolean((system.connections as any).youtubeAuthorised)} live={Boolean((system.connections as any).youtubeLive)} unitsUsed={(system.data as any).stats?.youtubeUnitsUsed} t={t} /> <div className="ml-auto flex items-center gap-1"><ChatModes ask={system.actions.twitchMod} t={t} />
+      {mode === 'dock' && panel === 'chat' && ( <div className="mt-2 pt-3 border-t border-white/10 flex flex-col" data-dock-footer> <div className="mb-2"><AutomodQueue held={(system.data as any).automodHeld || []} ask={system.actions.twitchMod} t={t} /></div> <div className="flex items-center gap-2 px-1 mb-1.5"> <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500 opacity-60">{t.sendingAs}:</span>{system.status.twitchBot === 'connected' ? ( <div className="flex bg-zinc-900/80 p-0.5 rounded-lg border border-zinc-800 shadow-sm"> <button onClick={() => system.settings.setSenderRole('main')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'main' ? 'bg-current-accent text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {chatT.mainAccount} </button> <button onClick={() => system.settings.setSenderRole('bot')} className={`px-3 py-1 rounded-md text-[7px] font-black uppercase tracking-widest transition-all ${system.settings.senderRole === 'bot' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}> {t.botAccount} </button> </div> ) : ( <span className="text-[8px] font-black uppercase tracking-widest text-current-accent opacity-60"> {chatT.mainAccount} {chatTwitchUser?.display_name ? `(${chatTwitchUser.display_name})` : ''} </span> )} <SendToPicker value={(system.settings as any).sendTo} set={(system.settings as any).setSendTo} authorised={Boolean((system.connections as any).youtubeAuthorised)} live={Boolean((system.connections as any).youtubeLive)} unitsUsed={(system.data as any).stats?.youtubeUnitsUsed} t={t} /> <div className="ml-auto flex items-center gap-1"><ChatModes ask={system.actions.twitchMod} t={t} />
           <button onClick={system.data.clearChat} title={t.clearChat} className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors"><Trash2 size={13} /></button>
         </div> </div> {sendError && <p role="alert" data-dock="send-error" className="px-1 mb-1.5 text-[10px] font-bold leading-snug text-red-400">{sendError}</p>} <div className="flex gap-2 items-stretch"> <div className="flex-1 bg-zinc-900/50 rounded-xl border border-zinc-800 flex items-center px-4 pr-1 relative"> <input ref={chatInputRef} type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }} placeholder={chatSendable ? t.typeGlobal : t.connecting} disabled={!chatSendable} className="bg-transparent border-none outline-none w-full text-xs font-bold text-zinc-400 disabled:opacity-50 pr-8 py-3" /> <button onClick={handlePickerOpen} className="p-2 text-zinc-500 hover:text-white transition-colors" title={t.addEmoji || 'Add emoji'}> <Smile size={14} /> </button> </div> <Button onClick={handleSendMessage} icon={<Send size={16} />} className="font-extrabold px-4" disabled={!chatSendable || !messageInput.trim()}> <span className="hidden xs:inline">{t.send}</span> </Button> </div> </div> )} </div> </div> </div> ); }
 
@@ -1266,8 +1276,18 @@ export default function App() {
   );
 
   return (
-    <div className={`h-dvh ${activeTheme.bgClass} ${activeTheme.textClass} font-sans flex overflow-hidden relative transition-colors duration-500`}>
+    <div className={`ss-root h-dvh ${activeTheme.bgClass} ${activeTheme.textClass} font-sans flex overflow-hidden relative transition-colors duration-500`}>
       {accentStyles}
+      {/* The hardware bar across the top. Desktop only: a phone has its own bar. Shown by ss-ui.css. */}
+      <div className="ss-topbar hidden">
+        <span className="ss-marks" aria-hidden="true"><i /><i /><i /></span>
+        <span className="ss-topbar-name">SIMONSAYS.EXE // {t.ssConsole || 'Control console'}</span>
+        <span className={`ss-onair ${(system.data as any).streamNow ? 'is-live' : ''}`}><i aria-hidden="true" />{(system.data as any).streamNow ? (t.ssOnAir || 'On air') : (t.ssOffAir || 'Off air')}</span>
+        <span className="ss-topbar-spec">V{VERSION} · {window.location.host}</span>
+      </div>
+
+      {/* The link to the server: down, still loading, or something it refused. */}
+      <LinkNotice link={system.link} t={t} />
 
       {/* Rendered above the view switch so the Actions screen can open it too. */}
       <CommandEditorModal
@@ -1282,7 +1302,7 @@ export default function App() {
         t={t}
       />
 
-      {showIntro && ( <div className="fixed inset-0 z-50 bg-[#050505] flex items-center justify-center font-sans overflow-hidden"> <div className="relative flex items-center justify-center"> <div className="absolute inset-0 bg-rose-500/20 blur-[100px] rounded-full animate-pulse"></div> <div className="relative z-10 flex flex-col items-center"> <div className="relative w-32 h-32 mb-8"> <div className="absolute inset-0 border-4 border-rose-500/30 rounded-full animate-[spin_3s_linear_infinite]"></div> <div className="absolute inset-2 border-4 border-rose-500/50 rounded-full border-t-transparent animate-[spin_2s_linear_infinite_reverse]"></div> <div className="absolute inset-0 flex items-center justify-center"> <Logo className="w-16 h-16 text-rose-500 animate-[pulse_2s_ease-in-out_infinite]" /> </div> </div> <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-4 animate-[slide-up_0.8s_ease-out]"> SIMON SAYS </h1> <div className="h-1 w-24 bg-gradient-to-r from-transparent via-rose-500 to-transparent rounded-full animate-[width_1s_ease-out]"></div> </div> </div> </div> )}
+      {showIntro && ( <div className="ss-intro fixed inset-0 z-50 bg-[#050505] flex items-center justify-center font-sans overflow-hidden"> <div className="relative flex items-center justify-center"> <div className="absolute inset-0 bg-rose-500/20 blur-[100px] rounded-full animate-pulse"></div> <div className="relative z-10 flex flex-col items-center"> <div className="relative w-32 h-32 mb-8"> <div className="absolute inset-0 border-4 border-rose-500/30 rounded-full animate-[spin_3s_linear_infinite]"></div> <div className="absolute inset-2 border-4 border-rose-500/50 rounded-full border-t-transparent animate-[spin_2s_linear_infinite_reverse]"></div> <div className="absolute inset-0 flex items-center justify-center"> <Logo className="w-16 h-16 text-rose-500 animate-[pulse_2s_ease-in-out_infinite]" /> </div> </div> <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-4 animate-[slide-up_0.8s_ease-out]"> SIMON SAYS </h1> <div className="h-1 w-24 bg-gradient-to-r from-transparent via-rose-500 to-transparent rounded-full animate-[width_1s_ease-out]"></div> </div> </div> </div> )}
       {/* A new install's first-run setup (engine/first-run.js): the streamer's, once, over everything else. */}
       {!system.auth.isMod && !showIntro && (system.data as any).firstRun?.done === false && (
         <FirstRun
@@ -1296,8 +1316,8 @@ export default function App() {
       )}
       {isMobileMenuOpen && ( <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm md:hidden animate-fade-in" onClick={() => setIsMobileMenuOpen(false)} /> )}
       
-      <aside className={`fixed inset-y-0 left-0 z-[70] w-72 ${activeTheme.bgClass} border-r ${activeTheme.borderClass} md:hidden transform transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full shadow-none'}`}> {renderSidebar(true)} </aside>
-      <aside className={`w-64 shrink-0 h-full min-h-0 border-r ${activeTheme.borderClass} ${activeTheme.id === 'light' ? 'bg-white' : 'bg-zinc-950/50'} hidden md:flex flex-col transition-colors duration-300`}> {renderSidebar()} </aside>
+      <aside className={`ss-nav fixed inset-y-0 left-0 z-[70] w-72 ${activeTheme.bgClass} border-r ${activeTheme.borderClass} md:hidden transform transition-transform duration-300 ease-out flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full shadow-none'}`}> {renderSidebar(true)} </aside>
+      <aside className={`ss-nav w-64 shrink-0 h-full min-h-0 border-r ${activeTheme.borderClass} ${activeTheme.id === 'light' ? 'bg-white' : 'bg-zinc-950/50'} hidden md:flex flex-col transition-colors duration-300`}> {renderSidebar()} </aside>
 
       <main ref={mainRef} className="flex-1 overflow-y-auto relative pt-0">
         {/*
@@ -1332,6 +1352,8 @@ export default function App() {
         */}
         {/* The 4rem is the bar above, which only a phone still has. */}
         <div className={`${view === 'layouts' || view === 'pixel-avatars' ? '' : 'max-w-7xl'} relative mx-auto p-4 sm:p-6 md:p-10 h-[calc(100dvh-4rem)] md:h-dvh`}>
+          {/* The page line, in the empty margin above the screen, so nothing moves. Shown by ss-ui.css. */}
+          <div className="ss-pagehead hidden">{specIndex(shownSections, view)?.code} // {viewNames[view]}<span className="ss-pagehead-twin" aria-hidden="true">{specIndex(shownSections, view)?.twin}</span></div>
           {/*
             The screen's guide, a press away: in the margin above it, where no
             screen puts anything, so it never covers a screen's own buttons.
@@ -1376,6 +1398,7 @@ export default function App() {
                 profiles={(system.data as any).profiles || []}
                 actions={system.actions}
                 looking={system.auth.isMod ? (PROFILE_GROUP_FOR_VIEW[view] === 'overlays' ? 'browse' : 'fixed') : undefined}
+                link={system.link}
                 t={t}
               />
             </div>

@@ -171,6 +171,18 @@ export interface ChatMessageRowProps {
 }
 
 export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, autoHide = false, onStream = false }: ChatMessageRowProps) => {
+  /*
+    How long a message has left, worked out once and not on every draw. The
+    page redraws all the time, and handing a running fade a shorter wait each
+    time counts the elapsed time twice: messages left at about half their life.
+
+    Timed from when it reached this page, not from the server's stamp: the
+    stream's page and the server are often different machines, and a page six
+    minutes behind the server kept every message six minutes too long.
+  */
+  const life = (settings.autoHideSeconds || 0) * 1000;
+  const arrived = chat.localAt ?? (chat as any).at;
+  const fadeIn = React.useMemo(() => (arrived ? arrived + life - Date.now() : 0), [arrived, life]);
   /** The words for event lines: Spanish on stream, this device's language elsewhere. */
   const words: any = onStream ? TRANSLATIONS.es : t;
   const fill = (text: string, key: string, value: any) => String(text).split(`{${key}}`).join(String(value));
@@ -307,7 +319,7 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
       // stays in charge rather than losing to an empty value.
       ...(nameColour ? { ['--chat-user-color' as any]: nameColour } : {}),
       /*
-        For a look that draws each rank its own way — the dock's Marathon —
+        For a look that draws each rank its own way — the dock's —
         rather than outlining the line: the colour picked for the rank this
         row names, and only that one. --chat-rank falls through to the next
         rank that has a colour, so a broadcaster who moderates, with no owner
@@ -394,8 +406,8 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
       // "who is this", and splitting them across the name reads as clutter.
       const marks = (
         <span className="flex items-center gap-1 shrink-0 select-none" data-chat="marks">
-          {settings.showPlatformIcons && <PlatformMark platform={chat.platform} size={12} />}
-          {renderRankBadges(chat, 12)}
+          {settings.showPlatformIcons && <span className="contents" data-chat="platform"><PlatformMark platform={chat.platform} size={12} /></span>}
+          {rank ? <span className="contents" data-chat="rank">{renderRankBadges(chat, 12)}</span> : null}
         </span>
       );
 
@@ -651,12 +663,9 @@ export const ChatMessageRow = ({ chat, idx, settings, t, onMention = () => {}, a
     the first time this is switched on.
   */
   const autoHideStyle = (): React.CSSProperties | undefined => {
-    const life = (settings.autoHideSeconds || 0) * 1000;
-    const at = (chat as any).at;
-    if (!autoHide || !life || !at) return undefined;
-    const left = at + life - Date.now();
-    if (left <= 0) return { opacity: 0 };
-    return { animation: `fadeOut ${settings.autoHideFadeMs ?? 600}ms ease-in ${left}ms forwards` };
+    if (!autoHide || !life || !arrived) return undefined;
+    if (fadeIn <= 0) return { opacity: 0 };
+    return { animation: `fadeOut ${settings.autoHideFadeMs ?? 600}ms ease-in ${fadeIn}ms forwards` };
   };
 
   const rendered = renderChatMessageHelper(chat, idx);

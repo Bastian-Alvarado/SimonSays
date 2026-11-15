@@ -11,6 +11,11 @@ import App from './App';
 // now compiled into the bundle so the UI and the OBS overlay render with no
 // network access beyond this server.
 import './styles.css';
+// Simon Systems reskin: dashboard and docks only, never a stream overlay. See ss-ui.css.
+import './ss-ui.css';
+import './ss-concept.css';
+const uiMode = new URLSearchParams(window.location.search).get('mode');
+if (!uiMode || uiMode === 'dashboard' || uiMode === 'dock' || uiMode === 'dock-actions') document.documentElement.classList.add('ss-ui');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

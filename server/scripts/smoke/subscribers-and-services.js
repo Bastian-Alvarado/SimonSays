@@ -453,3 +453,73 @@ test('nothing playing renders empty, not the placeholder', () => {
     'Ta sonando  de ');
 });
 
+
+// ------------------------------------------------------------ DroidCam's own dock buttons
+
+const { DOCK_BUILTINS } = await import('../../../shared/dock-builtins.js');
+const droidcamButtons = DOCK_BUILTINS.filter((b) => b.category === 'droidcam');
+droidcamCalls.length = 0;
+for (const b of droidcamButtons) await engine.runDockBuiltin(b.id);
+const droidcamPressed = droidcamCalls.map((c) => c.op);
+
+// The camera module itself, against a stand-in phone: what DroidCam's own remote page reads and writes.
+const dc = await import('../../platforms/droidcam.js');
+dc.initDroidcam();
+const dcBefore = dc.getSettings();
+dc.setSettings({ host: '10.9.9.9', port: 4747 });
+const phone = { zmValue: 1, zmMin: 1, zmMax: 8, evValue: 0, evMin: -4, evMax: 4, active: 0, cameras: '0 - Back\n1 - Front' };
+const phonePuts = [];
+const realFetch = globalThis.fetch;
+globalThis.fetch = async (url, init = {}) => {
+  const path = new URL(url).pathname;
+  const answer = (body) => ({ ok: true, status: 200, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) });
+  if (!String(url).startsWith('http://10.9.9.9:4747/')) return realFetch(url, init);
+  if (path === '/v1/camera/info') return answer(phone);
+  if (path === '/v1/camera/camera_list') return answer(phone.cameras);
+  if (init.method === 'PUT') {
+    phonePuts.push(path);
+    const n = Number(path.split('/').pop());
+    if (path.startsWith('/v3/camera/zoom/')) phone.zmValue = n;
+    if (path.startsWith('/v3/camera/ev/')) phone.evValue = n;
+    if (path.startsWith('/v1/camera/active/')) phone.active = n;
+    return answer('');
+  }
+  return answer('');
+};
+let quickZoom;
+let brighter;
+let backTo1;
+let switched;
+let switchedBack;
+let oneCamera;
+try {
+  // Three quick presses, as a repeating dock button sends them: they add up, never read the lens mid-way.
+  quickZoom = await Promise.all([dc.control('zoom_in'), dc.control('zoom_in'), dc.control('zoom_in')]);
+  brighter = await dc.control('exposure_up');
+  backTo1 = await dc.control('zoom_reset');
+  switched = await dc.control('camera_next');
+  switchedBack = await dc.control('camera_next');
+  phone.cameras = '0 - Back';
+  oneCamera = await dc.control('camera_next').catch((err) => err);
+} finally {
+  globalThis.fetch = realFetch;
+  dc.setSettings({ host: dcBefore.host, port: dcBefore.port });
+}
+
+test('DroidCam has dock buttons of its own: the light, focus, zoom, brightness, the exposure lock, switching camera and the mic', () => {
+  assert.deepEqual(droidcamButtons.map((b) => b.id), ['droidcam_torch', 'droidcam_autofocus', 'droidcam_zoom_in', 'droidcam_zoom_out', 'droidcam_zoom_reset', 'droidcam_brighter', 'droidcam_darker', 'droidcam_exposure_lock', 'droidcam_switch', 'droidcam_mic']);
+  assert.deepEqual(droidcamPressed, ['torch', 'autofocus', 'zoom_in', 'zoom_out', 'zoom_reset', 'exposure_up', 'exposure_down', 'exposure_lock', 'camera_next', 'mic'], 'each press reaches the camera through the DroidCam connection');
+  // Zoom and brightness repeat; a lock, a switch or back to 1x would undo themselves on a double-tap.
+  assert.deepEqual(droidcamButtons.filter((b) => b.repeatable).map((b) => b.id), ['droidcam_zoom_in', 'droidcam_zoom_out', 'droidcam_brighter', 'droidcam_darker']);
+  const grid = fs.readFileSync(new URL('../../web/components/DockActionsGrid.tsx', SCRIPT_URL), 'utf8');
+  assert.ok(grid.includes("category === 'droidcam' ?"), 'a tint of its own on the deck');
+});
+
+test('on the phone: three quick zoom presses are three steps, brightness moves one, back to 1x, the cameras in turn, and one camera says so', () => {
+  assert.deepEqual(quickZoom.map((r) => r.asked), [1.5, 2, 2.5], 'each from where the last was sent, in order');
+  assert.ok(phonePuts.includes('/v3/camera/zoom/2.5'));
+  assert.equal(brighter.asked, 1);
+  assert.equal(backTo1.asked, 1);
+  assert.deepEqual([switched.value, switched.name, switchedBack.value], [1, 'Front', 0], 'back, front, back again');
+  assert.equal(oneCamera?.code, 'droidcam_one_camera');
+});

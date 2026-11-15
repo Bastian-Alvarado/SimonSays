@@ -155,10 +155,10 @@ test('a nameplate keeps the text it is actually given', () => {
   // refusing everything, which would pass that test just as well.
   const [l] = normaliseLayouts([{
     id: 'a',
-    layers: [{ type: 'nameplate', config: { name: 'Rowan', subtitle: 'he/him', accentColor: '#22d3ee', align: 'right' } }],
+    layers: [{ type: 'nameplate', config: { name: 'Simon', subtitle: 'he/him', accentColor: '#22d3ee', align: 'right' } }],
   }]);
   const c = l.layers[0].config;
-  assert.equal(c.name, 'Rowan');
+  assert.equal(c.name, 'Simon');
   assert.equal(c.subtitle, 'he/him');
   assert.equal(c.accentColor, '#22d3ee');
   assert.equal(c.align, 'right');

@@ -187,8 +187,8 @@ const sampleWords = (lang?: string) => SAMPLE_WORDS[lang || 'en'] || SAMPLE_WORD
  */
 const sampleAlert = (object: any, replay: number, lang = 'en') => ({
   id: `preview-${object.id}-${replay}`,
-  user: 'ROWAN',
-  text: sampleWords(lang).followed.split('{user}').join('ROWAN'),
+  user: 'SIMON',
+  text: sampleWords(lang).followed.split('{user}').join('SIMON'),
   config: {
     id: object.id,
     name: object.name, type: 'twitch_follow', enabled: true,
@@ -291,7 +291,7 @@ const Preview = ({ object, system, accent, replay, height, t }: { object: any; s
         className="relative rounded-xl overflow-hidden border border-zinc-800"
         style={{ backgroundColor: '#0b0b0e', height: height || 150 }}
       >
-        <AlertOverlay alert={sampleAlert(object, replay, t.lang) as any} scale={0.8} />
+        <div className="ss-keep contents"><AlertOverlay alert={sampleAlert(object, replay, t.lang) as any} scale={0.8} /></div>
       </div>
     );
   }

@@ -199,6 +199,28 @@ export const CHAT_DEFAULTS = {
 };
 
 /**
+ * Where the dock starts from: one line per message, with the platform's colour
+ * on the name. A chat layer keeps CHAT_DEFAULTS, so nothing on stream moves.
+ */
+export const DOCK_LOOK = {
+  layout: 'inline',
+  fontSize: 15,
+  usernameFontSize: 13,
+  colorUsername: false,
+  showTimestamp: false,
+};
+
+/** Not how the dock looks, so going back to its default look leaves them alone. */
+const NOT_THE_LOOK = ['chatTheme', 'css', 'motionCss', 'showEvents', 'eventPlatforms', 'transparentBackground', 'autoHideSeconds', 'autoHideFadeMs'];
+
+/** Every look setting at the dock's default: for a dock saved before this was the default. */
+export const dockDefaultLook = () => {
+  const look = { ...CHAT_DEFAULTS, ...DOCK_LOOK };
+  for (const key of NOT_THE_LOOK) delete look[key];
+  return look;
+};
+
+/**
  * What only the dock's page has: the colour behind it. A chat layer's
  * settings leave these out, since it is drawn on a layout rather than on a
  * page of its own.

@@ -45,7 +45,7 @@ const answer = calls.at(-1).body.data;
 await press('600000000000000002', 'livedm:on:twitch');
 const signedUp = { ...dms._test.people() };
 const post = dms.signUpPost();
-const dm = dms.dmFor('youtube', { name: 'Rowan', title: 'Among Us', game: 'Among Us' }, { ...dms.getLiveDms(), message: '🔴 {streamer} en directo: {title} ({platform})' });
+const dm = dms.dmFor('youtube', { name: 'Simon', title: 'Among Us', game: 'Among Us' }, { ...dms.getLiveDms(), message: '🔴 {streamer} en directo: {title} ({platform})' });
 
 // Going live: after its wait, everybody on the list — once.
 dms.control({ settings: { enabled: true, delaySec: 0 } });
@@ -82,7 +82,7 @@ test('viewers sign up with a button, choosing where they watch, and are told so 
 });
 
 test('going live sends each a direct message with their link and a way to stop — once a stream', () => {
-  assert.equal(dm.content, '🔴 Rowan en directo: Among Us (YouTube)');
+  assert.equal(dm.content, '🔴 Simon en directo: Among Us (YouTube)');
   assert.deepEqual(dm.components[0].components.map((b) => b.url || b.custom_id), ['https://youtube.com/@yo/live', 'livedm:stop']);
   const sent = firstRound.filter((c) => c.route === '/channels/dm-600000000000000001/messages');
   assert.equal(sent.length, 1, 'the open one was not told');

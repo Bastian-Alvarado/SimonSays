@@ -24,7 +24,7 @@ const tokens = collection('spotify_tokens');
 tokens.set({ accessToken: 'stand-in', refreshToken: 'stand-in', expiresAt: Date.now() + 3_600_000 });
 
 const NO_DEVICE = { error: { status: 404, message: 'Player command failed: No active device found', reason: 'NO_ACTIVE_DEVICE' } };
-const PC = { id: 'pc', name: 'Rowan-PC', type: 'Computer', is_active: false, is_restricted: false, volume_percent: 40 };
+const PC = { id: 'pc', name: 'Simon-PC', type: 'Computer', is_active: false, is_restricted: false, volume_percent: 40 };
 const PHONE = { id: 'phone', name: 'Phone', type: 'Smartphone', is_active: false, is_restricted: false, volume_percent: 70 };
 
 /*

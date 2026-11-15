@@ -2,6 +2,21 @@
 
 Newest first. Versions are **major.minor.patch**: patch for fixes, minor for something new, major for something you must redo (an old backup that won't load, a removed feature, signing in again). The app shows its version under Settings → About.
 
+## [3.2.0] — 2026-11-15
+
+- A new look for the dashboard and the docks: a control console, with a bar across the top that says whether you are on air, a numbered menu, windows with title bars, readouts for the live numbers, and pages that use the whole screen (Stream plan, Game and People on stream sit in two columns on a wide one). Dark and light both have it, and the accent colour is still yours to pick. What your viewers see on stream has not changed.
+- Two new dashboard themes under Settings: Zerotype and Zerotype Night, in cream, cobalt and vermilion.
+- The chat dock's look is now CHAT.LOG: one line per message, a tag for the platform, a second tag for the top rank (HOST, MOD, VIP, SUB), and names in softer colours that stay readable. A dock you had already set up keeps its settings until you press Use the default look on the Chat dock screen.
+- The dashboard says when it has lost the server, or is still getting your setup from it, instead of looking signed out and empty. The bar over the overlay editor says Not connected: not saved, not All changes saved.
+- Fixed: an overlay edit made while the connection dropped was lost without a word. It is now kept on the page and sent once the server is back.
+- Fixed: on a slow connection a dashboard could be dropped and started again every 30 seconds, for ever. What the server sends is now squeezed to about an eighth, and a page still receiving is left to finish.
+- Fixed: chat set to hide after a while left at about half that time, and stayed far too long when the computer's clock and the server's disagreed.
+- Fixed: with SimonSays on another device (a phone, a mini PC), a bot account logged out could not be logged in again. The streamer, signed in, can now do it from any device; with sign-in off it stays on the computer SimonSays runs on.
+- Something the server refuses now says so on the screen, where before some buttons did nothing.
+- Under the hood: two libraries are on their fixed versions (one high and one moderate advisory, neither reachable from the app).
+- DroidCam has dock buttons of its own: light on / off, focus, zoom in and out, back to 1x, brighter and darker, lock exposure, switch camera and mic on / off. Zoom and brightness can be pressed again and again, and each press adds up.
+- Overlays, alerts and the other areas can each keep up to 50 profiles instead of 12, and one past that says so instead of failing in English; a backup with more than that keeps every one.
+
 ## [3.1.0] — 2026-10-27
 
 - On Linux, SimonSays-Linux-x64.tar.gz brings everything it needs, Node included: unpack it and run ./install.sh, with no sudo. It installs just for you, runs as a service that starts by itself (stopped with systemctl --user stop simonsays), takes another port when 8081 is in use, and on a computer with no screen listens on your network so you can open it from another device. Your things stay in ~/.local/share/simonsays, apart from the program; uninstall.sh keeps them unless you add --purge.

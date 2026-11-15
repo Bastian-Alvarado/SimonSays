@@ -276,7 +276,7 @@ export const OmnibarView: React.FC<OmnibarViewProps> = ({
           )}
           {!cfg.enabled && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-600">{t.omnibarOffHint}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{t.omnibarOffHint}</span>
             </div>
           )}
         </div>

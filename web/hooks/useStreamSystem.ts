@@ -325,12 +325,12 @@ export const useStreamSystem = () => {
   const editingDock = CHAT_SURFACE === 'dock' || CHAT_SURFACE === 'dashboard';
   const surfaceOverrides: Record<string, any> = {};
   /*
-    The dock's look is not a choice: it is Marathon's chat, always.
+    The dock's look is not a choice: it is CHAT.LOG, always.
 
     It used to draw whatever theme and stylesheet the stream's chat had, so
     the desk changed look every time the stream did. Now the theme is pinned
     to the one a stylesheet can dress and the stylesheet is the dock's own
-    Marathon — never the stream's, and never one typed for the dock. Its
+    — never the stream's, and never one typed for the dock. Its
     options and sliders still apply on top; see DOCK_CHAT_CSS for how they win.
   */
   if (editingDock) Object.assign(surfaceOverrides, { chatTheme: 'custom', css: DOCK_CHAT_CSS, motionCss: '' });
@@ -497,6 +497,9 @@ export const useStreamSystem = () => {
         for (const m of recent) rememberDiscordNames((m as any).names);
         if (recent.length === 0) return;
 
+        // The log is told in the server's time. Its age is what carries over to this page's clock.
+        const skew = snap?.serverNow ? snap.serverNow - Date.now() : 0;
+
         setChatMessages((prev) => (prev.length > 0 ? prev : recent.map((m) => ({
           // A reward message is normally hidden in favour of its event row,
           // but no event row is restored alongside it — so without this the
@@ -504,6 +507,7 @@ export const useStreamSystem = () => {
           ...m,
           rewardId: null,
           restored: true,
+          ...(m.at ? { localAt: m.at - skew } : {}),
         }))));
       }),
 
@@ -521,7 +525,7 @@ export const useStreamSystem = () => {
         // Newest first. App.tsx renders this list inside a `flex-col-reverse`
         // container, so index 0 is painted at the BOTTOM — appending instead
         // put the newest message at the top and ran the dock backwards.
-        setChatMessages((prev) => [withAvatar, ...prev].slice(0, CHAT_BUFFER));
+        setChatMessages((prev) => [{ ...withAvatar, localAt: Date.now() }, ...prev].slice(0, CHAT_BUFFER));
       }),
 
       // Stream events shown inline in the dock, when enabled for that platform.
@@ -544,6 +548,7 @@ export const useStreamSystem = () => {
           time: new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           at,
           avatar: ev.avatar,
+          localAt: Date.now(),
           isEvent: true,
           eventType: ev.type,
           eventData: ev.data,
@@ -712,6 +717,54 @@ export const useStreamSystem = () => {
   }, [request]);
   /** What a page shows for a profiled part of the configuration: the profile being looked at, or what is live. */
   const peeked = <T,>(key: string, live: T): T => (peek && key in peek.data ? peek.data[key] : live);
+
+  /*
+    Saving the layouts. Every save sends the whole list, and it used to be
+    sent without waiting to hear it arrived: on a connection that dropped
+    mid-save the change was gone, the bar above the editor read "All changes
+    saved" (the server never heard of it), and the editor went back to the
+    old layout. Now the list is kept until the server answers. Until then the
+    page goes on showing it, and it is sent again when the connection is back.
+  */
+  const [unsavedLayouts, setUnsavedLayouts] = useState<any[] | null>(null);
+  const unsavedLayoutsRef = useRef<any[] | null>(null);
+  // The overlay profile the unsaved list was made on: it is never sent over another one's layouts.
+  const unsavedOnProfileRef = useRef('');
+  const overlayProfile = String(((snapshot as any).profiles || []).find((g: any) => g?.id === 'overlays')?.active || '');
+  const overlayProfileRef = useRef(overlayProfile);
+  overlayProfileRef.current = overlayProfile;
+  const dropUnsavedLayouts = useCallback((list?: any[]) => {
+    if (list && unsavedLayoutsRef.current !== list) return;
+    unsavedLayoutsRef.current = null;
+    setUnsavedLayouts(null);
+  }, []);
+  const showRefused = backend.showRefused;
+  const sendLayouts = useCallback((list: any[]) => {
+    request(C2S.SET_LAYOUTS, list).then(() => {
+      // Only the newest save's answer settles it: an older one says nothing about what was sent after.
+      dropUnsavedLayouts(list);
+    }).catch((err: any) => {
+      // Not connected: kept, and sent again once the server's state is back (below).
+      if (err?.message === 'not connected') return;
+      // No answer in time, on a link that is still up: asked again, while it is still the newest.
+      if (/timed out/.test(String(err?.message))) { if (unsavedLayoutsRef.current === list) sendLayouts(list); return; }
+      // Refused: that is the server's answer, so what it has is shown again, and the refusal said.
+      dropUnsavedLayouts(list);
+      showRefused({ ...(err?.code ? { code: err.code, vars: err.vars } : {}), message: err?.message || '', for: C2S.SET_LAYOUTS });
+    });
+  }, [request, dropUnsavedLayouts, showRefused]);
+  const saveLayouts = useCallback((list: any[]) => {
+    unsavedLayoutsRef.current = list;
+    unsavedOnProfileRef.current = overlayProfileRef.current;
+    setUnsavedLayouts(list);
+    sendLayouts(list);
+  }, [sendLayouts]);
+  useEffect(() => {
+    if (!backend.loaded || !unsavedLayoutsRef.current) return;
+    // Another profile is live now (switched here or on another device): the list was not made for it.
+    if (unsavedOnProfileRef.current !== overlayProfile) { dropUnsavedLayouts(); return; }
+    sendLayouts(unsavedLayoutsRef.current);
+  }, [backend.loaded, overlayProfile, sendLayouts, dropUnsavedLayouts]);
 
   // ------------------------------------------------------- OAuth callbacks
 
@@ -963,7 +1016,7 @@ export const useStreamSystem = () => {
     planSaved: (payload: { op: 'save' | 'load' | 'delete'; name?: string; id?: string }) => request(C2S.PLAN_SAVED, payload),
     /** Regulars, crews and the Discord call, for the Who's on screen. Awaited, so the screen can say why not. */
     people: (payload: Record<string, any>) => request(C2S.PEOPLE, payload),
-    setLayouts: (layouts: any[]) => send(C2S.SET_LAYOUTS, layouts),
+    setLayouts: saveLayouts,
     /** Moderating Twitch chat, as whoever is signed in here (server/engine/twitch-mod.js). Answers, or refuses. */
     twitchMod: (payload: any) => request(C2S.TWITCH_MOD, payload),
     /** The home screen: { op: 'layouts', ids } | { op: 'show', layoutId } (server/engine/home.js). Answers, or refuses. */
@@ -1738,7 +1791,7 @@ export const useStreamSystem = () => {
       homeLayouts: ((snapshot as any).homeLayouts || []) as string[],
       eventsDockSettings: (snapshot as any).eventsDockSettings,
       viewers: peeked('viewers', (snapshot as any).viewers),
-      layouts: peeked('layouts', (snapshot as any).layouts ?? []),
+      layouts: peeked('layouts', unsavedLayouts ?? (snapshot as any).layouts ?? []),
       // A moderator looking at another profile sees it marked as the one shown; it is still not live.
       profiles: ((snapshot as any).profiles ?? []).map((g: any) => (peek && g.id === peek.group ? { ...g, active: peek.id, liveId: g.active, dirty: false, peeking: true } : g)),
       /** The profile a moderator is looking at instead of the live one, if any. */
@@ -1898,6 +1951,14 @@ export const useStreamSystem = () => {
     },
     /** Not part of the V2 contract; handy for a connection indicator. */
     _backendConnected: backend.connected,
+    /** The link to the server, for the screens to say: open, the state here, layouts still to be heard back about, and the last thing refused. */
+    link: {
+      connected: backend.connected,
+      loaded: backend.loaded,
+      layoutsUnsaved: Boolean(unsavedLayouts),
+      refused: backend.refused,
+      clearRefused: backend.clearRefused,
+    },
     /** Who this page is signed in as, whether the server wants a sign-in first, and connecting again once there is one. */
     auth: {
       me: backend.me,

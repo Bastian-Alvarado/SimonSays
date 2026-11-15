@@ -42,7 +42,7 @@ test('a person keeps a Twitch login and a Discord account when they are real one
   assert.deepEqual(cleanPerson({ name: 'Bo', twitch: '???', discordId: 'x' }), { name: 'Bo', subtitle: '' });
 });
 
-engine.store.setRun({ runner: { name: 'Rowan', twitch: 'i_might_be_a_bot' }, host: { name: 'Nolan', subtitle: 'él', twitch: 'pixelpepp' }, commentators: [] });
+engine.store.setRun({ runner: { name: 'Simon', twitch: 'i_might_be_a_bot' }, host: { name: 'Nolan', subtitle: 'él', twitch: 'pixelpepp' }, commentators: [] });
 const kept = runNow();
 test('a seat keeps its Twitch login, and a new name in it starts without one', () => {
   assert.equal(kept.host.twitch, 'pixelpepp', 'the run dropped the Twitch login');
@@ -69,7 +69,7 @@ test('a regular is saved once, however many times they are saved', () => {
 
 // ------------------------------------------------------------ the call
 
-engine.store.setRun({ runner: { name: 'Rowan', discordId: '100000000000000001' }, host: { name: '' }, commentators: [] });
+engine.store.setRun({ runner: { name: 'Simon', discordId: '100000000000000001' }, host: { name: '' }, commentators: [] });
 call([
   { id: '100000000000000001', name: 'SimonDiscord' },
   { id: '200000000000000002', name: 'ana.discord' },
@@ -116,7 +116,7 @@ test('following the call, the seats change as people join and leave, and nobody 
 
 // --------------------------------------------------------------- crews
 
-engine.store.setRun({ runner: { name: 'Rowan' }, host: { name: 'Nolan' }, commentators: [{ name: 'Ana' }, { name: 'Bo' }] });
+engine.store.setRun({ runner: { name: 'Simon' }, host: { name: 'Nolan' }, commentators: [{ name: 'Ana' }, { name: 'Bo' }] });
 people.control({ op: 'crew_save', name: 'Noche de Among Us' });
 engine.store.setRun({ runner: { name: 'Otro' }, host: { name: '' }, commentators: [] });
 const crew = people.getPeople().crews.find((c) => c.name === 'Noche de Among Us');
@@ -128,7 +128,7 @@ engine.store.setRun({ runner: { name: '' }, host: { name: '' }, commentators: []
 try { people.control({ op: 'crew_save', name: 'Vacío' }); } catch (err) { nobody = err.message; }
 
 test('a crew seats a whole night at once, and is forgotten when asked', () => {
-  assert.deepEqual([seatedCrew.runner.name, seatedCrew.host.name, ...names(seatedCrew.commentators)], ['Rowan', 'Nolan', 'Ana', 'Bo']);
+  assert.deepEqual([seatedCrew.runner.name, seatedCrew.host.name, ...names(seatedCrew.commentators)], ['Simon', 'Nolan', 'Ana', 'Bo']);
   assert.ok(!people.getPeople().crews.some((c) => c.id === crew.id));
   assert.equal(nobody, 'nobody is seated');
 });

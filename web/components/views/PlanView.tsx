@@ -370,17 +370,16 @@ export const PlanView = ({ plan, setPlan, planGoto, saved, savedControl, searchC
   const recap = plan?.recap?.items?.length ? plan.recap : null;
 
   return (
-    <div className="animate-fade-in space-y-6 pb-20 max-w-3xl">
+    <div className="animate-fade-in pb-20 grid items-start gap-6 grid-cols-[repeat(auto-fit,minmax(min(100%,30rem),1fr))]" data-plan-page>
+      <div className="min-w-0 space-y-6">
       <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ListOrdered size={18} className="text-current-accent" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-zinc-300">
-              {items.length === 0
-                ? (t.planEmpty || 'Nothing planned yet')
-                : `${items.length} ${t.planThings || 'things'}`}
-            </span>
-          </div>
+        <div className="flex items-center gap-3">
+          <ListOrdered size={18} className="text-current-accent" />
+          <span className="mr-auto text-[11px] font-black uppercase tracking-widest text-zinc-300">
+            {items.length === 0
+              ? (t.planEmpty || 'Nothing planned yet')
+              : `${items.length} ${t.planThings || 'things'}`}
+          </span>
           {started && (
             <Button
               variant="secondary"
@@ -512,11 +511,9 @@ export const PlanView = ({ plan, setPlan, planGoto, saved, savedControl, searchC
 
       {recap && (
         <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-3" data-plan-recap>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <History size={16} className="text-current-accent" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-zinc-300">{t.planRecap || 'Last stream'}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <History size={16} className="text-current-accent" />
+            <span className="mr-auto text-[11px] font-black uppercase tracking-widest text-zinc-300">{t.planRecap || 'Last stream'}</span>
             <span className="text-[10px] text-zinc-500">{new Date(recap.at).toLocaleDateString()}</span>
           </div>
           <p className="text-[10px] text-zinc-600">{t.planRecapHint || 'How long each step took. Only you see this.'}</p>
@@ -534,7 +531,9 @@ export const PlanView = ({ plan, setPlan, planGoto, saved, savedControl, searchC
           </div>
         </div>
       )}
+      </div>
 
+      <div className="min-w-0 space-y-6">
       <div className="glass-panel rounded-3xl border border-zinc-800 p-6 space-y-4">
         <div className={label}>{t.planSettings || 'While streaming'}</div>
         <Toggle
@@ -617,6 +616,7 @@ export const PlanView = ({ plan, setPlan, planGoto, saved, savedControl, searchC
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

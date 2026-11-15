@@ -17,7 +17,7 @@ const discord = await import('../../platforms/discord.js');
 
 // ---------------------------------------------------------------- welcome and goodbye
 
-const rowan = { id: '306050655881793586', username: 'i_am_streamer', global_name: 'I_Am_Streamer', avatar: 'abc123' };
+const simon = { id: '306050655881793586', username: 'i_am_streamer', global_name: 'I_Am_Streamer', avatar: 'abc123' };
 
 // How the phone's welcome is actually set up: a card, no text line.
 const cardOnly = {
@@ -25,20 +25,20 @@ const cardOnly = {
   sendCard: true, cardTitle: '', cardDescription: 'Saluditos {user} Bienvenido!', cardFooter: 'Hola {user}',
   cardColor: '#409642', cardThumbnail: true,
 };
-const welcomeCard = roles.greetingFor(cardOnly, rowan, true);
-const goodbyeCard = roles.greetingFor({ ...cardOnly, cardDescription: 'Chales, se nos fue {user}' }, rowan, false);
-const lineOnly = roles.greetingFor({ enabled: true, messages: ['Welcome {user} ({username})!'], sendCard: false }, rowan, true);
-const nothing = roles.greetingFor({ enabled: true, messages: [], sendCard: false }, rowan, true);
-const emptyCard = roles.greetingFor({ enabled: true, messages: [], sendCard: true, cardDescription: '' }, rowan, true);
+const welcomeCard = roles.greetingFor(cardOnly, simon, true);
+const goodbyeCard = roles.greetingFor({ ...cardOnly, cardDescription: 'Chales, se nos fue {user}' }, simon, false);
+const lineOnly = roles.greetingFor({ enabled: true, messages: ['Welcome {user} ({username})!'], sendCard: false }, simon, true);
+const nothing = roles.greetingFor({ enabled: true, messages: [], sendCard: false }, simon, true);
+const emptyCard = roles.greetingFor({ enabled: true, messages: [], sendCard: true, cardDescription: '' }, simon, true);
 const nasty = roles.greetingFor({ messages: ['hi {username}'] }, { id: '1', global_name: '@everyone **bold**' }, true);
 
 test('a welcome set up as a card, with no text line, is posted', () => {
   assert.ok(welcomeCard, 'a card-only welcome posted nothing');
   assert.equal(welcomeCard.content, '');
   // A mention in the description, where Discord draws one; the name in the footer, where it would be raw markup.
-  assert.equal(welcomeCard.embed.description, `Saluditos <@${rowan.id}> Bienvenido!`);
+  assert.equal(welcomeCard.embed.description, `Saluditos <@${simon.id}> Bienvenido!`);
   assert.equal(welcomeCard.embed.footer, 'Hola I\\_Am\\_Streamer');
-  assert.equal(welcomeCard.embed.thumbnail, `https://cdn.discordapp.com/avatars/${rowan.id}/abc123.png`);
+  assert.equal(welcomeCard.embed.thumbnail, `https://cdn.discordapp.com/avatars/${simon.id}/abc123.png`);
 });
 
 test('a goodbye card is sent too, naming rather than mentioning somebody who has left', () => {
@@ -47,7 +47,7 @@ test('a goodbye card is sent too, naming rather than mentioning somebody who has
 });
 
 test('a text line still works alone, and nothing to say posts nothing', () => {
-  assert.equal(lineOnly.content, `Welcome <@${rowan.id}> (I\\_Am\\_Streamer)!`);
+  assert.equal(lineOnly.content, `Welcome <@${simon.id}> (I\\_Am\\_Streamer)!`);
   assert.equal(lineOnly.embed, undefined);
   assert.equal(nothing, null);
   assert.equal(emptyCard, null, 'an empty card was posted');

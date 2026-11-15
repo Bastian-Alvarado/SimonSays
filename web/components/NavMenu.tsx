@@ -54,13 +54,17 @@ const Dot = ({ kind }: { kind: 'on' | 'alert' | 'news' }) => (
   <span className={`w-2 h-2 rounded-full shrink-0 ${kind === 'alert' ? 'bg-rose-500 animate-pulse' : kind === 'news' ? 'bg-current-accent' : 'bg-emerald-400 animate-pulse'}`} data-nav-dot={kind} />
 );
 
-export const NavButton = ({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) => (
+/* Japanese twins beside the section names: decoration, never the only copy (manual 12.4). */
+export const TWINS: Record<string, string> = { live: 'ライブ', community: 'コミュニティ', screen: '画面', discord: 'ディスコード', automation: '自動', setup: '設定' };
+
+export const NavButton = ({ item, active, onClick, code }: { item: NavItem; active: boolean; onClick: () => void; code?: string }) => (
   <button
     onClick={onClick}
     title={item.hint || undefined}
     className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${active ? 'bg-current-accent/10 text-current-accent border-l-2 border-current-accent' : 'text-zinc-500 hover:bg-zinc-900/40 hover:text-zinc-200'}`}
     data-nav-item={item.view}
   >
+    {code && <span className="ss-code hidden">{code}</span>}
     <span className={`${active ? 'text-current-accent' : 'text-zinc-600 group-hover:text-zinc-400'} transition-colors shrink-0`}>{item.icon}</span>
     <span className="font-semibold text-sm tracking-wide flex-1 text-left truncate">{item.label}</span>
     {item.dot && <Dot kind={item.dot} />}
@@ -76,6 +80,15 @@ export const NavButton = ({ item, active, onClick }: { item: NavItem; active: bo
  * shown, which also opens whenever a screen in it is gone to. Which are open
  * lasts while the page is open, not from one visit to the next.
  */
+/** Where a screen sits in the menu, as the spec index writes it: 2-02, and its section's twin. */
+export const specIndex = (sections: NavSection[], view: AppView) => {
+  for (const [n, s] of sections.entries()) {
+    const m = s.items.findIndex((i) => isOn(i, view));
+    if (m >= 0) return { code: `${n + 1}-${String(m + 1).padStart(2, '0')}`, twin: TWINS[s.id] || '' };
+  }
+  return null;
+};
+
 export const NavSections = ({ sections, view, go }: { sections: NavSection[]; view: AppView; go: (view: AppView) => void }) => {
   const holding = sections.find((s) => s.items.some((i) => isOn(i, view)))?.id;
   const [opened, setOpened] = useState<Set<string>>(() => new Set(holding ? [holding] : []));
@@ -101,7 +114,8 @@ export const NavSections = ({ sections, view, go }: { sections: NavSection[]; vi
               className="w-full flex items-center gap-2 px-4 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-zinc-300 transition-colors"
               data-nav-section-toggle={s.id}
             >
-              <span className="flex-1 text-left opacity-70">{s.label}</span>
+              <span className="ss-code hidden">{String(n + 1).padStart(2, '0')}</span>
+              <span className="flex-1 text-left opacity-70">{s.label}{TWINS[s.id] && <span className="ss-twin hidden" aria-hidden="true">{TWINS[s.id]}</span>}</span>
               {waiting && <Dot kind="alert" />}
               {!waiting && running && <Dot kind="on" />}
               {!waiting && !running && news && <Dot kind="news" />}
@@ -109,7 +123,7 @@ export const NavSections = ({ sections, view, go }: { sections: NavSection[]; vi
             </button>
             {open && (
               <div className="space-y-0.5 mt-1">
-                {s.items.map((item) => <NavButton key={item.view} item={item} active={isOn(item, view)} onClick={() => go(item.view)} />)}
+                {s.items.map((item, m) => <NavButton key={item.view} item={item} active={isOn(item, view)} onClick={() => go(item.view)} code={`${n + 1}-${String(m + 1).padStart(2, '0')}`} />)}
               </div>
             )}
           </div>

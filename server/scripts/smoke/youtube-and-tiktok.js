@@ -197,7 +197,7 @@ globalThis.fetch = async (url) => {
   if (spent) {
     return reply(403, { error: { message: 'The request cannot be completed because you have exceeded your quota.', errors: [{ reason: 'quotaExceeded' }] } });
   }
-  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Rowan', thumbnails: { default: { url: 'x' } } } }] });
+  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Simon', thumbnails: { default: { url: 'x' } } } }] });
   return reply(200, { items: [] });
 };
 const yt = await import('../../platforms/youtube.js');
@@ -368,7 +368,7 @@ globalThis.fetch = async (url) => {
   const u = String(url);
   asked3.push(u);
   const reply = (status, body) => ({ ok: status < 400, status, text: async () => JSON.stringify(body), json: async () => body });
-  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Rowan', thumbnails: { default: { url: 'x' } } } }] });
+  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Simon', thumbnails: { default: { url: 'x' } } } }] });
   if (u.includes('/liveBroadcasts?')) return reply(200, { items: ytLive ? [{ id: 'v1', snippet: { liveChatId: 'c1' } }] : [] });
   if (u.includes('/liveChat/messages?')) return reply(200, { items: [], pollingIntervalMillis: 7000 });
   return reply(200, { items: [] });
@@ -669,7 +669,7 @@ globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
   ytStreamAsked.push(u);
   const reply = (status, body) => ({ ok: status < 400, status, text: async () => JSON.stringify(body), json: async () => body });
-  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Rowan', thumbnails: { default: { url: 'x' } } } }] });
+  if (u.includes('/channels?')) return reply(200, { items: [{ snippet: { title: 'Simon', thumbnails: { default: { url: 'x' } } } }] });
   if (u.includes('/liveBroadcasts?')) return reply(200, { items: [{ id: 'v9', snippet: { liveChatId: 'c9' } }] });
   if (u.includes('/liveChat/messages/stream?')) {
     ytConnections += 1;

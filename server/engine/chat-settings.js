@@ -15,7 +15,7 @@
  */
 
 import {
-  CHAT_DEFAULTS, CHAT_THEME_IDS, CHAT_PAGE_KEYS,
+  CHAT_DEFAULTS, DOCK_LOOK, CHAT_THEME_IDS, CHAT_PAGE_KEYS,
   USERNAME_CASES, TIMESTAMP_FORMATS, CHAT_ANIMATIONS,
   CHAT_LAYOUTS, TIMESTAMP_POSITIONS, BADGE_POSITIONS, AVATAR_SHAPES,
   safeFontName,
@@ -29,6 +29,7 @@ export const CHAT_THEMES = CHAT_THEME_IDS;
 
 /** A chat's set when nothing has been chosen. */
 export const DEFAULT_CHAT = { ...CHAT_DEFAULTS };
+export const DEFAULT_DOCK_CHAT = { ...CHAT_DEFAULTS, ...DOCK_LOOK };
 
 /*
   Values from a client end up interpolated into inline styles on a surface

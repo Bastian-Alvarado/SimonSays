@@ -17,17 +17,17 @@ const { cleanAvatarSources, normaliseLayout, MAX_AVATAR_SOURCES } = await import
 const before = engine.store.avatarSources ? (engine.snapshot().avatarSources || []) : [];
 
 test('an avatar can be named, its settings saved and renamed, and the name taken away', () => {
-  const made = engine.store.avatarSources({ op: 'create', name: '  Rowan  ', config: { overwhelmCount: 4, sleepAfter: 0, label: 'Rowan', source: 'as-sneaky1' } });
+  const made = engine.store.avatarSources({ op: 'create', name: '  Simon  ', config: { overwhelmCount: 4, sleepAfter: 0, label: 'Simon', source: 'as-sneaky1' } });
   assert.match(made.id, /^as-[a-z0-9]+$/);
-  const rowan = made.list.find((s) => s.id === made.id);
-  assert.equal(rowan.name, 'Rowan');
-  assert.deepEqual([rowan.config.overwhelmCount, rowan.config.sleepAfter, rowan.config.label], [4, 0, 'Rowan']);
-  assert.equal(rowan.config.source, undefined, 'a named avatar names another');
+  const simon = made.list.find((s) => s.id === made.id);
+  assert.equal(simon.name, 'Simon');
+  assert.deepEqual([simon.config.overwhelmCount, simon.config.sleepAfter, simon.config.label], [4, 0, 'Simon']);
+  assert.equal(simon.config.source, undefined, 'a named avatar names another');
   // Checked as an avatar layer is: past the most it takes, it takes the most.
   assert.equal(engine.store.avatarSources({ op: 'save', id: made.id, config: { overwhelmCount: 99 } }).list.find((s) => s.id === made.id).config.overwhelmCount, 6);
-  assert.equal(engine.store.avatarSources({ op: 'rename', id: made.id, name: 'Rowan casual' }).list.find((s) => s.id === made.id).name, 'Rowan casual');
+  assert.equal(engine.store.avatarSources({ op: 'rename', id: made.id, name: 'Simon casual' }).list.find((s) => s.id === made.id).name, 'Simon casual');
   // Names are unique, ignoring case; empty and missing ones are refused, in words the screen can say.
-  assert.throws(() => engine.store.avatarSources({ op: 'create', name: 'ROWAN CASUAL' }), (err) => err.code === 'avatar_source_name_taken' && err.vars?.name === 'ROWAN CASUAL');
+  assert.throws(() => engine.store.avatarSources({ op: 'create', name: 'SIMON CASUAL' }), (err) => err.code === 'avatar_source_name_taken' && err.vars?.name === 'SIMON CASUAL');
   assert.throws(() => engine.store.avatarSources({ op: 'create', name: '   ' }), (err) => err.code === 'avatar_source_name_empty');
   assert.throws(() => engine.store.avatarSources({ op: 'save', id: 'as-gone1234' }), (err) => err.code === 'avatar_source_gone');
   assert.equal(engine.store.avatarSources({ op: 'delete', id: made.id }).list.some((s) => s.id === made.id), false);

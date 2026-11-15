@@ -198,7 +198,7 @@ test('the dock and the overlay each keep a set of their own, with no override ma
     move: two collections, read as they are.
   */
   const src = fs.readFileSync(new URL('../engine/index.js', SCRIPT_URL), 'utf8');
-  assert.ok(src.includes("chatDock: collection('chat_dock_settings', DEFAULT_CHAT)"));
+  assert.ok(src.includes("chatDock: collection('chat_dock_settings', DEFAULT_DOCK_CHAT)"));
   assert.ok(!src.includes('legacyChat') && !src.includes('dockOverrides'), 'the old override map is still read');
 });
 
@@ -686,8 +686,15 @@ test('every built-in button names something the player can actually do', () => {
   const runsBuiltins = engineSrc.slice(engineSrc.indexOf('export async function runDockBuiltin'), engineSrc.indexOf('export async function runDockAction'));
   for (const b of DOCK_BUILTINS) {
     // A category this does not know is a button nothing here checks.
-    assert.ok(['spotify', 'plan', 'timer', 'youtube', 'avatar', 'twitch', 'questions', 'deaths', 'countdown', 'alerts'].includes(b.category), `${b.id} is ${b.category}, which this test does not cover yet`);
-    if (b.category === 'alerts') {
+    assert.ok(['spotify', 'plan', 'timer', 'youtube', 'avatar', 'twitch', 'questions', 'deaths', 'countdown', 'alerts', 'droidcam'].includes(b.category), `${b.id} is ${b.category}, which this test does not cover yet`);
+    if (b.category === 'droidcam') {
+      // What the phone's camera answers to: a toggle, a value, or one of the dock's own (platforms/droidcam.js control).
+      const camSrc = fs.readFileSync(new URL('../platforms/droidcam.js', SCRIPT_URL), 'utf8');
+      const camControl = camSrc.slice(camSrc.indexOf('export async function control'));
+      const toggles = camSrc.slice(camSrc.indexOf('const TOGGLES = {'), camSrc.indexOf('};', camSrc.indexOf('const TOGGLES = {')));
+      assert.ok(runsBuiltins.includes("builtin.category === 'droidcam'") && (toggles.includes(`  ${b.op}: '`) || camControl.includes(`op === '${b.op}'`)),
+        `DroidCam cannot do "${b.op}", which ${b.id} asks for`);
+    } else if (b.category === 'alerts') {
       const gate = fs.readFileSync(new URL('../engine/alert-gate.js', SCRIPT_URL), 'utf8');
       assert.ok(runsBuiltins.includes("builtin.category === 'alerts'") && gate.includes(`case '${b.op}':`),
         `the alerts cannot do "${b.op}", which ${b.id} asks for`);
@@ -854,10 +861,11 @@ test('volume is the one button that may be pressed again while it is working', (
   /*
     And the deaths count, for the same reason: three deaths in a row are three
     presses, not a double-tap to swallow. Back to zero is not repeatable.
-    The countdown's minute on and minute off likewise.
+    The countdown's minute on and minute off likewise, and DroidCam's zoom
+    and brightness: three presses are three steps (platforms/droidcam.js).
   */
   const repeatable = DOCK_BUILTINS.filter((b) => b.repeatable).map((b) => b.id);
-  assert.deepEqual(repeatable.sort(), ['countdown_less', 'countdown_more', 'deaths_add', 'deaths_subtract', 'spotify_volume_down', 'spotify_volume_up'],
+  assert.deepEqual(repeatable.sort(), ['countdown_less', 'countdown_more', 'deaths_add', 'deaths_subtract', 'droidcam_brighter', 'droidcam_darker', 'droidcam_zoom_in', 'droidcam_zoom_out', 'spotify_volume_down', 'spotify_volume_up'],
     `the repeatable buttons are now ${JSON.stringify(repeatable)}`);
 
   const grid = fs.readFileSync(new URL('../../web/components/DockActionsGrid.tsx', SCRIPT_URL), 'utf8');
@@ -1584,8 +1592,24 @@ test('profiles travel in a config export', () => {
   assert.ok(MANIFEST.some((e) => e.name === 'profiles'), 'the backup manifest has no profiles entry');
 });
 
-test('a group cannot hold an unbounded number of profiles', () => {
-  assert.ok(MAX_PROFILES_PER_GROUP > 0 && MAX_PROFILES_PER_GROUP <= 50, String(MAX_PROFILES_PER_GROUP));
+// Filled to the limit and one past it, in the alerts group, then put back as it was.
+const profilesMod = await import('../../engine/profiles.js');
+const alertsBefore = profilesMod.summary().find((g) => g.id === 'alerts').profiles.map((p) => p.id);
+let pastLimit = null;
+try {
+  while (profilesMod.summary().find((g) => g.id === 'alerts').profiles.length < MAX_PROFILES_PER_GROUP) profilesMod.createProfile('alerts', 'Filler');
+  try { profilesMod.createProfile('alerts', 'One too many'); } catch (err) { pastLimit = err; }
+} finally {
+  for (const p of profilesMod.summary().find((g) => g.id === 'alerts').profiles) if (!alertsBefore.includes(p.id)) profilesMod.deleteProfile('alerts', p.id);
+}
+
+test('a group holds up to 50 profiles: the 51st is refused with words of its own, and none already there is ever dropped', () => {
+  // It was 12, and the streamer's overlays reached 11; an overlay profile is 100-320 KB, all in one file.
+  assert.equal(MAX_PROFILES_PER_GROUP, 50);
+  assert.deepEqual([pastLimit?.code, pastLimit?.vars?.max], ['profiles_full', 50]);
+  assert.deepEqual(profilesMod.summary().find((g) => g.id === 'alerts').profiles.map((p) => p.id), alertsBefore, 'the fillers are gone again');
+  // Reading the file keeps every one: a backup from a copy that allowed more is not cut short.
+  assert.ok(!fs.readFileSync(new URL('../engine/profiles.js', SCRIPT_URL), 'utf8').includes('.slice(0, MAX_PROFILES_PER_GROUP)'));
 });
 
 test('a first boot adopts the existing configuration rather than crying unsaved', () => {

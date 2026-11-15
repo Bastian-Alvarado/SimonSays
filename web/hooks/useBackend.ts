@@ -137,6 +137,12 @@ export function apiFetch(path: string, init: RequestInit = {}): Promise<Response
 
 export function useBackend() {
   const [connected, setConnected] = useState(false);
+  // Whether the server's state has arrived on this connection. Connected is not enough to go by:
+  // on a slow link the socket is open long before the snapshot is here, and until then every
+  // account reads as signed out and every list as empty.
+  const [loaded, setLoaded] = useState(false);
+  // Something asked for without waiting for an answer that the server refused: { for, code, message, vars, at }.
+  const [refused, setRefused] = useState<any>(null);
   // Who the server says this is, and whether it wants a sign-in first (server/api/auth.js).
   const [me, setMe] = useState<Me | null>(null);
   const [signIn, setSignIn] = useState<'needed' | 'refused' | null>(null);
@@ -185,6 +191,7 @@ export function useBackend() {
     switch (type) {
       case S2C.SNAPSHOT:
       case S2C.CONFIG_PATCH:
+        if (type === S2C.SNAPSHOT) setLoaded(true);
         setSnapshot((prev) => ({
           ...prev,
           ...p,
@@ -369,6 +376,10 @@ export function useBackend() {
           return;
         }
 
+        // Refused, with nobody waiting for the answer: kept, so the screen can say it did not happen.
+        // (One with an id answers a request that already gave up waiting: that was said where it was asked.)
+        if (msg.type === S2C.ERROR) { if (!msg.id) setRefused({ ...(msg.payload || {}), at: Date.now() }); return; }
+
         applyToSnapshot(msg.type, msg.payload);
         emit(msg.type, msg.payload);
       };
@@ -380,6 +391,10 @@ export function useBackend() {
 
         wsRef.current = null;
         setConnected(false);
+        setLoaded(false);
+        // Nothing asked on this connection will be answered now: said at once, not after its 15 seconds.
+        for (const [, p] of pendingRef.current) p.reject(new Error('not connected'));
+        pendingRef.current.clear();
 
         /*
           The server's reasons (server/api/ws.js). 4401: nobody it knows —
@@ -433,8 +448,11 @@ export function useBackend() {
   }, [emit, flushOutbox, applyToSnapshot]);
 
   const reconnect = useCallback(() => reconnectRef.current(), []);
+  const clearRefused = useCallback(() => setRefused(null), []);
+  /** For a screen whose own request was refused and has nowhere of its own to say so. */
+  const showRefused = useCallback((r: any) => setRefused({ ...r, at: Date.now() }), []);
 
-  return { connected, snapshot, setSnapshot, send, request, on, me, signIn, reconnect };
+  return { connected, loaded, refused, clearRefused, showRefused, snapshot, setSnapshot, send, request, on, me, signIn, reconnect };
 }
 
 export { C2S, S2C };

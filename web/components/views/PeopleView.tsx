@@ -26,7 +26,7 @@ import { RosterLayer } from '../RosterLayer';
 import { CommittedInput } from '../CommittedInput';
 import { MAX_COMMENTATORS } from '../../../shared/run.js';
 import { refusalWords, shoutoutWords } from '../../words';
-import { ClearButton, EMPTY_PERSON, Heading, Person, PREVIEW_GROUND, RunScreenProps, firstLayer } from '../RunParts';
+import { ClearButton, EMPTY_PERSON, Heading, Person, PREVIEW_GROUND, TWO_COLUMNS, RunScreenProps, firstLayer } from '../RunParts';
 
 export interface Regular extends Person { id: string }
 export interface Crew { id: string; name: string; runner?: Person; host?: Person; commentators?: Person[] }
@@ -215,11 +215,13 @@ export const PeopleView = ({ run, setRun, layouts, people, peopleControl, voice,
   };
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-5">
       {problem && (
         <p role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-[11px] font-bold text-rose-300">{problem}</p>
       )}
 
+      <div className={TWO_COLUMNS} data-people-page>
+      <div className="min-w-0 space-y-5">
       <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-3">
         <Heading
           icon={<Mic size={14} />}
@@ -255,6 +257,32 @@ export const PeopleView = ({ run, setRun, layouts, people, peopleControl, voice,
         </p>
       </div>
 
+      {/* The seats as they go on stream, in the colours the first couch in a layout already has. */}
+      <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-3" data-run-preview="people">
+        <Heading icon={<Eye size={14} />} text={t.runPreview || 'Preview'} />
+        {people_.length ? (
+          <>
+            <div className={PREVIEW_GROUND}>
+              <div style={{ height: Math.ceil(people_.length / 2) * 64 }}>
+                <RosterLayer
+                  config={{ ...firstLayer(layouts, 'roster'), include: 'everyone', showEmpty: false, columns: 2, nameSize: 18, pronounSize: 10 }}
+                  run={run}
+                />
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-600 leading-relaxed">
+              {t.runPreviewHint || 'Drawn plain, the way a layer looks before a look is applied.'}
+            </p>
+          </>
+        ) : (
+          <p className="text-[10px] text-zinc-600 leading-relaxed">
+            {t.peoplePreviewEmpty || 'Nothing to show yet: a seat appears once somebody has a name.'}
+          </p>
+        )}
+      </div>
+      </div>
+
+      <div className="min-w-0 space-y-5">
       {/* The Discord call: seat somebody from it, fill the commentators from it, or follow it. */}
       <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-3" data-people-call>
         <Heading icon={<Headphones size={14} />} text={t.peopleCall || 'The Discord call'} />
@@ -398,29 +426,7 @@ export const PeopleView = ({ run, setRun, layouts, people, peopleControl, voice,
           );
         })}
       </div>
-
-      {/* The seats as they go on stream, in the colours the first couch in a layout already has. */}
-      <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-3" data-run-preview="people">
-        <Heading icon={<Eye size={14} />} text={t.runPreview || 'Preview'} />
-        {people_.length ? (
-          <>
-            <div className={PREVIEW_GROUND}>
-              <div style={{ height: Math.ceil(people_.length / 2) * 64 }}>
-                <RosterLayer
-                  config={{ ...firstLayer(layouts, 'roster'), include: 'everyone', showEmpty: false, columns: 2, nameSize: 18, pronounSize: 10 }}
-                  run={run}
-                />
-              </div>
-            </div>
-            <p className="text-[10px] text-zinc-600 leading-relaxed">
-              {t.runPreviewHint || 'Drawn plain, the way a layer looks before a look is applied.'}
-            </p>
-          </>
-        ) : (
-          <p className="text-[10px] text-zinc-600 leading-relaxed">
-            {t.peoplePreviewEmpty || 'Nothing to show yet: a seat appears once somebody has a name.'}
-          </p>
-        )}
+      </div>
       </div>
     </div>
   );

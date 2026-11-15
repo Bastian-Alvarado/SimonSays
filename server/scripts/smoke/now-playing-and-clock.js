@@ -18,13 +18,13 @@ export const { NAMEPLATE_SOURCE_IDS, resolvePerson } = await import('../../../sh
 test('the run holds the few facts a dozen places want', () => {
   const out = engine.store.setRun({
     game: 'Dark Souls', platform: 'PS3', year: '2011', category: 'Any%', estimate: '1:20:00',
-    runner: { name: 'Rowan', subtitle: 'he/him' },
+    runner: { name: 'Simon', subtitle: 'he/him' },
     host: { name: 'Nora' },
     commentators: [{ name: 'Ana' }, { name: 'Bo' }],
   });
   assert.equal(out.game, 'Dark Souls');
   assert.equal(out.year, '2011');
-  assert.equal(out.runner.name, 'Rowan');
+  assert.equal(out.runner.name, 'Simon');
   assert.equal(out.runner.subtitle, 'he/him');
   assert.equal(out.commentators.length, 2);
 });
@@ -198,11 +198,11 @@ test('a plate can follow the run instead of being retyped', () => {
     when the guests change are four chances to leave last week's name up.
   */
   const run = {
-    runner: { name: 'Rowan', subtitle: 'he/him' },
+    runner: { name: 'Simon', subtitle: 'he/him' },
     host: { name: 'Nora', subtitle: '' },
     commentators: [{ name: 'Ana', subtitle: 'she/her' }, { name: 'Bo', subtitle: '' }],
   };
-  assert.equal(resolvePerson('runner', run).name, 'Rowan');
+  assert.equal(resolvePerson('runner', run).name, 'Simon');
   assert.equal(resolvePerson('host', run).name, 'Nora');
   assert.equal(resolvePerson('commentator2', run).name, 'Bo');
   assert.equal(resolvePerson('commentator1', run).subtitle, 'she/her');

@@ -14,6 +14,7 @@
  * is literally what goes out — not a diagram of it.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { SsTape } from '../SsTape';
 import { CanvasStage, CanvasLayer, CanvasLayout } from '../CanvasStage';
 import { SceneTypePicker } from '../SceneTypes';
 import { Button } from '../Button';
@@ -1476,7 +1477,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
               <input
                 type="text"
                 value={(layer.config as any)?.[field] || ''}
-                placeholder={field === 'name' ? 'Rowan' : 'he/him — @handle'}
+                placeholder={field === 'name' ? 'Simon' : 'he/him — @handle'}
                 onChange={(e) => patchLayer(layer.uid, { config: { ...(layer.config || {}), [field]: e.target.value } })}
                 onBlur={() => commit()}
                 onClick={(e) => e.stopPropagation()}
@@ -1755,6 +1756,7 @@ export const LayoutsView: React.FC<LayoutsViewProps> = ({
           <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 border border-zinc-800 text-zinc-500">
             <Layers size={32} />
           </div>
+          <SsTape t={t} />
           <h3 className="text-xl font-extrabold mb-2 uppercase tracking-tight">{t.layoutNone || 'No layouts yet'}</h3>
           <p className="text-xs text-zinc-500 max-w-sm mb-8">
             {t.layoutNoneHint || 'A layout holds your overlays in one place, so OBS only needs one browser source instead of one per overlay.'}

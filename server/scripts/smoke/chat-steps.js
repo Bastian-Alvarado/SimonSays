@@ -185,11 +185,11 @@ test('a detail command with nothing after it takes that detail off the card', ()
 });
 
 engine.store.setRun({ ...runNow(), runner: { name: 'Old', subtitle: 'they/them' } });
-chat('!rrunner Rowan', mod);
+chat('!rrunner Simon', mod);
 chat('!rhost Pat', mod);
 await settle();
 test('renaming a person leaves the second line alone unless the step sets one', () => {
-  assert.deepEqual(runNow().runner, { name: 'Rowan', subtitle: 'they/them' });
+  assert.deepEqual(runNow().runner, { name: 'Simon', subtitle: 'they/them' });
   assert.deepEqual(runNow().host, { name: 'Pat', subtitle: 'he/him' });
 });
 
@@ -207,7 +207,7 @@ await settle();
 test('clearing the details leaves the people at the table', () => {
   const r = runNow();
   assert.deepEqual([r.game, r.platform, r.year, r.category, r.estimate], ['', '', '', '', '']);
-  assert.equal(r.runner.name, 'Rowan');
+  assert.equal(r.runner.name, 'Simon');
   assert.equal(r.commentators[2].name, 'Guest');
 });
 

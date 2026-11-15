@@ -171,9 +171,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <Palette className="text-current-accent" />
           <h3 className="text-xl font-extrabold uppercase tracking-tight">{t.visualTheme}</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {THEMES.map(tTheme => (
-            <button key={tTheme.id} onClick={() => setActiveThemeId(tTheme.id)} className={`group relative p-6 rounded-3xl border transition-all duration-300 flex flex-col items-start text-left ${activeThemeId === tTheme.id ? `border-current-accent ${tTheme.id === 'light' ? 'bg-zinc-50' : 'bg-zinc-800/40'}` : `border-transparent ${tTheme.id === 'light' ? 'bg-zinc-100/50 hover:bg-zinc-100' : 'bg-zinc-900 hover:bg-zinc-800'}`}`}>
+        <div className="ss-carts grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {THEMES.map((tTheme, i) => (
+            <button key={tTheme.id} onClick={() => setActiveThemeId(tTheme.id)} data-cart-on={activeThemeId === tTheme.id ? 'yes' : 'no'} data-cart-light={tTheme.isLight ? 'yes' : 'no'} className={`ss-cart group relative p-6 rounded-3xl border transition-all duration-300 flex flex-col items-start text-left ${activeThemeId === tTheme.id ? `border-current-accent ${tTheme.id === 'light' ? 'bg-zinc-50' : 'bg-zinc-800/40'}` : `border-transparent ${tTheme.id === 'light' ? 'bg-zinc-100/50 hover:bg-zinc-100' : 'bg-zinc-900 hover:bg-zinc-800'}`}`}>
               <div className="flex items-center justify-between w-full mb-4">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: tTheme.primary }}>
                   {tTheme.isLight ? <Sun className="text-white" size={20} /> : <Moon className="text-white" size={20} />}
@@ -181,6 +181,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {activeThemeId === tTheme.id && <div className="bg-current-accent text-white rounded-full p-1"><Check size={14} strokeWidth={3} /></div>}
               </div>
               <h4 className={`font-extrabold uppercase tracking-tight mb-1 ${tTheme.id === 'light' ? 'text-zinc-900' : 'text-zinc-100'}`}>{tTheme.name}</h4>
+              <span className="ss-cart-strip hidden" style={{ backgroundColor: tTheme.primary }} />
+              <span className="ss-cart-foot hidden"><span>ED. {String(i + 1).padStart(2, '0')}</span>{activeThemeId === tTheme.id && <span>{t.ssInserted || 'Inserted'} ▲</span>}</span>
             </button>
           ))}
         </div>
@@ -276,6 +278,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         ) : serverVersion ? (
           <p className="mt-2 text-xs text-zinc-500" data-version-same>{t.versionSame || 'The server runs this same version.'}</p>
         ) : null}
+        <div className="ss-nameplate hidden">
+          <div><small>{t.ssModel || 'Model'}</small><b>SS-APP</b></div>
+          <div><small>{t.ssFirmware || 'Firmware'}</small><b>V{VERSION}</b></div>
+          {auth?.me?.name && <div><small>{t.ssBuiltFor || 'Built for'}</small><b>{auth.me.name}</b></div>}
+          <i aria-hidden="true" />
+          <span aria-hidden="true">言</span>
+        </div>
         {openRoadmap && (
           <button onClick={openRoadmap} className="mt-3 flex items-center gap-1.5 text-xs font-bold text-current-accent hover:underline" data-settings-roadmap>
             <GitBranch size={14} /> {t.roadmapAboutLink || 'See the roadmap: every update, and what is next'}

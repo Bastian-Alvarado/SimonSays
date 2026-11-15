@@ -132,6 +132,7 @@ await import('./smoke/first-run.js');
 await import('./smoke/auto-backups.js');
 // Its own server and sockets, switched on and off again within the file.
 await import('./smoke/sign-in.js');
+await import('./smoke/link.js');
 // Last: it gives the Spotify module a stand-in token no other file expects.
 await import('./smoke/spotify-wake.js');
 

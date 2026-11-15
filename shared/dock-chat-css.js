@@ -8,92 +8,105 @@
  * stylesheet. css-presets.js re-exports it, so nothing else changed.
  */
 
-import { SPECTRUM, SPECTRUM_DOWN } from './looks/common.js';
-import { PLATFORM_NAME_COLOURS as N } from './name-colours.js';
-
 /**
- * The dock's chat: Marathon's, always.
+ * The dock's chat: CHAT.LOG, always.
  *
  * The dock is a tool at the desk rather than something viewers see, so it does
  * not follow the overlay's theme or stylesheet and takes no stylesheet of its
- * own — it is the Marathon chat every time, whatever the stream is wearing.
+ * own. One line per message: a platform tag, the name, the words, and a quiet
+ * rule underneath, on whatever the window behind it is. A rank is a second tag
+ * beside the platform's, in words, so nobody has to know what a colour means.
  *
- * It is the Marathon chat look above with one difference: nothing that a dock
- * option controls is !important here, so the options and sliders still move
- * it. Padding, corners, the row's colour and the text colour are written by
- * those controls onto the row itself, which beats a rule without !important;
- * the rank colours and name colours arrive as custom properties the row sets
- * only when they are chosen (--chat-rank-picked, --chat-user-color, and the
- * ink to write on them). Where nothing is set, it is exactly Marathon.
+ * It reads the app's colour roles, so it follows the light and dark editions;
+ * each has a fallback for a page without them.
  *
- * The two rules still marked !important are the ones no control speaks for:
- * the rank bubble, which Marathon replaces with the chip and the edge, and an
- * event's name, which is written in its platform's colour and would otherwise
- * sit unreadable on the chip.
+ * Nothing a dock option controls is !important here, so the options and
+ * sliders still move it. Padding, corners, the row's colour and the text
+ * colour are written by those controls onto the row itself, which beats a rule
+ * without !important. The rank colours and name colours arrive as custom
+ * properties the row sets only when they are chosen (--chat-rank-picked fills
+ * the rank tag, --chat-user-color colours the name). A name's colour is only ever its words: it keeps its hue
+ * and takes the edition's lightness and a soft saturation, so any colour a
+ * viewer picks reads on both editions and sits with the app's own colours.
+ *
+ * The rules still marked !important are the ones no control speaks for: the
+ * rank bubble, which the tag replaces.
  */
 export const DOCK_CHAT_CSS = `:scope {
-  --ground: #09090bcc; /* The black it sits on */
-  --on-accent: #09090b; /* Text on the accent */
-  --ink: #ffffff; /* The words */
-  --mod: #00ff88; /* Moderator */
-  --vip: #ff2d95; /* VIP */
-  --sub: #00d5ff; /* Subscriber */
-  --accent: var(--overlay-accent, var(--current-accent, #f43f5e));
-  /* A name with no colour of its own (or with name colours off): its platform's. Twitch keeps the accent. */
-  --name-twitch: var(--accent);
-  --name-tiktok: ${N.tiktok};
-  --name-discord: ${N.discord};
-  --name-youtube: ${N.youtube};
+  --ground: transparent; /* The window behind it */
+  --ink: var(--ss-line, #f2eee9); /* The words */
+  --rule: var(--ss-hair, #1d1c1c); /* Under each message */
 }
 
 [data-chat="row"] {
   background: var(--ground);
   border-radius: 0;
-  border-left: 3px solid var(--chat-rank, var(--accent));
-  padding: 7px 12px;
-  gap: 8px;
+  box-shadow: inset 0 -1px 0 var(--rule);
+  padding: 8px 14px;
+  gap: 10px;
 }
 
-/* The name as a filled chip: their own colour when name colours are on, else their platform's. */
-[data-chat="row"] { --name-own: var(--accent); }
-[data-chat-platform="twitch"] { --name-own: var(--name-twitch); }
-[data-chat-platform="tiktok"] { --name-own: var(--name-tiktok); }
-[data-chat-platform="discord"] { --name-own: var(--name-discord); }
-[data-chat-platform="youtube"] { --name-own: var(--name-youtube); }
+/* All on one line, a message reads like a sentence: a long one carries on under the name. */
+[data-chat-kind="custom"]:not(:has(> div)) { display: block; }
+[data-chat-kind="custom"]:not(:has(> div)) [data-chat="marks"] { display: inline-flex; vertical-align: middle; margin-right: 8px; }
+[data-chat-kind="custom"]:not(:has(> div)) [data-chat="user"] { display: inline; margin-right: 8px; }
+[data-chat-kind="custom"]:not(:has(> div)) [data-chat="text"] { display: inline; }
+[data-chat-kind="custom"]:not(:has(> div)) [data-chat="avatar"] { display: inline-block; vertical-align: middle; margin-right: 8px; }
+[data-chat-kind="custom"]:not(:has(> div)) [data-chat="time"] { float: right; margin-left: 10px; }
+
+/* Name above: an avatar is taller than the two lines' head, so they sit beside its middle. */
+[data-chat="row"]:has(> [data-chat="avatar"]) { align-items: center; }
+
+/* The platform: its tag, and the colour of the name. */
+[data-chat-platform="twitch"] { --tag-word: "TW"; --tag: #7a4fd8; --name-own: var(--ss-chat-twitch, #b79bff); }
+[data-chat-platform="youtube"] { --tag-word: "YT"; --tag: #c8321f; --name-own: var(--ss-chat-youtube, #ff8a7a); }
+[data-chat-platform="tiktok"] { --tag-word: "TT"; --tag: #147a78; --name-own: var(--ss-chat-tiktok, #6ed6cf); }
+[data-chat-platform="discord"] { --tag-word: "DC"; --tag: #4752c4; --name-own: var(--ss-chat-discord, #a9b6f2); }
+
+[data-chat="platform"], [data-chat="rank"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 16px;
+  padding: 0 3px;
+  font: 700 10px/1 var(--ss-mono, ui-monospace, monospace);
+  letter-spacing: .04em;
+}
+[data-chat="platform"] { background: var(--tag); color: #ffffff; }
+[data-chat="platform"] > *, [data-chat="rank"] > * { display: none; }
+[data-chat="platform"]::before { content: var(--tag-word); }
+
+/* The rank: the highest they hold, in the colour picked for it in the settings, else the app's own. */
+[data-chat="rank"] { background: var(--rank-tag); color: var(--rank-ink); }
+[data-chat="rank"]::before { content: var(--rank-word); }
+
+/* The name: its platform's colour or the one chosen for it, softened to fit the edition. */
 [data-chat="user"] {
-  background: var(--chat-user-color, var(--name-own));
-  color: var(--chat-user-ink, var(--on-accent));
-  padding: 0 .4em;
-  letter-spacing: .1em;
+  --name-base: var(--chat-user-color, var(--name-own));
+  --name-ink: oklch(from var(--name-base) var(--ss-chat-l, .84) min(c, var(--ss-chat-c, .1)) h);
+  color: var(--name-ink);
+  font-family: var(--ss-mono, ui-monospace, monospace);
+  letter-spacing: .06em;
+  text-transform: uppercase;
   border-radius: 0;
 }
 
 [data-chat="text"] {
   color: var(--ink);
-  letter-spacing: .01em;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-[data-chat="time"] { color: rgba(255,255,255,.3); }
+[data-chat="time"] { color: var(--ss-muted, rgba(255,255,255,.5)); }
 
-[data-chat="marks"] { opacity: .8; }
-
-/* A rank: the colour picked for it in the settings, else Marathon's own. */
-[data-chat-rank="moderator"] { border-left-color: var(--chat-rank-picked, var(--mod)); }
-[data-chat-rank="vip"] { border-left-color: var(--chat-rank-picked, var(--vip)); }
-[data-chat-rank="subscriber"] { border-left-color: var(--chat-rank-picked, var(--sub)); }
-
-[data-chat-rank="moderator"] [data-chat="user"] { background: var(--chat-rank-picked, var(--mod)); color: var(--chat-rank-ink, var(--on-accent)); }
-[data-chat-rank="vip"] [data-chat="user"] { background: var(--chat-rank-picked, var(--vip)); color: var(--chat-rank-ink, var(--on-accent)); }
-[data-chat-rank="subscriber"] [data-chat="user"] { background: var(--chat-rank-picked, var(--sub)); color: var(--chat-rank-ink, var(--on-accent)); }
-
-/* The broadcaster is the spectrum itself, unless a colour is picked for them. */
-[data-chat-rank="broadcaster"] [data-chat="user"] { background: var(--chat-rank-picked, ${SPECTRUM}); color: var(--chat-rank-ink, var(--on-accent)); }
-[data-chat-rank="broadcaster"] { border-image: var(--chat-rank-edge, ${SPECTRUM_DOWN}) 1; }
+[data-chat-rank="broadcaster"] { --rank-word: "HOST"; --rank-tag: var(--chat-rank-picked, var(--ss-house, #f43f5e)); --rank-ink: var(--chat-rank-ink, #050505); }
+[data-chat-rank="moderator"] { --rank-word: "MOD"; --rank-tag: var(--chat-rank-picked, #bfe3cc); --rank-ink: var(--chat-rank-ink, #1e2b23); }
+[data-chat-rank="vip"] { --rank-word: "VIP"; --rank-tag: var(--chat-rank-picked, #f8b82a); --rank-ink: var(--chat-rank-ink, #27272a); }
+[data-chat-rank="subscriber"] { --rank-word: "SUB"; --rank-tag: var(--chat-rank-picked, var(--ss-key, #323030)); --rank-ink: var(--chat-rank-ink, var(--ss-line, #f2eee9)); }
 
 [data-chat="highlight"] {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
-}
-
-[data-chat-kind="event"] [data-chat="user"] { color: var(--on-accent) !important; }`;
+}`;

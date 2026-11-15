@@ -14,6 +14,7 @@
  * that cannot fail visibly is a button you stop trusting.
  */
 import React, { useState } from 'react';
+import { SsTape } from './SsTape';
 import { DockButton, StreamAction } from '../types';
 import { dockBuiltin } from '../../shared/dock-builtins.js';
 import { buttonsOnPage, bestFold, foldCells, squareSide } from '../../shared/dock-pages.js';
@@ -106,6 +107,7 @@ const tintFor = (category?: string) => (
         : category === 'avatar' ? 'border-[#eb4fef]/40 hover:border-[#eb4fef] text-[#eb4fef]'
         : category === 'deaths' ? 'border-[#ff2b2b]/40 hover:border-[#ff2b2b] text-[#ff5a5a]'
         : category === 'alerts' ? 'border-amber-500/40 hover:border-amber-400 text-amber-400'
+        : category === 'droidcam' ? 'border-teal-500/40 hover:border-teal-400 text-teal-400'
         : category === 'twitch' ? 'border-[#9146ff]/40 hover:border-[#9146ff] text-[#a970ff]'
           : 'border-current-accent/40 hover:border-current-accent text-current-accent'
 );
@@ -150,6 +152,7 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
         <div className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-700 mb-4 border border-zinc-800">
           <Zap size={26} />
         </div>
+        <SsTape t={t} />
         <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{t.dockActionsEmpty}</p>
       </div>
     );
@@ -361,7 +364,7 @@ export const DockActionsGrid: React.FC<DockActionsGridProps> = ({
               Square, in a cell that is square too, so the ratio and the cell
               always agree and nothing is left over inside it.
             */
-            className={`relative aspect-square border-2 bg-zinc-900/60 overflow-hidden flex flex-col items-center justify-center ${
+            className={`ss-cap relative aspect-square border-2 bg-zinc-900/60 overflow-hidden flex flex-col items-center justify-center ${
               inert ? 'pointer-events-none' : preview ? '' : 'hover:bg-zinc-900 active:scale-95 transition-all'
             } ${
               arrange ? (arrange.dragId === button.id ? 'touch-none opacity-40 cursor-grabbing'

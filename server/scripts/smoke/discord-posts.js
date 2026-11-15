@@ -86,26 +86,26 @@ test('a send step with no channel or nothing to say sends nothing', () => {
 
 // ---------------------------------------------------------------- the going-live post
 
-const info = { login: 'rowan', name: 'I_Am_Streamer', url: 'https://twitch.tv/rowan', live: true, title: 'Among Us @everyone con amigos', game: 'Among Us', thumbnail: 'https://thumb/1280x720.jpg?t=1' };
-const base = announcer.cleanAnnounce({ channelId: '700000000000000002', message: '{role} {streamer} está en vivo! {title} {link}', youtubeUrl: 'https://youtube.com/@rowan/live', tiktokUrl: 'javascript:alert(1)' });
+const info = { login: 'simon', name: 'I_Am_Streamer', url: 'https://twitch.tv/simon', live: true, title: 'Among Us @everyone con amigos', game: 'Among Us', thumbnail: 'https://thumb/1280x720.jpg?t=1' };
+const base = announcer.cleanAnnounce({ channelId: '700000000000000002', message: '{role} {streamer} está en vivo! {title} {link}', youtubeUrl: 'https://youtube.com/@simon/live', tiktokUrl: 'javascript:alert(1)' });
 const toRole = announcer.postFor({ ...base, roleId: '800000000000000001' }, info);
 const toAll = announcer.postFor({ ...base, roleId: 'everyone' }, info);
 const toNobody = announcer.postFor({ ...base, roleId: '', card: false }, null);
 const cleaned = announcer.cleanAnnounce({ channelId: 'not-an-id', roleId: '<@&1>', delaySeconds: 99999, whenOver: 'explode', cardColor: 'red' });
 
 test('the going-live post pings only the chosen role, names the stream and links to it', () => {
-  assert.equal(toRole.content, '<@&800000000000000001> I\\_Am\\_Streamer está en vivo! Among Us @​everyone con amigos https://twitch.tv/rowan');
+  assert.equal(toRole.content, '<@&800000000000000001> I\\_Am\\_Streamer está en vivo! Among Us @​everyone con amigos https://twitch.tv/simon');
   assert.deepEqual(toRole.allowed_mentions, { parse: [], roles: ['800000000000000001'] });
   assert.deepEqual(toAll.allowed_mentions, { parse: ['everyone'] });
   assert.ok(toAll.content.startsWith('@everyone I\\_Am\\_Streamer'), toAll.content);
   assert.equal(toRole.embed.author, 'I_Am_Streamer · LIVE');
-  assert.equal(toRole.embed.url, 'https://twitch.tv/rowan');
+  assert.equal(toRole.embed.url, 'https://twitch.tv/simon');
   assert.equal(toRole.embed.image, info.thumbnail);
   assert.equal(toRole.embed.description, '**Among Us**');
   // Twitch and YouTube buttons; a link that is not a web address is dropped rather than made a button.
   assert.deepEqual(toRole.components[0].components.map((b) => [b.style, b.label, b.url]), [
-    [5, 'Twitch', 'https://twitch.tv/rowan'],
-    [5, 'YouTube', 'https://youtube.com/@rowan/live'],
+    [5, 'Twitch', 'https://twitch.tv/simon'],
+    [5, 'YouTube', 'https://youtube.com/@simon/live'],
   ]);
 });
 
@@ -136,14 +136,14 @@ globalThis.fetch = async (url, init = {}) => {
   const method = init.method || 'GET';
   calls.push({ method, path, body: init.body ? JSON.parse(String(init.body)) : null });
   if (method === 'POST') { nextId += 1n; return new Response(JSON.stringify({ id: String(nextId) }), { status: 200 }); }
-  if (method === 'GET') return new Response(JSON.stringify({ embeds: [{ title: 'Among Us', url: 'https://twitch.tv/rowan', author: { name: 'I_Am_Streamer · LIVE' }, image: { url: 'https://thumb' } }] }), { status: 200 });
+  if (method === 'GET') return new Response(JSON.stringify({ embeds: [{ title: 'Among Us', url: 'https://twitch.tv/simon', author: { name: 'I_Am_Streamer · LIVE' }, image: { url: 'https://thumb' } }] }), { status: 200 });
   if (method === 'PATCH') return new Response('{}', { status: 200 });
   return new Response(null, { status: 204 });
 };
 const realToken = config.discord.botToken;
 config.discord.botToken = 'test-token';
 announcer.initAnnounce();
-announcer.setAnnounce({ enabled: true, channelId: '700000000000000002', roleId: '800000000000000001', delaySeconds: 0, whenOver: 'edit', overMessage: 'Se acabó', message: '{role} en vivo', youtubeUrl: 'https://youtube.com/@rowan/live' });
+announcer.setAnnounce({ enabled: true, channelId: '700000000000000002', roleId: '800000000000000001', delaySeconds: 0, whenOver: 'edit', overMessage: 'Se acabó', message: '{role} en vivo', youtubeUrl: 'https://youtube.com/@simon/live' });
 const stream = (type) => bus.emit(EVENTS.EVENT, { type, platform: 'obs', user: 'OBS', data: {} });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -194,7 +194,7 @@ test('OBS starting posts the announcement, with the ping it was allowed and butt
   assert.equal(path, '/channels/700000000000000002/messages');
   assert.equal(body.content, '<@&800000000000000001> en vivo');
   assert.deepEqual(body.allowed_mentions, { parse: [], roles: ['800000000000000001'] });
-  assert.equal(body.components[0].components[0].url, 'https://youtube.com/@rowan/live');
+  assert.equal(body.components[0].components[0].url, 'https://youtube.com/@simon/live');
   assert.equal(liveLast?.channelId, '700000000000000002');
   assert.ok(liveLast?.messageId, 'the post was not remembered');
 });

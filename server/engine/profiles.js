@@ -21,6 +21,7 @@
 
 import { collection, getCollection } from '../core/store.js';
 import { createLogger } from '../core/logger.js';
+import { refusal } from '../core/refusal.js';
 import * as cooldowns from './cooldowns.js';
 
 const log = createLogger('profiles');
@@ -66,8 +67,14 @@ export const PROFILE_GROUPS = [
 const GROUP_IDS = PROFILE_GROUPS.map((g) => g.id);
 const groupById = (id) => PROFILE_GROUPS.find((g) => g.id === id);
 
-/** As many saved configurations per area as anyone could keep track of. */
-export const MAX_PROFILES_PER_GROUP = 12;
+/*
+  How many saved configurations an area may make. Far past what anybody fills
+  by hand — it was 12, and the streamer's overlays reached 11 — and still a
+  stop for something making them in a loop: an overlay profile carries every
+  layout (100-320 KB each), all in one file rewritten on every switch. It
+  stops making more; it never drops any (normaliseGroup keeps what is there).
+*/
+export const MAX_PROFILES_PER_GROUP = 50;
 
 const DEFAULT_PROFILE_ID = 'default';
 const DEFAULT_PROFILE_NAME = 'Main';
@@ -99,8 +106,8 @@ function normaliseGroup(incoming, group) {
       // by the same code that validates a normal save.
       data: (p?.data && typeof p.data === 'object') ? p.data : {},
     }))
-    .filter((p) => !seen.has(p.id) && seen.add(p.id))
-    .slice(0, MAX_PROFILES_PER_GROUP);
+    .filter((p) => !seen.has(p.id) && seen.add(p.id));
+  // More than may be made (a backup from a copy that allowed more, say) is kept, never cut: the limit is on making them.
 
   // Every group always has at least one profile, and it is whatever is live.
   if (profiles.length === 0) {
@@ -416,7 +423,7 @@ export function createProfile(groupId, name, seed = {}) {
   if (!group) throw new Error(`no such profile group: ${groupId}`);
   const state = db.get()[groupId];
   if (state.profiles.length >= MAX_PROFILES_PER_GROUP) {
-    throw new Error(`that is already ${MAX_PROFILES_PER_GROUP} profiles`);
+    throw refusal('profiles_full', `that is already ${MAX_PROFILES_PER_GROUP} profiles`, { max: MAX_PROFILES_PER_GROUP });
   }
   const profile = {
     id: Math.random().toString(36).slice(2, 11),
@@ -435,7 +442,7 @@ export function duplicateProfile(groupId, name) {
   if (!group) throw new Error(`no such profile group: ${groupId}`);
   const state = db.get()[groupId];
   if (state.profiles.length >= MAX_PROFILES_PER_GROUP) {
-    throw new Error(`that is already ${MAX_PROFILES_PER_GROUP} profiles`);
+    throw refusal('profiles_full', `that is already ${MAX_PROFILES_PER_GROUP} profiles`, { max: MAX_PROFILES_PER_GROUP });
   }
   const active = state.profiles.find((p) => p.id === state.active);
   const profile = {

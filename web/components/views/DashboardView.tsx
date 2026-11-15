@@ -24,6 +24,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AppView, ThemeConfig } from '../../types';
 import { Button } from '../Button';
 import { Check, Circle, Radio, ShieldCheck, Pencil, X, ArrowRight, User } from 'lucide-react';
+// The streamer's own character here; the public edition puts its example avatar in this file's place (public-edition/overrides).
+import homeFigure from '../../ss-assets/home-figure.png';
 import { fill } from '../../words';
 import { describeEvent } from '../EventFeed';
 import { DockActionsGrid } from '../DockActionsGrid';
@@ -77,7 +79,7 @@ const fromOutside = () => {
 const nf = (n: any) => (Number(n) || 0).toLocaleString();
 
 const Card = ({ light, className = '', children, ...rest }: { light: boolean; className?: string; children: React.ReactNode; [k: string]: any }) => (
-  <div className={`rounded-3xl border p-5 ${light ? 'bg-white border-zinc-200' : 'bg-zinc-900/60 border-zinc-800'} ${className}`} {...rest}>{children}</div>
+  <div className={`ss-card rounded-3xl border p-5 ${light ? 'bg-white border-zinc-200' : 'bg-zinc-900/60 border-zinc-800'} ${className}`} {...rest}>{children}</div>
 );
 const Label = ({ children }: { children: React.ReactNode }) => (
   <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">{children}</p>
@@ -89,24 +91,29 @@ const Welcome = ({ setup, t, language, setView, openGuide, light }: { setup: Non
   const needed = setup.items.filter((i) => !i.check.optional);
   const done = needed.filter((i) => i.done).length;
   const firstOpen = needed.find((i) => !i.done)?.check.id;
+  const current = needed.find((i) => !i.done);
+  const currentWords = current?.check[language === 'es' ? 'es' : 'en'];
   return (
     <Card light={light} className="p-6 sm:p-8" data-home="welcome">
+      <span className="ss-progress hidden">{done}/{needed.length}</span>
       <h1 className={`text-2xl font-black tracking-tight ${light ? 'text-zinc-900' : 'text-white'}`}>{t.homeWelcome || 'Welcome to SimonSays'}</h1>
       <p className="mt-2 text-sm text-zinc-400 leading-relaxed max-w-2xl">
         {t.homeWelcomeHint || 'Your chat from every platform in one place, your overlays in OBS, and buttons for the stream — all running on this computer. These steps get you to a first stream.'}
       </p>
       <div className="mt-5 h-2 rounded-full bg-zinc-800 overflow-hidden"><div className="h-full rounded-full bg-current-accent transition-all" style={{ width: `${needed.length ? (done / needed.length) * 100 : 0}%` }} /></div>
       <p className="mt-1.5 text-xs text-zinc-500" data-home-progress>{fill(t.homeStepsDone || '{done} of {all} done', { done, all: needed.length })}</p>
+      <div className="ss-leaflet">
       <ol className="mt-4">
         {needed.map((i, n) => {
           const words = i.check[language === 'es' ? 'es' : 'en'];
           return (
             <li key={i.check.id} className="flex items-center gap-4 py-3.5 border-t border-zinc-800/70" data-home-step={i.check.id} data-done={i.done ? 'yes' : 'no'}>
-              <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-black ${i.done ? 'bg-emerald-500/15 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>{i.done ? <Check size={14} /> : n + 1}</span>
+              <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-black ${i.done ? 'bg-emerald-500/15 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>{i.done ? <Check size={14} /> : String(n + 1).padStart(2, '0')}</span>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-bold ${i.done ? 'text-zinc-500 line-through decoration-zinc-600' : light ? 'text-zinc-900' : 'text-white'}`}>{words.title}</p>
                 {!i.done && <p className="text-xs text-zinc-500 leading-snug mt-0.5">{words.why}</p>}
               </div>
+              {i.done && <span className="ss-done hidden">{t.ssDone || 'Done'} ✓</span>}
               {!i.done && (
                 <Button size="sm" variant={i.check.id === firstOpen ? 'primary' : 'secondary'}
                   onClick={() => (i.check.go ? setView(i.check.go as AppView) : i.check.guide ? openGuide?.(i.check.guide) : setView('guides'))}>
@@ -117,6 +124,13 @@ const Welcome = ({ setup, t, language, setView, openGuide, light }: { setup: Non
           );
         })}
       </ol>
+      {currentWords && (
+        <aside className="ss-figure hidden" aria-hidden="true">
+          <p className="ss-figure-label">FIG. {String(needed.indexOf(current!) + 1).padStart(2, '0')} // {currentWords.title}</p>
+          <img src={homeFigure} alt="" width={200} height={200} />
+        </aside>
+      )}
+      </div>
       <button type="button" onClick={() => setView('guides')} className="mt-4 inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white" data-home-guides>
         {t.homeOptionalNext || 'Optional next: alerts, a chat command, sign-in — every step in Guides'} <ArrowRight size={12} />
       </button>
@@ -230,6 +244,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ activeTheme, t, se
   const viewers = { twitch: Number(stats.twitchViewers) || 0, youtube: stats.youtubeLive ? Number(stats.youtubeViewers) || 0 : 0, tiktok: Number(stats.tiktokViewers) || 0 };
   const watching = viewers.twitch + viewers.youtube + viewers.tiktok;
   const next = data.twitchSchedule?.next;
+  const uptimeMinutes = stream?.startedAt ? Math.max(0, Math.floor((now - new Date(stream.startedAt).getTime()) / 60000)) : 0;
+  const uptime = `${Math.floor(uptimeMinutes / 60)}:${String(uptimeMinutes % 60).padStart(2, '0')}`;
+  const airing = [['Twitch', system?.status?.twitch], ['YouTube', system?.status?.youtube], ['TikTok', system?.status?.tiktok]].filter(([, s]) => s === 'connected').map(([n]) => n).join(' · ');
 
   // What needs the streamer, and only that.
   const needs = useMemo(() => {
@@ -284,11 +301,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ activeTheme, t, se
 
           {/* the numbers: live (or its preview), or getting ready */}
           {showLive ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-home="numbers">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4" data-home="numbers">
               <Card light={light}><Label>{t.homeWatching || 'Watching'}</Label><p className="text-3xl font-black">{nf(watching)}</p><p className="text-[11px] text-zinc-500 mt-1">{[viewers.twitch && `Twitch ${nf(viewers.twitch)}`, viewers.youtube && `YouTube ${nf(viewers.youtube)}`, viewers.tiktok && `TikTok ${nf(viewers.tiktok)}`].filter(Boolean).join(' · ') || '—'}</p></Card>
+              <Card light={light}><Label>{t.ssUptime || 'Uptime'}</Label><p className="text-3xl font-black">{uptime}</p></Card>
               <Card light={light}><Label>{t.homeFollows || 'Follows tonight'}</Label><p className="text-3xl font-black">{nf(totals.follows)}</p></Card>
               <Card light={light}><Label>{t.homeSubs || 'Subs and gifts'}</Label><p className="text-3xl font-black">{nf((Number(totals.subs) || 0) + (Number(totals.gifted) || 0))}</p>{Number(totals.members) > 0 && <p className="text-[11px] text-zinc-500 mt-1">{fill(t.homeMembers || '{n} YouTube members', { n: nf(totals.members) })}</p>}</Card>
               <Card light={light}><Label>{t.homeBits || 'Bits'}</Label><p className="text-3xl font-black">{nf(totals.bits)}</p></Card>
+              <div className={`ss-onair-tile hidden ${stream ? 'is-live' : ''}`} data-home-onair>
+                <b>{stream ? (t.ssOnAir || 'On air') : (t.ssOffAir || 'Off air')}</b>
+                <span>{airing || '—'}</span>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-home="ready">

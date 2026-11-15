@@ -62,6 +62,7 @@ const BUILTIN_CATEGORY_NAMES: Record<string, { name: string; key?: string }> = {
   deaths: { name: 'Deaths', key: 'gameDeaths' },
   countdown: { name: 'Countdown', key: 'countdown' },
   alerts: { name: 'Alerts', key: 'alerts' },
+  droidcam: { name: 'DroidCam' },
 };
 const categoryHeading = (category: string, t: any) => {
   const known = BUILTIN_CATEGORY_NAMES[category];

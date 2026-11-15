@@ -223,7 +223,13 @@ function ensureAudioSink() {
 }
 
 export function initWebSocket(httpServer) {
-  wss = new WebSocketServer({ server: httpServer });
+  /*
+    Squeezed on the way out. A page is sent the whole state when it connects
+    (close to a megabyte on a full setup, nearly all of it text that repeats),
+    and on a poor link that took longer than the heartbeat below allows. Only
+    frames worth it: a chat line goes as it is.
+  */
+  wss = new WebSocketServer({ server: httpServer, perMessageDeflate: { threshold: 2048, concurrencyLimit: 4 } });
 
   // `ws` forwards the HTTP server's 'error' events onto this emitter. Without
   // a listener here, EventEmitter throws on the re-emit — which happens
@@ -286,8 +292,10 @@ export function initWebSocket(httpServer) {
   // Drop half-open connections so `clients` reflects reality.
   const heartbeat = setInterval(() => {
     for (const ws of clients) {
+      if (!ws.isAlive && stillSending(ws)) continue;
       if (!ws.isAlive) { ws.terminate(); clients.delete(ws); continue; }
       ws.isAlive = false;
+      ws.slowRounds = 0;
       try { ws.ping(); } catch { /* terminated below on next sweep */ }
       // A moderator connected for hours is asked about again too, when theirs is due (auth.recheckMod says when).
       if (ws.who?.role === 'mod') auth.recheckMod(ws.who).then((ok) => { if (!ok) letGo(ws, 'sign in again'); }).catch(() => {});
@@ -306,6 +314,20 @@ export function initWebSocket(httpServer) {
 
   wireBusToClients();
   log.info('hub ready');
+}
+
+/**
+ * A page that has not answered the last ping, but only because what it was
+ * sent is still on its way: the ping waits in line behind it. Letting it go
+ * would start the same download again, for ever, on a link slow enough —
+ * which is what a dashboard on a bad connection used to do every 30 seconds.
+ * Given a few rounds; a connection that is really gone is still let go.
+ */
+export const SLOW_ROUNDS_MAX = 6;
+export function stillSending(ws) {
+  if (!(ws.bufferedAmount > 0)) return false;
+  ws.slowRounds = (ws.slowRounds || 0) + 1;
+  return ws.slowRounds <= SLOW_ROUNDS_MAX;
 }
 
 // ------------------------------------------------------------- broadcasting
@@ -563,6 +585,8 @@ function buildConnections() {
 function buildSnapshot() {
   return {
     ...engine.snapshot(),
+    // This machine's time, so a page on another can tell how old anything in here is.
+    serverNow: Date.now(),
     // What AutoMod is holding back, for the docks to decide on.
     automodHeld: twitchMod.heldNow(),
     // The stream on now, for the home screen: since when, called what.
@@ -693,7 +717,10 @@ async function handleMessage(ws, raw) {
   const fail = (err) => {
     log.warn(`"${type}" failed: ${err.message}`);
     // A code, where there is one, lets the screen say it in its own language.
-    if (id) send(ws, S2C.ERROR, { message: err.message, ...(err.code ? { code: err.code } : {}), ...(err.vars ? { vars: err.vars } : {}) }, { id });
+    // Asked without waiting for an answer: told all the same, so the page can say it did not happen (`for`: what was asked).
+    // (Not what a sign-in may not ask at all: a moderator's page sends some of those by itself, and they pressed nothing.)
+    if (!id && err.code === 'signin_not_allowed') return;
+    send(ws, S2C.ERROR, { message: err.message, ...(err.code ? { code: err.code } : {}), ...(err.vars ? { vars: err.vars } : {}), ...(id ? {} : { for: type }) }, id ? { id } : {});
   };
 
   try {
@@ -1221,12 +1248,15 @@ async function handleMessage(ws, raw) {
       case C2S.SET_CREDENTIALS: {
         const { platform, ...rest } = payload;
 
-        // Tokens and secrets are set from the machine running the server, not
-        // from anything that can reach it. The deck is deliberately open to the
-        // LAN so a phone can press buttons; letting that phone write a bot
-        // token is a different proposition entirely.
+        // Tokens and secrets are set from the machine running the server, or by
+        // the owner signed in. With sign-in off, everyone who reaches the server
+        // is let in as the owner — the deck is open to the LAN so a phone can
+        // press buttons — and letting that phone write a bot token is a
+        // different proposition entirely. With it on, the owner is who they are
+        // wherever they sign in from, as for restoring a backup: a server on a
+        // phone has no screen of its own to log the bot in from.
         const SECRET_FIELDS = ['botToken', 'clientSecret', 'signApiKey', 'password', 'geminiApiKey'];
-        if (!ws.isLocal && SECRET_FIELDS.some((f) => rest[f])) {
+        if (!ws.isLocal && !(auth.isEnabled() && ws.who?.role === 'owner') && SECRET_FIELDS.some((f) => rest[f])) {
           throw refusal('secrets_local_only', 'secrets can only be set from the machine running the server');
         }
         if (platform === 'twitch') twitch.setCredentials(rest);

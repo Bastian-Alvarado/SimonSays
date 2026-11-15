@@ -38,6 +38,9 @@ export interface RunScreenProps {
 export const EMPTY_PERSON: Person = { name: '', subtitle: '' };
 
 /** The checkerboard a preview sits on, so a transparent background reads as one. */
+/** Two columns once both have room, measured on the space the page really has. */
+export const TWO_COLUMNS = 'grid items-start gap-5 grid-cols-[repeat(auto-fit,minmax(min(100%,30rem),1fr))]';
+
 export const PREVIEW_GROUND = 'rounded-xl overflow-hidden bg-[repeating-conic-gradient(#18181b_0%_25%,#09090b_0%_50%)] bg-[length:16px_16px] p-3';
 
 export const Field = ({ label, value, onCommit, placeholder, wide, error }: {
@@ -57,8 +60,8 @@ export const Field = ({ label, value, onCommit, placeholder, wide, error }: {
 
 /** A panel heading, with room on the right for the panel's own button. */
 export const Heading = ({ icon, text, action }: { icon: React.ReactNode; text: string; action?: React.ReactNode }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-current-accent">{icon}</span>
+  <div className="flex items-center gap-2 text-current-accent">
+    {icon}
     <span className="flex-1 text-[9px] font-black uppercase tracking-widest text-zinc-400">{text}</span>
     {action}
   </div>

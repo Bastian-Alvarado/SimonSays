@@ -8,15 +8,16 @@
  * everything about one thing (see ChatSettingParts, which a chat layer's
  * panel is built from too).
  *
- * Only what does something on the dock. Its look is always Marathon's, so
+ * Only what does something on the dock. Its look is always CHAT.LOG, so
  * there is no theme to pick and nothing a look leaves out, and it never hides
  * old messages, so the overlay's auto-hide has no place here. A chat layer on
  * the Overlays screen has its own panel (ChatLayerPanel).
  */
 import React from 'react';
-import { Copy, ExternalLink, PaintBucket } from 'lucide-react';
+import { Copy, ExternalLink, PaintBucket, RotateCcw } from 'lucide-react';
 import { Colour, Switch, labelClass, useChatSections } from './ChatSettingParts';
 import { copyText } from '../utils';
+import { dockDefaultLook } from '../../shared/chat-style.js';
 
 interface Props {
   /** The dock's whole set of chat settings, as the server holds them. */
@@ -31,7 +32,7 @@ export const ChatDockSettings = ({ values, patch, dockUrl, t }: Props) => {
   const v = values || {};
   const set = (key: string) => (value: any) => patch({ [key]: value });
   /*
-    Marathon is assembled like the Custom look, so every placement it has a
+    CHAT.LOG is assembled like the Custom look, so every placement it has a
     control for is drawn — nothing is left out the way Retro leaves out the
     badges.
   */
@@ -40,14 +41,14 @@ export const ChatDockSettings = ({ values, patch, dockUrl, t }: Props) => {
     patch,
     t,
     draws: { marks: true, slots: true },
-    reset: { word: t.dockDefault || 'Default', hint: t.dockDefaultHint || 'Back to the Marathon look' },
+    reset: { word: t.dockDefault || 'Default', hint: t.dockDefaultHint || 'Back to the CHAT.LOG look' },
     storageKey: 'chat_dock_sections',
   });
 
   return (
     <div className="flex flex-col" data-dock-settings>
       <p className="text-[10px] text-zinc-500 leading-relaxed pb-4">
-        {t.dockIntro || 'Your own copy of chat. It wears the Marathon look and keeps its own settings, whatever the stream is showing.'}
+        {t.dockIntro || 'Your own copy of chat. It wears the CHAT.LOG look and keeps its own settings, whatever the stream is showing.'}
       </p>
 
       {/* Setting it up in OBS: the link, and a window of its own. */}
@@ -81,6 +82,14 @@ export const ChatDockSettings = ({ values, patch, dockUrl, t }: Props) => {
         <Colour label={t.backgroundColor || 'Background colour'} value={v.dockBackgroundColor} fallback="#09090b"
           onChange={set('dockBackgroundColor')} disabled={Boolean(v.transparentBackground)} />
       </>)}
+
+      <button
+        onClick={() => { if (window.confirm(t.dockLookConfirm || 'Put every look setting on this dock back to its default? Which events show stays as it is.')) patch(dockDefaultLook()); }}
+        className="mt-4 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-900/60 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+        data-dock-default-look
+      >
+        <RotateCcw size={12} /> {t.dockLookButton || 'Use the default look'}
+      </button>
     </div>
   );
 };

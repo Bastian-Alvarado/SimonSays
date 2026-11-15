@@ -184,11 +184,38 @@ export const OPERATIONS = [
  * Worth the extra read: a dock button called "zoom in" has to know the current
  * zoom, and hardcoding a guess would make the first press jump.
  */
-async function nudge(name, delta) {
-  const spec = VALUES[name];
-  const current = await info();
-  const now = Number(current?.zmValue) || 1;
-  return applyValue(name, now + delta, current, spec);
+/*
+  Presses one after another, never at once: a dock's zoom and brightness
+  buttons repeat, and two presses that both read 1.0x would both land on
+  1.5x. Each starts from where the last press was sent when that was a
+  moment ago, since the lens may still be on its way there.
+*/
+let nudging = Promise.resolve();
+let lastNudge = null; // { name, value, at }
+const NUDGE_FRESH_MS = 3000;
+
+function nudge(name, delta) {
+  const run = async () => {
+    const spec = VALUES[name];
+    const current = await info();
+    const fresh = lastNudge && lastNudge.name === name && Date.now() - lastNudge.at < NUDGE_FRESH_MS;
+    const now = fresh ? lastNudge.value : (Number(current?.[spec.field]) || (name === 'zoom' ? 1 : 0));
+    const result = await applyValue(name, now + delta, current, spec);
+    lastNudge = { name, value: result.asked, at: Date.now() };
+    return result;
+  };
+  nudging = nudging.then(run, run);
+  return nudging;
+}
+
+/** The next of the phone's cameras (back, front, …), round to the first after the last. */
+async function nextCamera() {
+  const [current, cameras] = await Promise.all([info(), cameraList()]);
+  if (cameras.length < 2) throw refusal('droidcam_one_camera', 'DroidCam: this phone has only one camera to use');
+  const at = cameras.findIndex((c) => c.id === Number(current?.active));
+  const next = cameras[(at + 1) % cameras.length];
+  await request(`${VALUES.camera.path}${next.id}`, 'PUT');
+  return { ok: true, op: 'camera_next', value: next.id, name: next.name };
 }
 
 async function applyValue(name, value, deviceInfo, specArg) {
@@ -257,6 +284,11 @@ export async function control(op, value) {
 
   if (op === 'zoom_in') return nudge('zoom', Number(value) || 0.5);
   if (op === 'zoom_out') return nudge('zoom', -(Number(value) || 0.5));
+  // The dock's own buttons (shared/dock-builtins.js), not offered as action steps.
+  if (op === 'exposure_up') return nudge('exposure', Number(value) || 1);
+  if (op === 'exposure_down') return nudge('exposure', -(Number(value) || 1));
+  if (op === 'zoom_reset') { lastNudge = null; return applyValue('zoom', 1); }
+  if (op === 'camera_next') return nextCamera();
 
   if (VALUES[op]) return applyValue(op, value);
 

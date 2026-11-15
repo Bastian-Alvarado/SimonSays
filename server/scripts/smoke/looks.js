@@ -396,11 +396,11 @@ test('but a preview shows what is really set, field by field', () => {
     drawing these with the real components is that the preview looks like
     your overlay and not like a brochure.
   */
-  const run = previewRun({ ...HALF_RUN, category: 'Any% NG+', runner: { name: 'Rowan', subtitle: '' } });
+  const run = previewRun({ ...HALF_RUN, category: 'Any% NG+', runner: { name: 'Simon', subtitle: '' } });
   assert.equal(run.game, 'Amnesia The Dark Descent');
   assert.equal(run.platform, 'PC');
   assert.equal(run.category, 'Any% NG+');
-  assert.equal(run.runner.name, 'Rowan');
+  assert.equal(run.runner.name, 'Simon');
   // One empty line beside a filled one is still a gap, and still gets filled.
   assert.ok(run.runner.subtitle.trim(), 'a plate with a name and no second line previews half-drawn');
 });

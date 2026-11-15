@@ -151,15 +151,15 @@ test('the rank settings name every platform that reports the rank', () => {
   }
 });
 
-// ------------------------------------------- the dock is Marathon, always
+// ------------------------------------------- the dock is CHAT.LOG, always
 
-const { DOCK_CHAT_CSS, ALL_PRESETS } = await import('../../../shared/css-presets.js');
-const { inkFor } = await import('../../../shared/chat-style.js');
+const { DOCK_CHAT_CSS } = await import('../../../shared/css-presets.js');
+const { inkFor, CHAT_DEFAULTS, DOCK_LOOK } = await import('../../../shared/chat-style.js');
 const dockSaved = engine.store.getChatDockSettings();
 const pinned = engine.store.setChatDockSettings({ migrated: true, chatTheme: 'retro', css: '[data-chat="row"] { color: red }', motionCss: '.x {}' });
 engine.store.setChatDockSettings(dockSaved);
 
-test('the dock is always the Marathon chat, and keeps no stylesheet of its own', () => {
+test('the dock is always the CHAT.LOG look, and keeps no stylesheet of its own', () => {
   assert.equal(pinned.chatTheme, 'custom', 'the dock took a theme');
   assert.equal(pinned.css, '', 'the dock kept a stylesheet');
   assert.equal(pinned.motionCss, '');
@@ -285,16 +285,47 @@ test('the stream in the dock: Twitch\'s own player, off until switched on, on on
   assert.ok(tabs.includes('{extra}') && tabs.includes('if (tabs.length < 2 && !extra) return null;'));
 });
 
-test('a name with no colour of its own, or with name colours off, is its platform’s in the dock: Twitch the accent, TikTok white, Discord a washed-out blue, YouTube a brighter red', () => {
+test('the Zerotype cartridges draw the concept in their own sheet, and only for those two themes', () => {
+  const constants = read('../../web/constants.ts');
+  const app = read('../../web/App.tsx');
+  const sheet = read('../../web/ss-concept.css');
+  const entry = read('../../web/index.tsx');
+  assert.ok(constants.includes("id: 'zerotype',") && constants.includes("concept: 'day'"));
+  assert.ok(constants.includes("id: 'zerotype-night',") && constants.includes("concept: 'night'"));
+  // Set for those two, and taken off again, or the look sticks when another cartridge goes in.
+  assert.ok(app.includes("root.setAttribute('data-ss-concept', activeTheme.concept)"));
+  assert.ok(app.includes("root.removeAttribute('data-ss-concept')"));
+  assert.ok(entry.indexOf("import './ss-ui.css';") < entry.indexOf("import './ss-concept.css';"), 'it has to load after the reskin');
+  // Every rule answers to the attribute: a bare one would restyle the other cartridges.
+  const lines = sheet.split('\n').map((l) => l.trim());
+  const roots = lines.filter((l) => l.startsWith(':root.ss-ui') || l.startsWith('.ss-ui'));
+  assert.ok(roots.length > 0);
+  for (const l of roots) assert.ok(l.startsWith(':root.ss-ui[data-ss-concept'), `a rule reaches the other themes: ${l}`);
+  // Stream previews are out of its reach, as they are out of the reskin's.
+  const scopes = lines.filter((l) => l.startsWith('@scope'));
+  assert.ok(scopes.length > 0);
+  for (const s of scopes) {
+    assert.ok(s.startsWith('@scope (.ss-ui[data-ss-concept]) to ('), s);
+    for (const stop of ['.canvas-stage', '.ss-keep', 'linear-gradient(45deg', 'rgb(11, 11, 14)', 'bg-[#313338]']) assert.ok(s.includes(stop), stop);
+  }
+});
+
+test('a name with no colour of its own, or with name colours off, is its platform’s in the dock, in a colour for each edition', () => {
   const css = read('../../shared/dock-chat-css.js');
-  assert.ok(css.includes('--name-twitch: var(--accent);'));
-  for (const p of ['tiktok', 'discord', 'youtube']) assert.ok(css.includes(`--name-${p}: \${N.${p}};`), p);
-  // One list for the dock and every chat layer (shared/name-colours.js).
+  const sheet = read('../../web/ss-ui.css');
+  // A colour for each platform, and each edition has its own set.
+  for (const p of ['twitch', 'youtube', 'tiktok', 'discord']) {
+    assert.ok(css.includes(`--name-own: var(--ss-chat-${p}, #`), p);
+    assert.equal(sheet.split(`--ss-chat-${p}: #`).length - 1, 2, `${p} needs a colour on zinc and on paper`);
+  }
+  // A chat layer's list is its own (shared/name-colours.js).
   const names = read('../../shared/name-colours.js');
   for (const [p, c] of [['tiktok', '#ffffff'], ['discord', '#8fa3e6'], ['youtube', '#ff4d4d']]) assert.ok(names.includes(`${p}: '${c}',`), p);
-  for (const p of ['twitch', 'tiktok', 'discord', 'youtube']) assert.ok(css.includes(`[data-chat-platform="${p}"] { --name-own: var(--name-${p}); }`), p);
-  // Their own colour still first, when name colours are on and they have one.
-  assert.ok(css.includes('background: var(--chat-user-color, var(--name-own));'));
+  // Their own colour still first, when name colours are on and they have one: in the words only, softened for the edition.
+  assert.ok(css.includes('--name-base: var(--chat-user-color, var(--name-own));'));
+  assert.ok(css.includes('--name-ink: oklch(from var(--name-base) var(--ss-chat-l, .84) min(c, var(--ss-chat-c, .1)) h);'));
+  assert.ok(!/\[data-chat="user"\] \{[^}]*background/.test(css), 'a name is drawn on a chip');
+  assert.equal(read('../../web/ss-ui.css').split('--ss-chat-l: ').length - 1, 2, 'each edition needs its own lightness');
   const row = read('../../web/components/ChatMessageRow.tsx');
   assert.equal(row.split('data-chat="row" data-chat-platform={chat.platform}').length - 1, 6, 'every kind of row says its platform');
 });

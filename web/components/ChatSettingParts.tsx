@@ -6,7 +6,7 @@
  * switches, sliders and folding sections, and the sections both of them have.
  *
  * Two menus, because they are about two different things — the dock always
- * wears the Marathon look and has a page behind it; a chat layer chooses its
+ * wears the CHAT.LOG look and has a page behind it; a chat layer chooses its
  * look, may carry a stylesheet, and can hide old messages. But a size is a
  * size and a rank colour is a rank colour on either, so those sections are
  * written once, here, and cannot drift into offering different things.
@@ -44,7 +44,7 @@ export const labelClass = 'text-[10px] text-zinc-500 font-extrabold uppercase tr
 
 /**
  * What "not set" is called on this menu, and what putting a value back does:
- * the dock's goes back to the Marathon look, a chat layer's to its theme.
+ * the dock's goes back to the CHAT.LOG look, a chat layer's to its theme.
  */
 export interface ResetWords { word: string; hint: string }
 
@@ -198,7 +198,7 @@ export interface ChatDraws {
   /**
    * Where the badges and the time sit, the avatar's shape and size, and the
    * name run into the message. Only an assembled look reads these — Custom,
-   * and the dock's Marathon — because the other three are drawn as they are.
+   * and the dock's CHAT.LOG — because the other three are drawn as they are.
    */
   slots: boolean;
 }

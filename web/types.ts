@@ -103,6 +103,8 @@ export interface ChatMessage {
   restored?: boolean;
   /** When it arrived, in ms. What auto-hide and the timestamp format read. */
   at?: number;
+  /** When it reached this page, by this page's clock: `at` is the server's, and the two machines can disagree. */
+  localAt?: number;
   /** A stream event rendered inline in the dock rather than a real chat line. */
   isEvent?: boolean;
   eventType?: string;
@@ -985,7 +987,7 @@ export interface ActiveAlert {
 
 // --- Theme & Language Types ---
 
-export type ThemeId = 'light' | 'simon-default' | 'midnight-purple' | 'emerald-drift' | 'cyberpunk-gold' | 'ocean-blue';
+export type ThemeId = 'light' | 'simon-default' | 'midnight-purple' | 'emerald-drift' | 'cyberpunk-gold' | 'ocean-blue' | 'zerotype' | 'zerotype-night';
 
 export interface ThemeConfig {
   id: ThemeId;
@@ -997,6 +999,8 @@ export interface ThemeConfig {
   textClass: string;
   borderClass: string;
   isLight?: boolean;
+  /** Draws the Zerotype concept over the reskin (ss-concept.css). */
+  concept?: 'day' | 'night';
 }
 
 export type ChatThemeId = 'modern' | 'compact' | 'retro' | 'custom';

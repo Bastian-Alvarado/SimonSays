@@ -15,6 +15,7 @@
  * that re-renders on every keystroke would fire the sound on every keystroke.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { SsTape } from '../SsTape';
 import { useDragOrder, DragGrip } from '../../hooks/useDragOrder';
 import { moveToGap } from '../../../shared/list-order.js';
 import { AlertConfig, AlertCondition, AlertType, AlertVariation, ThemeConfig } from '../../types';
@@ -563,6 +564,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
           <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mb-6 border border-zinc-800 text-zinc-500">
             <Bell size={32} />
           </div>
+          <SsTape t={t} />
           <h3 className="text-xl font-extrabold mb-2 uppercase tracking-tight">{t.alertsNone || 'No alerts yet'}</h3>
           <p className="text-xs text-zinc-500 max-w-sm">
             {t.alertsNoneHint || 'Pick an event above and it appears here, ready to edit.'}
@@ -602,7 +604,7 @@ export const AlertsView: React.FC<AlertsViewProps> = ({
                     backgroundColor: '#09090b',
                   }}
                 >
-                  {previewAlert && <AlertOverlay key={previewKey} alert={previewAlert as any} scale={0.7} />}
+                  {previewAlert && <div className="ss-keep contents"><AlertOverlay key={previewKey} alert={previewAlert as any} scale={0.7} /></div>}
                 </div>
                 <div className="flex items-center gap-2 mt-3">
                   <Button size="sm" variant="secondary" icon={<Play size={13} />} onClick={() => setPreviewKey((k) => k + 1)}>

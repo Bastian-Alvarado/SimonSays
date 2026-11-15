@@ -68,7 +68,7 @@ const drawn = await card.renderCard({ enabled: true, css: sheet, title: 'Bienven
 const looks = [];
 for (const look of CARD_LOOKS) {
   try {
-    const r = await card.renderCard({ css: look.css }, { name: 'Rowan' }, { count: 3 });
+    const r = await card.renderCard({ css: look.css }, { name: 'Simon' }, { count: 3 });
     looks.push([look.id, r.png.subarray(0, 8).toString('hex') === PNG, r.ignored.length]);
   } catch (err) {
     looks.push([look.id, false, err.message]);

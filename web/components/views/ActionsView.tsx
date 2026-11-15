@@ -1513,7 +1513,7 @@ const StepRenderer: React.FC<StepRendererProps> = (props) => {
                     )}
                     <p className="text-[10px] text-zinc-600">
                         {step.type === 'players_join' ? (t.playersStepJoinHint || '{user} is whoever typed the command, so "!join red" adds them in red. A colour by name (red, blue, lime…) or a hex code; none picks one from the name. Joining again puts somebody back in.')
-                          : step.type === 'players_state' ? (t.playersStepStateHint || '{input} is whatever comes after the command, so "!eject Rowan" puts Rowan out. Make it a mod-only command.')
+                          : step.type === 'players_state' ? (t.playersStepStateHint || '{input} is whatever comes after the command, so "!eject Simon" puts Simon out. Make it a mod-only command.')
                           : step.type === 'players_remove' ? (t.playersStepRemoveHint || 'Takes the player off the list altogether.')
                           : step.type === 'players_reset' ? (t.playersStepResetHint || 'A new round: everybody back in, nobody removed.')
                           : (t.playersStepClearHint || 'Empties the list.')}

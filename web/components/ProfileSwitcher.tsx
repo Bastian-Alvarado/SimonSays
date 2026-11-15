@@ -55,6 +55,8 @@ interface ProfileSwitcherProps {
    * Neither saves, reverts, creates or deletes: the profiles are the streamer's.
    */
   looking?: 'browse' | 'fixed';
+  /** The link to the server (useStreamSystem): "saved" is only said of what the server has heard. */
+  link?: { connected: boolean; loaded: boolean; layoutsUnsaved: boolean };
   t: any;
 }
 
@@ -65,7 +67,7 @@ const GROUP_KEYS: Record<string, string> = {
   overlays: 'profileGroupOverlays',
 };
 
-export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profiles, actions, looking, t }) => {
+export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profiles, actions, looking, link, t }) => {
   const [open, setOpen] = useState(false);
   const state = profiles.find((g) => g.id === group);
   if (!state) return null;
@@ -286,7 +288,12 @@ export const ProfileSwitcher: React.FC<ProfileSwitcherProps> = ({ group, profile
 
       {/* save and revert, only worth offering when there is something to act on */}
       <div className="flex items-center gap-2 ml-auto">
-        {state.dirty ? (
+        {link && (!link.connected || !link.loaded) ? (
+          // Not something to save or revert yet: the server has not heard what was changed, so it cannot say.
+          <span className="text-[9px] font-bold text-amber-400/90" data-profile-link="offline">{t.profileOffline || 'Not connected: not saved'}</span>
+        ) : link?.layoutsUnsaved && group === 'overlays' ? (
+          <span className="text-[9px] font-bold text-amber-400/90" data-profile-link="sending">{t.profileSending || 'Sending your changes…'}</span>
+        ) : state.dirty ? (
           <>
             <span className="text-[9px] font-bold text-amber-400/90 hidden sm:inline">
               {t.profileUnsaved || 'Unsaved changes'}

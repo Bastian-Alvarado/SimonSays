@@ -1,0 +1,395 @@
+/*
+ * Zerotype: the concept as it was drawn, not as the manual tamed it.
+ *
+ * ss-ui.css keeps the identity's rules: rose, quiet parts, words that pass
+ * contrast. This file breaks those on purpose, for the two Zerotype cartridges
+ * only: cobalt house colour, vermilion signals, olive LCDs in a pixel font,
+ * 3 px ink frames on everything, a close box on every bar.
+ *
+ * It only answers to `data-ss-concept` on <html> (App.tsx), which comes from
+ * `concept` on the theme. Delete this file, its import and those two themes and
+ * nothing else changes.
+ *
+ * Each rule is doubled up on the attribute so it outranks ss-ui.css, which has
+ * to win over Tailwind with !important. Previews stay out of it, by the same
+ * list of stops ss-ui.css uses.
+ */
+
+:root.ss-ui[data-ss-concept] {
+  --zt-cream: #F4E6C8;
+  --zt-block: #F8B82A;
+  --zt-hot: #F2683A;
+  --zt-lcd: #C9D1A4;
+  --zt-lcd-ink: #2B2F22;
+  --zt-lcd-label: #4E5440;
+  --ss-mint: var(--zt-lcd);
+  --ss-lcd-ink: var(--zt-lcd-ink);
+  --ss-bar-track: .18em;
+  --ss-bar-end: var(--ss-ground);
+  --ss-bar-end-size: 22px;
+  --ss-bar-end-mark: "✕";
+  --ss-bar-end-ink: var(--ss-line);
+}
+
+:root.ss-ui[data-ss-concept="day"] {
+  --ss-ground: #F4E6C8;
+  --ss-part: #EADCBC;
+  --ss-key: #F4E6C8;
+  --ss-field-in-part: #FBF4E4;
+  --ss-key-in-part: #F4E6C8;
+  --ss-line: #3A3836;
+  --ss-on-line: #F4E6C8;
+  --ss-muted: #6A645A;
+  --ss-shadow: #3A3836;
+  --ss-hair: rgba(58, 56, 54, .18);
+  --ss-part-edge: #3A3836;
+  --ss-field-edge: #3A3836;
+  --ss-nav: #EADCBC;
+  --ss-nav-edge: #3A3836;
+  --ss-nav-rule: rgba(58, 56, 54, .18);
+  --ss-chat-twitch: #7A4FD8;
+  --ss-chat-youtube: #D1372C;
+  --ss-chat-tiktok: #1C8C8A;
+  --ss-chat-discord: #5865F2;
+  --zt-os: #3A3836;
+  --zt-field: #FBF4E4;
+  /* Cobalt as small words: the drawn #3F8AE6 is 2.9:1 on cream, this is 4.4:1. */
+  --zt-word: #2467BD;
+  --zt-dot: rgba(58, 56, 54, .09);
+  --zt-grid: rgba(63, 138, 230, .11);
+}
+
+:root.ss-ui[data-ss-concept="night"] {
+  --ss-ground: #33312F;
+  --ss-part: #2A2826;
+  --ss-key: #33312F;
+  --ss-field-in-part: #2A2826;
+  --ss-key-in-part: #33312F;
+  --ss-line: #F4E6C8;
+  --ss-on-line: #33312F;
+  --ss-muted: #B8AE9A;
+  --ss-shadow: #141312;
+  --ss-hair: rgba(244, 230, 200, .16);
+  --ss-part-edge: #F4E6C8;
+  --ss-field-edge: #F4E6C8;
+  --ss-nav: #2A2826;
+  --ss-nav-edge: #F4E6C8;
+  --ss-nav-rule: rgba(244, 230, 200, .16);
+  --zt-os: #141312;
+  --zt-field: #2A2826;
+  --zt-word: #8ABBF5;
+  --zt-dot: rgba(244, 230, 200, .06);
+  --zt-grid: rgba(244, 230, 200, .05);
+}
+
+/* The ground: a 5 px dot and the blueprint grid. */
+:root.ss-ui[data-ss-concept] body,
+:root.ss-ui[data-ss-concept] .ss-root {
+  background-color: var(--ss-ground) !important;
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--zt-dot) 1px, transparent 1.6px),
+    linear-gradient(90deg, var(--zt-grid) 1px, transparent 1px),
+    linear-gradient(var(--zt-grid) 1px, transparent 1px) !important;
+  background-size: 5px 5px, 48px 48px, 48px 48px !important;
+}
+
+/* The OS bar. */
+@media (min-width: 768px) {
+  :root.ss-ui[data-ss-concept] .ss-root { padding-top: 44px; }
+  :root.ss-ui[data-ss-concept] .ss-topbar {
+    height: 44px;
+    padding-inline: 16px;
+    background: var(--zt-os);
+    color: var(--zt-cream);
+    font-size: 14px;
+    letter-spacing: .2em;
+  }
+  :root.ss-ui[data-ss-concept] main > div[class*="md:h-dvh"] { height: calc(100dvh - 44px) !important; }
+}
+:root.ss-ui[data-ss-concept] .ss-marks { gap: 8px; }
+:root.ss-ui[data-ss-concept] .ss-marks i { width: 14px; height: 14px; border-color: var(--zt-cream); }
+:root.ss-ui[data-ss-concept] .ss-marks i:first-child { background: var(--zt-hot); border-color: var(--zt-hot); }
+:root.ss-ui[data-ss-concept] .ss-onair i { border-color: var(--zt-cream); }
+:root.ss-ui[data-ss-concept] .ss-onair.is-live i { background: var(--zt-hot); border-color: var(--zt-hot); }
+:root.ss-ui[data-ss-concept] .ss-topbar-spec { font-size: 12px; font-weight: 700; letter-spacing: .16em; color: var(--zt-block); }
+
+/* The menu's numbers: plain cobalt, no chip. */
+:root.ss-ui[data-ss-concept] [data-nav-section-toggle] .ss-code {
+  min-width: 22px;
+  padding: 0;
+  background: transparent;
+  color: var(--zt-word);
+  font-size: 13px;
+  letter-spacing: .06em;
+  text-align: left;
+}
+
+/* The page line sits under the taller bar, ruled as a toolbar. */
+@media (min-width: 768px) {
+  :root.ss-ui[data-ss-concept] .ss-pagehead { border-bottom-width: 3px; letter-spacing: .18em; }
+}
+
+/* The leaflet's progress is a readout. */
+:root.ss-ui[data-ss-concept] .ss-progress {
+  background: repeating-linear-gradient(0deg, #00000010 0 1px, transparent 1px 3px), var(--zt-lcd);
+  border: 3px solid var(--ss-line);
+  font: 400 30px/1 "VT323", monospace;
+}
+:root.ss-ui[data-ss-concept] .ss-done { background: var(--zt-lcd); font-family: var(--ss-mono); }
+
+/* ON AIR: vermilion, Chakra, a square dot. */
+:root.ss-ui[data-ss-concept] .ss-onair-tile.is-live {
+  position: relative;
+  justify-content: center;
+  padding: 8px 16px 8px 44px;
+  background: var(--zt-hot);
+  border: 3px solid var(--ss-line);
+  box-shadow: 6px 6px 0 var(--ss-shadow);
+}
+:root.ss-ui[data-ss-concept] .ss-onair-tile.is-live::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 18px;
+  width: 16px;
+  height: 16px;
+  background: var(--zt-cream);
+}
+:root.ss-ui[data-ss-concept] .ss-onair-tile.is-live b { color: var(--zt-cream); font-size: 26px; letter-spacing: .06em; }
+:root.ss-ui[data-ss-concept] .ss-onair-tile.is-live span { margin: 0; padding: 0; background: transparent; color: var(--zt-cream); letter-spacing: .18em; }
+
+/* The Settings nameplate is stamped metal. */
+:root.ss-ui[data-ss-concept] .ss-nameplate {
+  background: linear-gradient(180deg, #D9DBD3, #B9BCB3);
+  border: 3px solid var(--ss-line);
+  box-shadow: 8px 8px 0 var(--ss-shadow);
+  color: #3A3836;
+}
+:root.ss-ui[data-ss-concept] .ss-nameplate > div { border-right: 2px solid rgba(58, 56, 54, .35); }
+:root.ss-ui[data-ss-concept] .ss-nameplate small { color: #55534D; letter-spacing: .22em; }
+:root.ss-ui[data-ss-concept] .ss-nameplate i { background: repeating-linear-gradient(90deg, #3A3836 0 3px, transparent 3px 5px, #3A3836 5px 6px, transparent 6px 10px, #3A3836 10px 14px, transparent 14px 16px); }
+:root.ss-ui[data-ss-concept] .ss-nameplate span { background: #3A3836; color: var(--zt-cream); }
+
+/* The dock in OBS. */
+:root.ss-ui[data-ss-concept] .ss-dock [data-dock-window] { border-width: 3px; box-shadow: 6px 6px 0 var(--ss-shadow); margin: 0 6px 6px 0; }
+:root.ss-ui[data-ss-concept] .ss-dock [data-dock-window] > .ss-winbar { min-height: 34px; letter-spacing: .18em; }
+:root.ss-ui[data-ss-concept] .ss-dock [data-dock-window] > .ss-winbar::after {
+  content: "✕";
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: var(--ss-ground);
+  color: var(--ss-line);
+  font: 700 12px/1 var(--ss-mono);
+  letter-spacing: 0;
+}
+
+@scope (.ss-ui[data-ss-concept]) to (.canvas-stage, .ss-keep, [style*="linear-gradient(45deg"], [style*="rgb(11, 11, 14)"], [class*="bg-[#313338]"]) {
+
+  /* ---------------------------------------------------- Type */
+  :scope[data-ss-concept][data-ss-concept] :is(.uppercase[class*="tracking-"], .font-mono) { letter-spacing: .14em !important; }
+
+  /* ---------------------------------------------------- Windows */
+  :scope[data-ss-concept][data-ss-concept] .glass-panel,
+  :scope[data-ss-concept][data-ss-concept] .ss-card[data-home]:not([data-home="welcome"]) {
+    border: 3px solid var(--ss-line) !important;
+    box-shadow: 8px 8px 0 var(--ss-shadow) !important;
+  }
+
+  /* A part is a smaller window, no shadow. */
+  :scope[data-ss-concept][data-ss-concept] .glass-panel .glass-panel {
+    background: var(--ss-ground) !important;
+    border: 2px solid var(--ss-line) !important;
+    box-shadow: none !important;
+  }
+
+  /* ---------------------------------------------------- Fields */
+  :scope[data-ss-concept][data-ss-concept] :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], .bg-transparent), textarea:not(.bg-transparent), select) {
+    background-color: var(--zt-field) !important;
+    border: 2px solid var(--ss-line) !important;
+    box-shadow: inset 3px 3px 0 rgba(58, 56, 54, .1);
+    font-family: var(--ss-mono);
+  }
+
+  /* ---------------------------------------------------- Keys */
+  :scope[data-ss-concept][data-ss-concept] .ss-key {
+    border: 3px solid var(--ss-line) !important;
+    box-shadow: 4px 4px 0 var(--ss-shadow) !important;
+    letter-spacing: .14em !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] .ss-key:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--ss-house) !important; }
+  :scope[data-ss-concept][data-ss-concept] .ss-key:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ss-shadow) !important; }
+  :scope[data-ss-concept][data-ss-concept] .ss-key:disabled { border: 3px dashed var(--ss-muted) !important; box-shadow: none !important; }
+  :scope[data-ss-concept][data-ss-concept] .ss-key--ghost:not(:disabled) { border-color: transparent !important; box-shadow: none !important; }
+  :scope[data-ss-concept][data-ss-concept] :is(.ss-key--primary, .ss-key--large.ss-key--primary):not(:disabled) {
+    background: var(--ss-house) !important;
+    color: var(--zt-cream) !important;
+    padding-left: revert-layer;
+  }
+  :scope[data-ss-concept][data-ss-concept] :is(.ss-key--primary, .ss-key--large.ss-key--primary):not(:disabled) * { color: inherit !important; }
+  :scope[data-ss-concept][data-ss-concept] .ss-key--danger:not(:disabled) { background: var(--zt-hot) !important; color: var(--zt-cream) !important; }
+  :scope[data-ss-concept][data-ss-concept] button:is([class*="border-zinc"], [class*="border-white/"]):not(.ss-key, :disabled) {
+    border: 2px solid var(--ss-line) !important;
+  }
+
+  /* Selected tabs and chips are cobalt, words and all: the concept's own seg. */
+  :scope[data-ss-concept][data-ss-concept] button.bg-current-accent:not(.ss-key),
+  :scope[data-ss-concept][data-ss-concept] span.bg-current-accent:not(:empty, :has(> .absolute)) {
+    background-color: var(--ss-house) !important;
+    color: var(--zt-cream) !important;
+    box-shadow: none !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] [role="tablist"], [data-screen-tabs] { border: 2px solid var(--ss-line) !important; }
+
+  /* Cobalt words, no chip behind them. */
+  :scope[data-ss-concept][data-ss-concept] .text-current-accent:not(svg, svg *, [class*="bg-"]) { color: var(--zt-word) !important; background-color: transparent !important; }
+  :scope[data-ss-concept][data-ss-concept] :is(svg.text-current-accent, .text-current-accent svg) { color: var(--zt-word) !important; }
+
+  /* ---------------------------------------------------- Switches: a square track and knob. */
+  :scope[data-ss-concept][data-ss-concept] .rounded-full.p-1:has(> .bg-white) {
+    outline: 2px solid var(--ss-line);
+    outline-offset: -2px;
+    background-color: var(--ss-part) !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] .rounded-full.p-1.bg-current-accent:has(> .bg-white) { background-color: var(--ss-house) !important; }
+  :scope[data-ss-concept][data-ss-concept] .rounded-full.p-1 > .bg-white { background-color: var(--ss-line) !important; }
+  :scope[data-ss-concept][data-ss-concept] .rounded-full.p-1.bg-current-accent > .bg-white { background-color: var(--zt-cream) !important; }
+
+  /* ---------------------------------------------------- The menu */
+  :scope[data-ss-concept][data-ss-concept] .ss-nav { border-right: 3px solid var(--ss-nav-edge) !important; }
+  :scope[data-ss-concept][data-ss-concept] .ss-nav div:has(> svg:only-child).bg-gradient-to-tr {
+    background: var(--ss-house) !important;
+    color: var(--zt-cream);
+    outline: 3px solid var(--ss-line);
+    outline-offset: -3px;
+    box-shadow: 4px 4px 0 var(--ss-shadow) !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] .ss-nav div:has(> svg:only-child).bg-gradient-to-tr + span {
+    font-family: var(--ss-disp);
+    font-weight: 700;
+    font-size: 23px;
+    letter-spacing: .02em;
+    color: var(--zt-word) !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] .ss-nav button:has(> kbd) {
+    background: var(--ss-ground) !important;
+    border: 2px solid var(--ss-line) !important;
+    color: var(--ss-muted) !important;
+    font-family: var(--ss-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  :scope[data-ss-concept][data-ss-concept] .ss-nav button:has(> kbd) kbd { background: var(--ss-line); border: 0; color: var(--ss-ground); }
+
+  :scope[data-ss-concept][data-ss-concept] [data-nav-item].border-current-accent {
+    background-color: var(--ss-house) !important;
+    border-left: 0 !important;
+    box-shadow: 4px 4px 0 var(--ss-shadow) !important;
+    color: var(--zt-cream) !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] [data-nav-item].border-current-accent :is(.ss-code, span, span.truncate, svg, svg *) { color: var(--zt-cream) !important; }
+  :scope[data-ss-concept][data-ss-concept] [data-nav-item].border-current-accent::after { color: var(--zt-cream); }
+  :scope[data-ss-concept][data-ss-concept] [data-nav-section-toggle][aria-expanded="true"] { color: var(--zt-word) !important; }
+
+  /* ---------------------------------------------------- LCD: the card itself is the display. */
+  :scope[data-ss-concept][data-ss-concept] [data-home="numbers"] > .ss-card {
+    background: repeating-linear-gradient(0deg, #00000010 0 1px, transparent 1px 3px), var(--zt-lcd) !important;
+    border: 3px solid var(--ss-line) !important;
+    box-shadow: none !important;
+    padding: 7px 12px 5px !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] [data-home="numbers"] > .ss-card p { margin: 0; color: var(--zt-lcd-label) !important; font-family: var(--ss-mono); letter-spacing: .1em; }
+  :scope[data-ss-concept][data-ss-concept] [data-home="numbers"] > .ss-card p.uppercase { font-weight: 700; letter-spacing: .2em !important; }
+  :scope[data-ss-concept][data-ss-concept] [data-home="numbers"] > .ss-card p.text-3xl {
+    display: block;
+    margin-top: 3px;
+    padding: 0;
+    background: transparent;
+    color: var(--zt-lcd-ink) !important;
+    font: 400 38px/.9 "VT323", monospace !important;
+    letter-spacing: .03em;
+  }
+
+  /* ---------------------------------------------------- Cartridges */
+  :scope[data-ss-concept][data-ss-concept] .ss-cart {
+    background: #4A4744 !important;
+    border: 3px solid var(--ss-line) !important;
+    box-shadow: none !important;
+    clip-path: polygon(0 0, 86% 0, 100% 10%, 100% 100%, 0 100%);
+  }
+  :scope[data-ss-concept][data-ss-concept] .ss-cart[data-cart-light="yes"] { background: #4A4744 !important; }
+  :scope[data-ss-concept][data-ss-concept] .ss-cart h4 {
+    padding: 8px;
+    background: var(--zt-cream);
+    color: #3A3836 !important;
+    letter-spacing: .14em;
+    outline: 2px solid #1E1D1C;
+    outline-offset: -2px;
+  }
+  :scope[data-ss-concept][data-ss-concept] .ss-cart .ss-cart-strip { outline: 2px solid #1E1D1C; outline-offset: -2px; }
+  :scope[data-ss-concept][data-ss-concept] .ss-cart .ss-cart-foot,
+  :scope[data-ss-concept][data-ss-concept] .ss-cart[data-cart-light="yes"] .ss-cart-foot { color: var(--zt-cream) !important; letter-spacing: .1em; }
+  :scope[data-ss-concept][data-ss-concept] .ss-cart[data-cart-on="yes"] { background: var(--ss-house) !important; transform: translateY(-10px); }
+}
+
+@scope (.ss-ui[data-ss-concept]) to (.canvas-stage, .ss-keep, [style*="linear-gradient(45deg"], [style*="rgb(11, 11, 14)"], [class*="bg-[#313338]"]) {
+  /* Daylight wears a light-theme class that paper paints with a very strong rule. */
+  :scope[data-ss-concept][data-ss-concept][data-ss-concept][data-ss-concept] .ss-cart[data-cart-light="yes"] { background-color: #4A4744 !important; }
+  :scope[data-ss-concept][data-ss-concept][data-ss-concept][data-ss-concept] .ss-cart[data-cart-on="yes"] { background-color: var(--ss-house) !important; }
+
+  /* The small switch has an absolute knob. */
+  :scope[data-ss-concept][data-ss-concept] .rounded-full:has(> .absolute.bg-white) {
+    outline: 2px solid var(--ss-line);
+    outline-offset: -2px;
+    background-color: var(--ss-part) !important;
+  }
+  :scope[data-ss-concept][data-ss-concept] .rounded-full.bg-current-accent:has(> .absolute.bg-white) { background-color: var(--ss-house) !important; }
+  :scope[data-ss-concept][data-ss-concept] .rounded-full > .absolute.bg-white { background-color: var(--ss-line) !important; }
+  :scope[data-ss-concept][data-ss-concept] .rounded-full.bg-current-accent > .absolute.bg-white { background-color: var(--zt-cream) !important; }
+
+  /* Sliders are faders: a ruled track and a tall square cap. */
+  input[type="range"] { appearance: none; -webkit-appearance: none; height: 28px; background: transparent !important; }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 10px;
+    background: repeating-linear-gradient(90deg, var(--ss-hair) 0 2px, transparent 2px 12px), var(--ss-part);
+    outline: 2px solid var(--ss-line);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 28px;
+    margin-top: -9px;
+    background: var(--ss-house);
+    outline: 2px solid var(--ss-line);
+    box-shadow: 3px 3px 0 var(--ss-shadow);
+    border-radius: 0;
+  }
+  input[type="range"]::-moz-range-track {
+    height: 10px;
+    background: var(--ss-part);
+    outline: 2px solid var(--ss-line);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 28px;
+    background: var(--ss-house);
+    border: 0;
+    outline: 2px solid var(--ss-line);
+    box-shadow: 3px 3px 0 var(--ss-shadow);
+    border-radius: 0;
+  }
+}
+
+/* Vermilion signals: whatever was rose in the markup is a signal here. */
+:root.ss-ui[data-ss-concept="day"] { --zt-hot-word: #B23A12; }
+:root.ss-ui[data-ss-concept="night"] { --zt-hot-word: #FF9A73; }
+@scope (.ss-ui[data-ss-concept]) to (.canvas-stage, .ss-keep, [style*="linear-gradient(45deg"], [style*="rgb(11, 11, 14)"], [class*="bg-[#313338]"]) {
+  :scope[data-ss-concept][data-ss-concept][data-ss-concept] :is([class*=" text-rose-"], [class^="text-rose-"], [class*=" text-red-"], [class^="text-red-"]) { color: var(--zt-hot-word) !important; }
+  :scope[data-ss-concept][data-ss-concept][data-ss-concept] [data-home-live] { background-color: var(--zt-hot) !important; color: var(--zt-cream) !important; }
+  :scope[data-ss-concept][data-ss-concept][data-ss-concept] [data-home-live] :is(svg, svg *) { color: var(--zt-cream) !important; }
+  /* The loading screen's mark is the house colour, not the rose in its markup. */
+  :scope[data-ss-concept][data-ss-concept][data-ss-concept] .ss-intro :is(svg, svg *) { color: var(--ss-house) !important; }
+}

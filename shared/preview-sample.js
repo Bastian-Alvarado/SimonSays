@@ -24,7 +24,7 @@ export const SAMPLE_RUN = {
   year: '2011',
   category: 'Any%',
   estimate: '1:20:00',
-  runner: { name: 'Rowan', subtitle: 'he/him' },
+  runner: { name: 'Simon', subtitle: 'he/him' },
   host: { name: 'Alex', subtitle: 'they/them' },
 };
 
@@ -207,7 +207,7 @@ export function previewPlayers(players) {
   const items = players?.items || [];
   if (items.length >= 6 && items.some((p) => p.state !== 'in')) return players;
   const lobby = [
-    ['Rowan', '#c51111', 'in'], ['Nolan', '#132ed1', 'in'], ['Ninja', '#117f2d', 'ejected'],
+    ['Simon', '#c51111', 'in'], ['Nolan', '#132ed1', 'in'], ['Ninja', '#117f2d', 'ejected'],
     ['Kiwi', '#f5f557', 'in'], ['Luna', '#ed54ba', 'in'], ['Rex', '#ef7d0d', 'dead'],
     ['Mochi', '#38fedc', 'in'], ['Echo', '#6b2fbb', 'in'], ['Pixel', '#50ef39', 'out'], ['Toast', '#d6e0f0', 'in'],
   ];
@@ -288,7 +288,7 @@ export function previewPoll(poll, lang = 'en') {
  */
 export function previewVoice(voice) {
   if ((voice?.members || []).length >= 3) return voice;
-  const people = [['Rowan', true, false, false], ['Nolan', false, false, false], ['Kiwi', false, true, false], ['Luna', false, false, true]];
+  const people = [['Simon', true, false, false], ['Nolan', false, false, false], ['Kiwi', false, true, false], ['Luna', false, false, true]];
   // Somebody's own pictures, when anybody has some, on the one who is talking — so a look can be seen with them.
   const [pictured] = Object.values(voice?.pictures || {});
   return {

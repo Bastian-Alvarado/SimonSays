@@ -1,0 +1,1064 @@
+/*
+ * Simon Systems // Model SS-APP · dashboard reskin, third pass: two editions.
+ *
+ * One file, loaded after Tailwind, switched on by `.ss-ui` on <html> for the
+ * dashboard and the dock only (see index.tsx). Delete the file and that line
+ * and the app is back as it was.
+ *
+ * Stream overlays never get `.ss-ui`. Inside the dashboard, anything that
+ * previews a stream layer sits in `.canvas-stage` or `.ss-keep`, where this
+ * scope stops, so a preview still shows what viewers will see.
+ *
+ * Rules come from the identity manual, Rev 1.5: 05 colour and interface
+ * states, 06 type, 07 window frame, 11.2 motion, 12 access.
+ *
+ * EDITIONS. Everything below uses role names, as the tokens README asks, so
+ * zinc and paper share one set of rules. `data-ss-edition` on <html> comes from
+ * the theme (App.tsx): zinc for every dark theme, paper for the light one.
+ *
+ * FRAMES, three tiers. The manual's window frame is for a window; a dense app
+ * has hundreds of boxes, and framing each one made every screen a wall of lines.
+ *   1. Window: the outer panel. 2 px line colour, hard shadow. Nothing else.
+ *   2. Part:   anything inside a window. Separates by fill.
+ *   3. Line:   a divider, quiet.
+ * State still follows chapter 05: hover turns the outline the house colour,
+ * focus is marigold, disabled is dashed.
+ *
+ * Paper works the way zinc does: parts sink below the ground. Paper raise
+ * (#FBF8F4) rose above it, so the paper edition does not use it. Parts sit in
+ * Paper well (#E6D6B0), the paper counterpart of Well, one step below the
+ * cream ground (#F4E6C8), about the same step Well is below zinc.
+ *
+ * Words: rose is 2.97:1 on paper and 2.55:1 on the paper well, and marigold
+ * 1.43:1, under even the 3:1 an icon needs. So on paper words and icons turn
+ * ink, and rose stays on stripes, toggles, the logo and big shapes.
+ *
+ * The house colour is the accent the user picked, rose by default.
+ */
+
+:root.ss-ui {
+  /* Palette: tokens/tokens.css */
+  --ss-cream: #F2EEE9;
+  --ss-void: #050505;
+  --ss-marigold: #F8B82A;
+  --ss-mint: #BFE3CC;
+  --ss-lcd-ink: #1E2B23;
+  --ss-stone: #B5AEA6;
+  --ss-ink: #27272A;
+  --ss-house: var(--current-accent, #F43F5E);
+
+  /* Roles · zinc edition */
+  --ss-ground: #292929;
+  --ss-part: #1D1C1C;        /* a part inside a window, and fields: well */
+  --ss-key: #323030;         /* keys and raised fills: zinc raise */
+  --ss-field-in-part: #323030;
+  --ss-key-in-part: #323030;
+  --ss-line: var(--ss-cream);
+  --ss-on-line: #292929;
+  --ss-muted: var(--ss-stone);
+  --ss-shadow: var(--ss-void);
+  --ss-hair: #1D1C1C;        /* tier 3 */
+  --ss-part-edge: transparent;
+  --ss-field-edge: transparent;
+  --ss-nav: #1D1C1C;
+  --ss-nav-edge: var(--ss-void);
+  --ss-nav-rule: #323030;
+  /* Names in the chat dock: a colour for each platform, and the lightness and
+     saturation any chosen colour is brought to, so it reads and stays soft. */
+  --ss-chat-l: .84;
+  --ss-chat-c: .1;
+  --ss-chat-twitch: #B79BFF;
+  --ss-chat-youtube: #FF8A7A;
+  --ss-chat-tiktok: #6ED6CF;
+  --ss-chat-discord: #A9B6F2;
+
+  --ss-disp: "Chakra Petch", "Montserrat", sans-serif;
+  --ss-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --ss-fast: 120ms;
+  --ss-ease: cubic-bezier(.2, .8, .2, 1);
+  color-scheme: dark;
+}
+
+/* Roles · paper edition */
+:root.ss-ui[data-ss-edition="paper"] {
+  --ss-ground: #F4E6C8;
+  --ss-part: #E6D6B0;        /* Paper well */
+  --ss-key: #E6D6B0;
+  --ss-field-in-part: #F4E6C8;
+  --ss-key-in-part: #F4E6C8;
+  --ss-line: var(--ss-ink);
+  --ss-on-line: #F4E6C8;
+  --ss-muted: #5C5650;       /* clay, 5.03:1 on the paper well */
+  --ss-shadow: var(--ss-ink);
+  --ss-hair: #E6D6B0;
+  --ss-nav: #E6D6B0;
+  --ss-nav-edge: var(--ss-ink);
+  --ss-nav-rule: var(--ss-stone);
+  --ss-ok: #2F7A52;          /* the manual's own chip green on paper */
+  --ss-chat-l: .42;
+  --ss-chat-c: .13;
+  --ss-chat-twitch: #6233C4;
+  --ss-chat-youtube: #AE2A1C;
+  --ss-chat-tiktok: #0E6462;
+  --ss-chat-discord: #3F49B8;
+  color-scheme: light;
+}
+
+/* 05 Texture: a 7 px dot grain. Ground stays one flat colour underneath. */
+.ss-ui body,
+.ss-ui .ss-root {
+  background-color: var(--ss-ground) !important;
+  background-image: radial-gradient(color-mix(in srgb, var(--ss-line) 9%, transparent) 1px, transparent 1.2px) !important;
+  background-size: 7px 7px !important;
+  background-attachment: scroll !important;
+  color: var(--ss-line);
+}
+.ss-ui ::selection { background: var(--ss-mint); color: var(--ss-lcd-ink); }
+
+/* These reach everything, so they stop where the reskin stops (the fence is explained below):
+   a layer's own transition, drawn in a preview, must run at the speed it will on stream. */
+@scope (.ss-ui) to (.canvas-stage, .ss-keep, [style*="linear-gradient(45deg"], [style*="rgb(11, 11, 14)"], [class*="bg-[#313338]"]) {
+  /* 11.2 Hover and press are `fast`. The old rule faded everything for 300 ms. */
+  * {
+    transition-duration: var(--ss-fast) !important;
+    transition-timing-function: var(--ss-ease) !important;
+  }
+
+  /* 05 Focus: 3 px marigold, never removed. */
+  :focus-visible {
+    outline: 3px solid var(--ss-marigold) !important;
+    outline-offset: 2px;
+  }
+
+  /* Scrollbars as square hardware. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--ss-part); }
+  ::-webkit-scrollbar-thumb { background: var(--ss-muted); border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ss-line); }
+}
+
+/* Native controls take the house colour instead of the browser's blue. */
+.ss-ui input[type="checkbox"],
+.ss-ui input[type="radio"],
+.ss-ui input[type="range"] { accent-color: var(--ss-house); }
+
+/* Where the reskin stops. A stream preview sits on the transparency checkerboard,
+   or on Library's #0b0b0e, and a Discord preview on Discord's own #313338: each
+   shows what people will really see, so none of it is ours to restyle. Match the
+   checkerboard, never #09090b alone: that is also the dock's default background,
+   and fencing on it lost the whole dock. */
+@scope (.ss-ui) to (.canvas-stage, .ss-keep, [style*="linear-gradient(45deg"], [style*="rgb(11, 11, 14)"], [class*="bg-[#313338]"]) {
+
+  /* ------------------------------------------------ 07 Corners: square. */
+  /* An avatar's shape is the user's own setting, so it is left to that. */
+  [class*="rounded"]:not(img[data-chat="avatar"]) { border-radius: 0 !important; }
+  img[class*="rounded-full"] { border-radius: 50% !important; }
+  /* A spinner's gap is how it shows it is turning: on a square it read as a
+     broken box, so loading stays the one round thing. */
+  .animate-spin { border-radius: 50% !important; }
+
+  /* ------------------------------------------------ 07 Banned: soft shadows, glass, gradients. */
+  [class*="shadow-"]:not(.ss-win) { box-shadow: none !important; }
+  [class*="backdrop-blur"] { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  [class*="bg-gradient"] { background-image: none !important; }
+
+  /* ------------------------------------------------ 05 Grounds: named colours only, no opacity. */
+  [class^="bg-zinc-950"], [class*=" bg-zinc-950"],
+  [class^="bg-zinc-900"], [class*=" bg-zinc-900"],
+  [class^="bg-black"], [class*=" bg-black"] {
+    background-color: var(--ss-part) !important;
+  }
+  [class^="bg-zinc-800"], [class*=" bg-zinc-800"],
+  [class^="bg-zinc-700"], [class*=" bg-zinc-700"],
+  [class^="bg-white/"], [class*=" bg-white/"] {
+    background-color: var(--ss-key) !important;
+  }
+  /* A dimmed backdrop behind a pop-up is a flat void, not a tint. */
+  .fixed[class*="bg-black/"] { background-color: var(--ss-void) !important; }
+
+  /* ------------------------------------------------ 05 Text. */
+  [class^="text-white"], [class*=" text-white"],
+  [class*=" text-zinc-100"], [class^="text-zinc-100"],
+  [class*=" text-zinc-200"], [class^="text-zinc-200"],
+  [class*=" text-zinc-300"], [class^="text-zinc-300"] {
+    color: var(--ss-line) !important;
+  }
+  [class*=" text-zinc-400"], [class^="text-zinc-400"],
+  [class*=" text-zinc-500"], [class^="text-zinc-500"],
+  [class*=" text-zinc-600"], [class^="text-zinc-600"],
+  [class*=" text-zinc-700"], [class^="text-zinc-700"] {
+    color: var(--ss-muted) !important;
+  }
+  .opacity-70, .opacity-60, .opacity-50 { opacity: 1 !important; }
+
+  /* 12.2 Web and app: labels 12 px, never below 11 px. */
+  .text-\[8px\], .text-\[9px\], .text-\[10px\] { font-size: 11px !important; }
+  .text-\[11px\] { font-size: 12px !important; }
+
+  /* 12.1 Rose words on zinc are for titles of 24 px and up. */
+  :is(h2, h3, h4)[class*="text-rose"],
+  :is(h2, h3, h4)[class*="text-current-accent"] { color: var(--ss-line) !important; }
+
+  /* Platform colours as words fail in both editions: Discord 3.69:1 on zinc and
+     4.35:1 on paper, YouTube 3.51:1 and 3.78:1, Spotify 2.44:1 on paper. A
+     platform's name sits beside its logo, so the words take the line colour.
+     People's own name colours in chat are theirs, and stay. */
+  :is([style^="color:"], [style*="; color:"], [class*="text-[#"]):not([data-chat], [data-chat] *, svg, svg *) {
+    color: var(--ss-line) !important;
+  }
+
+  /* An accent tint is a stepped colour, which 05 rules out: it becomes a part. */
+  [class*="bg-current-accent/"] { background-color: var(--ss-part) !important; }
+
+  /* 12.1 Small rose labels sit on the well or become a chip: 4.63:1 on the
+     well against 3.96:1 on zinc. Paper overrides this further down. */
+  .text-current-accent:not(svg, svg *, h1) { background-color: var(--ss-part); }
+
+  /* ------------------------------------------------ 06 Type roles. */
+  h1, h2, h3 {
+    font-family: var(--ss-disp) !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    line-height: 1.1;
+  }
+  .uppercase[class*="tracking-"],
+  .font-mono {
+    font-family: var(--ss-mono) !important;
+    letter-spacing: .08em !important;
+  }
+
+  /* ------------------------------------------------ Tier 3: lines. */
+  [class*=" border-zinc-"], [class^="border-zinc-"],
+  [class*=" border-white/"], [class^="border-white/"] {
+    border-color: var(--ss-hair) !important;
+  }
+
+  /* ------------------------------------------------ Tier 1: the window. */
+  .glass-panel {
+    background: var(--ss-ground) !important;
+    border: 2px solid var(--ss-line) !important;
+    box-shadow: 6px 6px 0 var(--ss-shadow) !important;
+  }
+
+  /* The home screen's named cards are windows too. The small figures are not:
+     four framed boxes in a row would be the wall of lines this is here to avoid. */
+  .ss-card[data-home]:not([data-home="welcome"]) {
+    background: var(--ss-ground) !important;
+    border: 2px solid var(--ss-line) !important;
+    box-shadow: 6px 6px 0 var(--ss-shadow) !important;
+  }
+  /* Welcome is the page itself, so it has no box: its title and steps sit on the ground. */
+  .ss-card[data-home="welcome"] {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 8px 0 0 !important;
+  }
+
+  /* The title bar. A window's first row becomes its bar when that row really is
+     a title: an icon beside words, or an uppercase label. Panels that are list
+     items, like a poll in a list, open with content and stay as they are.
+     The bar bleeds to the frame, so it cancels the panel's own padding. */
+  .glass-panel, .ss-card { --ss-pad: 1.5rem; }
+  .glass-panel.p-4, .ss-card.p-4 { --ss-pad: 1rem; }
+  .glass-panel.p-5, .ss-card.p-5 { --ss-pad: 1.25rem; }
+  .glass-panel.p-6, .ss-card.p-6 { --ss-pad: 1.5rem; }
+  .glass-panel.p-8, .ss-card.p-8 { --ss-pad: 2rem; }
+  @media (min-width: 640px) {
+    .glass-panel[class*="sm:p-8"], .ss-card[class*="sm:p-8"] { --ss-pad: 2rem; }
+  }
+  :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    width: calc(100% + var(--ss-pad) * 2) !important;
+    max-width: none !important;
+    min-height: 34px;
+    margin: calc(var(--ss-pad) * -1) calc(var(--ss-pad) * -1) 16px !important;
+    padding: 6px calc(var(--ss-pad) * .6) !important;
+    background: var(--ss-line) !important;
+    color: var(--ss-on-line) !important;
+    font-family: var(--ss-mono) !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: var(--ss-bar-track, .1em) !important;
+    text-transform: uppercase;
+  }
+  /* Words and icons in the bar. Keys and filled buttons keep their own colours. */
+  :scope[data-ss-edition] :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) :is(span, h2, h3, h4, p, svg, svg *):not(button *, .ss-key *, [class*="bg-"], [class*="text-green-"], [class*="text-green-"] *, [class*="text-emerald-"], [class*="text-emerald-"] *) {
+    color: var(--ss-on-line) !important;
+    font-family: var(--ss-mono) !important;
+    font-size: 12px !important;
+    letter-spacing: var(--ss-bar-track, .1em) !important;
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+  /* The reskin's word colours must not paint over the name the dock look colours. */
+  :scope[data-ss-edition][data-ss-edition] [data-chat="user"][class*="text-zinc-"] { color: var(--name-ink, var(--ss-line)) !important; }
+  /* Paper's row boxes stay off a chat message: its rule underneath already parts them. */
+  :scope[data-ss-edition="paper"][data-ss-edition="paper"] [data-chat="row"] { background-color: var(--chat-row-bg, transparent) !important; }
+  /* A field drawn by its wrapper: the input inside it is not a second field. */
+  :scope[data-ss-edition][data-ss-edition] [class*="bg-zinc-900"] > input.bg-transparent { background: transparent !important; }
+
+  /* The Chat dock's windows. The chat window has no padding of its own, so its
+     bar simply sits on the top edge. */
+  .glass-panel > .ss-winbar { flex: none; }
+  :scope[data-ss-edition][data-ss-edition] .glass-panel.glass-panel > div.ss-winbar.ss-winbar--flush {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 6px 14px !important;
+  }
+
+  /* The date in the Last stream bar sits at the right, beside the mark. */
+  .glass-panel[data-plan-recap] > div:first-child::after { margin-left: 0 !important; }
+  /* The Connections cards: a platform tile, its name and its state, all on the left. */
+  .glass-panel > div.mb-6:first-child:has(h3) > div:last-child:not(:first-child) { margin-left: 0 !important; }
+  .glass-panel > div.mb-6:first-child:has(h3)::after { margin-left: auto !important; }
+  .glass-panel > div.mb-6:first-child:has(h3) :is(div, h3) { margin: 0 !important; }
+  .glass-panel > div.mb-6:first-child:has(h3) div:has(> h3) { display: flex; align-items: center; gap: 10px; }
+  .glass-panel > div.mb-6:first-child:has(h3) div:has(> h3) ~ *, .glass-panel > div.mb-6:first-child:has(h3) > div:only-child { display: flex; align-items: center; gap: 10px; }
+  .glass-panel > div.mb-6:first-child:has(h3) div[class*="p-3"] { padding: 4px !important; flex: none; }
+  .glass-panel > div.mb-6:first-child:has(h3) div[class*="p-3"] svg { width: 16px; height: 16px; }
+  /* A tinted icon square in the bar becomes a small solid chip. */
+  :scope[data-ss-edition][data-ss-edition] .glass-panel > div.mb-6:first-child:has(h3) > div.w-12:first-child {
+    width: 26px !important;
+    height: 26px !important;
+    flex: none;
+    background-color: var(--ss-part) !important;
+  }
+  :scope[data-ss-edition][data-ss-edition] .glass-panel > div.mb-6:first-child:has(h3) > div.w-12:first-child svg { width: 16px; height: 16px; color: var(--ss-line) !important; }
+
+  /* A status chip in the bar sits on a part, so its words stay readable. */
+  :scope[data-ss-edition] :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) > span[class*="bg-"] {
+    background-color: var(--ss-part) !important;
+    color: var(--ss-line) !important;
+    border-color: transparent !important;
+  }
+  /* A bar that is itself a button, like a section that folds. */
+  :scope[data-ss-edition] .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > button:first-child:has(> svg:first-child + :is(span, div)) :is(span, svg, svg *) {
+    color: var(--ss-on-line) !important;
+    font-family: var(--ss-mono) !important;
+    font-size: 12px !important;
+    letter-spacing: .1em !important;
+  }
+  /* A success word in a bar is an LCD chip in both editions, as in 05. */
+  :scope[data-ss-edition] .glass-panel > div.mb-6:first-child:has(h3) :is([class*="text-green-"], [class*="text-emerald-"]):not(svg, svg *) {
+    background-color: var(--ss-mint) !important;
+    color: var(--ss-lcd-ink) !important;
+    padding-inline: 4px;
+  }
+  :scope[data-ss-edition] .glass-panel > div.mb-6:first-child:has(h3) :is([class*="text-green-"], [class*="text-emerald-"]) svg { color: var(--ss-lcd-ink) !important; }
+  /* An icon on a small chip in the bar takes the chip's colour, not the bar's. */
+  :scope[data-ss-edition][data-ss-edition] :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) [class*="bg-"]:not([class*="bg-["]) :is(svg, svg *) { color: var(--ss-line) !important; }
+  /* Folded, the bar is all there is: the window closes up to it. */
+  .glass-panel:has(> button:only-child) { padding-block: 0 !important; }
+  :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ):only-child { margin-block: 0 !important; }
+
+  /* A plain text button in the bar reads like the bar. */
+  :scope[data-ss-edition] :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) button:not(.ss-key, [class*="bg-"], [class*="border-"]) { color: var(--ss-on-line) !important; }
+  /* Keys in a bar are small and sit at the right end, whether they are direct
+     children or wrapped in a group. */
+  :scope[data-ss-edition] :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) :is(.ss-key, > button) {
+    min-height: 26px !important;
+    padding: 2px 10px !important;
+    font-size: 11px !important;
+    box-shadow: none !important;
+  }
+  :scope[data-ss-edition] :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) .ss-key--primary:not(:disabled) { box-shadow: inset 4px 0 0 var(--ss-house) !important; padding-left: 12px !important; }
+  :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) > :is(button, div):last-child:not(:first-child) { margin-left: auto; }
+  :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ) > div:last-child:not(:first-child) { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  /* The right end of the bar. Hatch, not a close box: these windows do not close,
+     and a ✕ that does nothing is a broken key. */
+  :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  )::after {
+    content: var(--ss-bar-end-mark, "");
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: var(--ss-bar-end-size, 16px);
+    height: var(--ss-bar-end-size, 16px);
+    background: var(--ss-bar-end, repeating-linear-gradient(-45deg, var(--ss-on-line) 0 2px, transparent 2px 5px));
+    color: var(--ss-bar-end-ink, inherit);
+    font: 700 12px/1 var(--ss-mono);
+    letter-spacing: 0;
+  }
+
+  /* With no keys in the bar, the hatch takes the right end by itself. */
+  :is(
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(div, button, header):first-child:has(> svg:first-child + :is(span, h2, h3, h4, div)),
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(span, div, p, h2, h3).uppercase:first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > :is(h2, h3):first-child,
+    .glass-panel:not(.glass-panel .glass-panel, .flex:not(.flex-col)) > div.mb-6:first-child:has(h3),
+    .ss-card[data-home] > div:first-child:has(> p.uppercase:first-child),
+    .ss-card[data-home] > p.uppercase:first-child
+  ):not(:has(> :is(button, div):last-child:not(:first-child)))::after { margin-left: auto; }
+
+  /* ------------------------------------------------ Tier 2: parts inside it. */
+  .glass-panel .glass-panel {
+    background: var(--ss-part) !important;
+    border: 1px solid var(--ss-part-edge) !important;
+    box-shadow: none !important;
+  }
+
+  /* Fields: a well, no outline on zinc until they are touched. */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), textarea, select {
+    background-color: var(--ss-part) !important;
+    color: var(--ss-line) !important;
+    border: 2px solid var(--ss-field-edge) !important;
+  }
+  /* In a part already, a field changes fill so it stays visible. */
+  :is(.glass-panel .glass-panel, [class^="bg-zinc-9"], [class*=" bg-zinc-9"])
+    :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), textarea, select) {
+    background-color: var(--ss-field-in-part) !important;
+  }
+  input:hover:not(:disabled), textarea:hover:not(:disabled), select:hover:not(:disabled) {
+    border-color: var(--ss-house) !important;
+  }
+  ::placeholder { color: var(--ss-muted) !important; opacity: 1; }
+  /* A bare field inside a framed row: the row is the part. */
+  input.bg-transparent, textarea.bg-transparent,
+  input.bg-transparent:hover, textarea.bg-transparent:hover {
+    border-color: transparent !important;
+    background-color: transparent !important;
+  }
+  /* The browser's autofill paints a pale box: keep the well. */
+  input:-webkit-autofill {
+    -webkit-text-fill-color: var(--ss-line) !important;
+    box-shadow: 0 0 0 1000px var(--ss-part) inset !important;
+  }
+
+  /* Plain buttons that were outlined: filled parts, like the keys below. */
+  button[class*="border-zinc"]:not(.ss-key, :disabled),
+  button[class*="border-white/"]:not(.ss-key, :disabled) {
+    background-color: var(--ss-key) !important;
+    border-color: var(--ss-part-edge) !important;
+  }
+  button[class*="border-zinc"]:hover:not(.ss-key, :disabled),
+  button[class*="border-white/"]:hover:not(.ss-key, :disabled) {
+    border-color: var(--ss-house) !important;
+  }
+  /* Selected: back on the well, where rose words pass. */
+  button.text-current-accent[class*="border-"]:not(.ss-key, :disabled) { background-color: var(--ss-part) !important; }
+
+  /* 12.1 White on rose needs 18 px bold. A selected tab or chip is smaller, so
+     it takes the manual's fix: the colour becomes a stripe beside the words.
+     Toggles are short and hold no words, and stay filled. */
+  button.bg-current-accent:not(.ss-key, [class*=" h-4"], [class*=" h-5"], [class*=" h-6"], [class^="h-4"], [class^="h-5"], [class^="h-6"]) {
+    background-color: var(--ss-part) !important;
+    color: var(--ss-line) !important;
+    box-shadow: inset 6px 0 0 var(--ss-house) !important;
+  }
+
+  /* The same for a small badge with a word or a number on it. A toggle holds
+     its knob, and a progress bar holds nothing, so neither is touched. */
+  span.bg-current-accent:not(:empty, :has(> .absolute)) {
+    background-color: var(--ss-part) !important;
+    color: var(--ss-line) !important;
+    box-shadow: inset 3px 0 0 var(--ss-house);
+    padding-left: 7px;
+  }
+
+  /* A switch keeps a knob you can see: the paper fill would match it to its track. */
+  :scope[data-ss-edition="paper"][data-ss-edition="paper"] .rounded-full.p-1 > .bg-white.rounded-full { background-color: var(--ss-line) !important; }
+
+  /* A platform's own tile keeps its colour and its white: 07, platforms follow
+     their own rules. */
+  [class*="bg-[#"][class*="text-white"] { color: #fff !important; }
+
+  /* ------------------------------------------------ 05 Interface states on keys. */
+  .ss-key {
+    background: var(--ss-key) !important;
+    color: var(--ss-line) !important;
+    border: 2px solid var(--ss-part-edge) !important;
+    box-shadow: 3px 3px 0 var(--ss-shadow) !important;
+    font-family: var(--ss-mono) !important;
+    font-weight: 700 !important;
+    letter-spacing: .08em !important;
+    min-height: 44px;
+  }
+  .ss-key:hover:not(:disabled) {
+    border-color: var(--ss-house) !important;
+    box-shadow: 3px 3px 0 var(--ss-house) !important;
+    opacity: 1 !important;
+  }
+  .ss-key:active:not(:disabled) {
+    box-shadow: 1px 1px 0 var(--ss-shadow) !important;
+    transform: translate(2px, 2px) !important;
+  }
+  /* 05 Disabled: muted words, dashed, no shadow. This sets the ground too, or a
+     disabled danger key keeps marigold under stone words, which is 1.24:1. */
+  .ss-key:disabled {
+    background: transparent !important;
+    color: var(--ss-muted) !important;
+    border: 2px dashed var(--ss-muted) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+  }
+  .ss-key--primary:not(:disabled) { box-shadow: inset 8px 0 0 var(--ss-house), 3px 3px 0 var(--ss-shadow) !important; padding-left: 20px; }
+  .ss-key--primary:hover:not(:disabled) { box-shadow: inset 8px 0 0 var(--ss-house), 3px 3px 0 var(--ss-house) !important; }
+  .ss-key--large.ss-key--primary:not(:disabled) {
+    background: var(--ss-house) !important;
+    color: #fff !important;
+    box-shadow: 3px 3px 0 var(--ss-shadow) !important;
+    font-size: 18px !important;
+    padding-left: 24px;
+  }
+  /* 05 Warning: marigold takes ink, 8.43:1, in both editions. */
+  .ss-key--danger:not(:disabled) {
+    background: var(--ss-marigold) !important;
+    color: var(--ss-ink) !important;
+  }
+  .ss-key--danger:not(:disabled) * { color: inherit !important; }
+  .ss-key--ghost:not(:disabled) {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* A list inside a home card: each row is a part of its own, so items separate
+     by a box and a gap instead of by a line. */
+  .ss-card[data-home] :is(li, div)[class*="border-t"] {
+    background-color: var(--ss-part) !important;
+    border-top: 0 !important;
+    padding-inline: 16px;
+    margin-top: 8px;
+  }
+  /* The step number or tick stays visible on that box. */
+  :scope[data-ss-edition] [data-home-step] > span:first-child { background-color: var(--ss-key-in-part) !important; }
+  /* 05 Success: mint LCD with LCD ink, plus its mark. */
+  :scope[data-ss-edition] [data-home-step][data-done="yes"] > span:first-child { background-color: var(--ss-mint) !important; color: var(--ss-lcd-ink) !important; }
+  :scope[data-ss-edition] [data-home-step][data-done="yes"] > span:first-child svg { color: var(--ss-lcd-ink) !important; }
+  [data-home-step] .ss-key:not(:disabled, .ss-key--danger) { background-color: var(--ss-key-in-part) !important; }
+
+  /* In a part, a key changes fill so it stays visible, like a field does. */
+  :is(.glass-panel .glass-panel, [class^="bg-zinc-9"], [class*=" bg-zinc-9"]) :is(.ss-key:not(:disabled, .ss-key--danger, .ss-key--ghost, .ss-key--large), button[class*="border-zinc"]:not(.ss-key, :disabled), button[class*="border-white/"]:not(.ss-key, :disabled)) {
+    background-color: var(--ss-key-in-part) !important;
+  }
+
+  /* ------------------------------------------------ LCD readouts. */
+  [data-home="numbers"] .text-3xl {
+    display: inline-block;
+    min-width: 100%;
+    margin-top: 2px;
+    padding: 4px 10px;
+    background: var(--ss-mint);
+    color: var(--ss-lcd-ink) !important;
+    font-family: var(--ss-mono) !important;
+    font-weight: 700 !important;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+  }
+
+  /* ------------------------------------------------ The menu. */
+  .ss-nav { background: var(--ss-nav) !important; border-right: 2px solid var(--ss-nav-edge) !important; }
+  [data-nav-section] button { min-height: 36px; }
+  /* The spec codes need room: the old 16 rem cut labels off and wrapped sections. */
+  .ss-nav.w-64 { width: 19rem !important; }
+  [data-nav-item] { gap: 10px !important; padding-inline: 12px !important; }
+  [data-nav-section-toggle] { gap: 8px; padding-inline: 12px !important; white-space: nowrap; }
+  /* Screens read in the line colour: the old grey was too quiet to scan. */
+  :scope[data-ss-edition] [data-nav-item] :is(span.truncate, svg, svg *) { color: var(--ss-line) !important; }
+
+  /* The screen you are on is the strongest thing in the menu: a line-colour fill,
+     a rose stripe, a hard shadow and a chevron. Not a rose fill: white on rose is
+     3.67:1 and ink on rose 4.06:1, and menu words are 14 px. */
+  :scope[data-ss-edition] [data-nav-item].border-current-accent {
+    background-color: var(--ss-line) !important;
+    border-left: 6px solid var(--ss-house) !important;
+    box-shadow: 3px 3px 0 var(--ss-shadow) !important;
+    color: var(--ss-on-line) !important;
+  }
+  :scope[data-ss-edition] [data-nav-item].border-current-accent :is(.ss-code, span.truncate, svg, svg *) { color: var(--ss-on-line) !important; }
+  :scope[data-ss-edition] [data-nav-item].border-current-accent span.truncate { font-weight: 700; }
+  /* The icon's wrapper is rose text in the markup, so the small-rose chip would
+     paint a dark block behind the icon. The fill already carries it. */
+  :scope[data-ss-edition] [data-nav-item].border-current-accent > span:not([data-nav-number]) { background-color: transparent !important; }
+  /* Paper turns rose icons ink, which would vanish on this fill: this one must win. */
+  :scope[data-ss-edition][data-ss-edition] .ss-nav[class] [data-nav-item].border-current-accent.border-current-accent span :is(svg, svg *) { color: var(--ss-on-line) !important; }
+  [data-nav-item].border-current-accent::after {
+    content: "»";
+    flex: none;
+    font-family: var(--ss-mono);
+    font-weight: 700;
+    color: var(--ss-on-line);
+  }
+
+  /* Sections: a numbered heading you can read, ruled off from the next. */
+  [data-nav-section] { border-top: 1px solid var(--ss-nav-rule); padding-top: 4px !important; margin-top: 4px; }
+  [data-nav-section]:first-child { border-top: 0; margin-top: 0; }
+  :scope[data-ss-edition] [data-nav-section-toggle] {
+    font-family: "Montserrat", sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--ss-line) !important;
+  }
+  /* The fold mark is a plain + or −, set in mono. */
+  [data-nav-section-toggle] > svg:last-child { display: none; }
+  [data-nav-section-toggle]::after {
+    content: "+";
+    flex: none;
+    font-family: var(--ss-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ss-line);
+  }
+  [data-nav-section-toggle][aria-expanded="true"]::after { content: "−"; }
+
+  /* ------------------------------------------------ Chat rows. */
+  /* The moderator button took a column of its own, so a row with it was 24 px
+     narrower than one without. It sits on top of the row now. */
+  :has(> [data-mod-menu]) { position: relative; }
+  [data-mod-menu] { position: absolute !important; top: 6px; right: 6px; z-index: 5; }
+
+  /* ------------------------------------------------ The loading screen. */
+  .ss-intro { background-color: var(--ss-ground) !important; }
+  .ss-intro [class*="blur-"] { display: none; }
+  .ss-intro .absolute.inset-0[class*="border-4"] { border-color: var(--ss-house) !important; }
+  .ss-intro .absolute.inset-2[class*="border-4"] { border-color: var(--ss-line) !important; }
+  .ss-intro .h-1 { background-color: var(--ss-house) !important; }
+
+  /* ------------------------------------------------ Paper only. */
+
+  /* The dock's background is a setting made for dark; paper sets its own, or
+     ink words land on a near-black ground. */
+  :scope[data-ss-edition="paper"] .ss-dock { background-color: var(--ss-ground) !important; }
+
+  /* The light theme's own classes, and solid whites, become paper fills.
+     Toggle knobs are absolute and stay white. */
+  :scope[data-ss-edition="paper"] :is([class^="bg-zinc-50"], [class*=" bg-zinc-50"],
+    [class^="bg-zinc-100"], [class*=" bg-zinc-100"], [class^="bg-zinc-200"], [class*=" bg-zinc-200"],
+    [class^="bg-white"]:not(.absolute, [class^="bg-white/"]), [class*=" bg-white"]:not(.absolute, [class*=" bg-white/"])):not(.glass-panel, .ss-card[data-home], .ss-root) {
+    background-color: var(--ss-part) !important;
+  }
+  :scope[data-ss-edition="paper"] .glass-panel .glass-panel { background-color: var(--ss-part) !important; }
+  :scope[data-ss-edition="paper"] :is([class^="text-zinc-800"], [class*=" text-zinc-800"],
+    [class^="text-zinc-900"], [class*=" text-zinc-900"], [class^="text-black"], [class*=" text-black"]) {
+    color: var(--ss-ink) !important;
+  }
+  /* A chat box's colours come from dock settings made for dark. */
+  :scope[data-ss-edition="paper"] [data-chat="row"] {
+    background-color: var(--ss-part) !important;
+    color: var(--ss-ink) !important;
+  }
+
+  /* Colour tints have no place on paper: a status keeps its word and its icon. */
+  :scope[data-ss-edition="paper"] :is([class*=" bg-amber-"], [class^="bg-amber-"], [class*=" bg-emerald-"], [class^="bg-emerald-"],
+    [class*=" bg-rose-"], [class^="bg-rose-"], [class*=" bg-red-"], [class^="bg-red-"],
+    [class*=" bg-sky-"], [class^="bg-sky-"], [class*=" bg-purple-"], [class^="bg-purple-"], [class*=" bg-blue-"], [class^="bg-blue-"])[class*="/"] {
+    background-color: var(--ss-part) !important;
+  }
+  :scope[data-ss-edition="paper"] :is([class*=" border-amber-"], [class^="border-amber-"], [class*=" border-emerald-"], [class^="border-emerald-"],
+    [class*=" border-rose-"], [class^="border-rose-"], [class*=" border-red-"], [class^="border-red-"],
+    [class*=" border-sky-"], [class^="border-sky-"], [class*=" border-purple-"], [class^="border-purple-"])[class*="/"] {
+    border-color: var(--ss-hair) !important;
+  }
+
+  /* 12.1 Words. Rose 2.97:1, marigold 1.43:1, sky and violet about the same:
+     all fail on paper, so words turn ink, and so do their icons. */
+  :scope[data-ss-edition="paper"] :is(.text-current-accent, [class*=" text-rose-"], [class^="text-rose-"], [class*=" text-red-"], [class^="text-red-"],
+    [class*=" text-sky-"], [class^="text-sky-"], [class*=" text-blue-"], [class^="text-blue-"],
+    [class*=" text-purple-"], [class^="text-purple-"]):not(svg, svg *) {
+    color: var(--ss-ink) !important;
+  }
+  /* Those words are ink now, so the chip they need on zinc would only be a box. */
+  :scope[data-ss-edition="paper"] .text-current-accent:not(svg, svg *, [class*="bg-"]) { background-color: transparent; }
+  /* Rose is 2.97:1 on cream and 2.55:1 on the paper well, under the 3:1 an icon needs. */
+  :scope[data-ss-edition="paper"] :is(svg.text-current-accent, svg[class*="text-rose-"], .text-current-accent svg, [class*="text-rose-"] svg) { color: var(--ss-ink) !important; }
+  :scope[data-ss-edition="paper"] :is(.ss-nav, .ss-key, .glass-panel .glass-panel, [class*="bg-zinc-"]:not(.glass-panel), [class*="bg-black"], [class*="bg-white"]:not(.glass-panel), [class*="bg-current-accent/"], button[class*="border-zinc"]) :is(svg.text-current-accent, svg[class*="text-rose-"], .text-current-accent svg, [class*="text-rose-"] svg) {
+    color: var(--ss-ink) !important;
+  }
+  /* Any other icon drawn in rose on a well, through an inherited colour. */
+  :scope[data-ss-edition="paper"] :is(.glass-panel .glass-panel, [class*="bg-black/"]) svg { color: var(--ss-ink); }
+  /* Discord's pale mention colour was made for its dark chat. */
+  :scope[data-ss-edition="paper"] :is([style*="rgb(201, 205, 251)"], [style*="c9cdfb"]) { color: var(--ss-ink) !important; }
+
+  :scope[data-ss-edition="paper"] :is([class*=" text-amber-"], [class^="text-amber-"], [class*=" text-yellow-"], [class^="text-yellow-"],
+    [class*=" text-orange-"], [class^="text-orange-"]) {
+    color: var(--ss-ink) !important;
+  }
+  /* Icons in those other colours fail 3:1 on the well too. */
+  :scope[data-ss-edition="paper"] svg:is([class*=" text-sky-"], [class*=" text-blue-"], [class*=" text-purple-"]) { color: var(--ss-ink) !important; }
+  /* 05 Success: mint LCD with LCD ink, 10.58:1. The chip green is under 4.5:1 on
+     the paper well, so it stays on icons, where 3:1 is enough. */
+  :scope[data-ss-edition="paper"] :is([class*=" text-emerald-"], [class^="text-emerald-"], [class*=" text-green-"], [class^="text-green-"]):not(svg, svg *) {
+    background-color: var(--ss-mint) !important;
+    color: var(--ss-lcd-ink) !important;
+    padding-inline: 4px;
+  }
+  :scope[data-ss-edition="paper"] svg:is([class*=" text-emerald-"], [class^="text-emerald-"], [class*=" text-green-"], [class^="text-green-"]) { color: var(--ss-ok) !important; }
+  /* The loading screen keeps its squares and its rose: the rules above are for
+     screens, and would fade the rings into the ground. */
+  :scope[data-ss-edition="paper"] .ss-intro .absolute.inset-0[class*="border-4"] { border-color: var(--ss-house) !important; }
+  :scope[data-ss-edition="paper"] .ss-intro .absolute.inset-2[class*="border-4"] { border-color: var(--ss-line) !important; }
+  :scope[data-ss-edition="paper"] .ss-intro :is(svg, svg *) { color: var(--ss-house) !important; }
+  /* The bronze medal keeps its white icon. */
+  :scope[data-ss-edition="paper"] :is(.bg-orange-700, .bg-orange-700 *) { color: #fff !important; }
+}
+
+/* The top bar and the numbered menu are hidden in the markup, so nothing shows
+   them without this file. */
+@media (min-width: 768px) {
+  .ss-ui .ss-root { padding-top: 34px; }
+  .ss-ui .ss-topbar {
+    display: flex;
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 34px;
+    z-index: 75;
+    align-items: center;
+    gap: 16px;
+    padding-inline: 14px;
+    background: var(--ss-line);
+    color: var(--ss-on-line);
+    font-family: var(--ss-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+}
+@media (min-width: 768px) {
+  .ss-ui main > div[class*="md:h-dvh"] { height: calc(100dvh - 34px) !important; }
+}
+.ss-ui .ss-topbar-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ss-ui .ss-topbar-spec { font-weight: 400; letter-spacing: .08em; }
+.ss-ui .ss-marks { display: inline-flex; gap: 5px; }
+.ss-ui .ss-marks i { display: block; width: 12px; height: 12px; border: 2px solid var(--ss-on-line); }
+.ss-ui .ss-marks i:first-child { background: var(--ss-house); border-color: var(--ss-house); }
+.ss-ui .ss-onair { display: inline-flex; align-items: center; gap: 8px; }
+.ss-ui .ss-onair i { display: block; width: 10px; height: 10px; border: 2px solid var(--ss-on-line); }
+.ss-ui .ss-onair.is-live i { background: var(--ss-house); border-color: var(--ss-house); }
+
+/* Spec index: 01 for a section, 1-01 for a screen. */
+.ss-ui .ss-code { display: inline; flex: none; font-family: var(--ss-mono); font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--ss-muted); }
+/* The section number is the accent. Rose needs a dark ground to pass at this size,
+   4.63:1 on Well, so it sits on a Well chip in both editions. */
+.ss-ui [data-nav-section-toggle] .ss-code {
+  display: inline-block;
+  min-width: 24px;
+  padding: 1px 4px;
+  background: #1D1C1C;
+  color: var(--ss-house);
+  font-size: 12px;
+  letter-spacing: .02em;
+  text-align: center;
+}
+.ss-ui .ss-twin { display: inline; margin-left: 8px; font-family: "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--ss-muted); }
+
+/* ---------------------------------------------------- The dock in OBS */
+/* Chat is one window, as on the Chat dock screen. The default black gives way
+   to the edition's ground; a colour somebody picked stays theirs. */
+.ss-ui .ss-dock[style*="rgb(9, 9, 11)"] { background-color: var(--ss-ground) !important; }
+.ss-ui .ss-dock [data-dock-window] {
+  border: 2px solid var(--ss-line);
+  box-shadow: 4px 4px 0 var(--ss-shadow);
+  margin: 0 4px 4px 0;
+  background: var(--ss-ground);
+}
+.ss-ui .ss-dock [data-dock-window] > .ss-winbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 4px 10px;
+  background: var(--ss-line);
+  color: var(--ss-on-line);
+  font: 700 12px/1.2 var(--ss-mono);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ss-ui .ss-dock [data-dock-window] > .ss-winbar::after {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  background: repeating-linear-gradient(-45deg, var(--ss-on-line) 0 2px, transparent 2px 5px);
+}
+.ss-ui .ss-dock [data-dock-window] > .ss-winbar svg { flex: none; }
+.ss-ui .ss-dock [data-dock-window] > .ss-winbar span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ss-ui .ss-dock [data-dock-footer] > div { flex-wrap: wrap; }
+.ss-ui .ss-dock [data-dock-footer] {
+  margin-top: 0;
+  padding: 8px;
+  border-top: 2px solid var(--ss-line);
+}
+
+/* ---------------------------------------------------- Pages fill the screen */
+/* A page sits on the ground, so it has no reason to stop at 1280 px. Only long
+   sentences keep a measure, so a line of text stays readable on a wide screen. */
+.ss-ui main > div.max-w-7xl { max-width: none; }
+.ss-ui [data-home].max-w-6xl { max-width: none; }
+.ss-ui .glass-panel > p:not(.text-center), .ss-ui .glass-panel > div > p:not(.text-center) { max-width: 90ch; }
+
+/* ---------------------------------------------------- The page line */
+/* It sits in the margin above the screen, so a page reads as a page and nothing
+   moves down: screens that fill the height keep their height. */
+@media (min-width: 768px) {
+  .ss-ui .ss-pagehead {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: absolute;
+    top: 6px;
+    left: 40px;
+    right: 40px;
+    height: 28px;
+    border-bottom: 2px solid var(--ss-line);
+    color: var(--ss-line);
+    font-family: var(--ss-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .ss-ui .ss-pagehead-twin { font-family: "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif; font-size: 11px; letter-spacing: .06em; color: var(--ss-muted); }
+  /* The guide link shares the line, at its right end. */
+  .ss-ui [data-screen-guide] { top: 6px; right: 40px; height: 26px; font-size: 11px; }
+}
+
+/* ---------------------------------------------------- Home: LCD strip and ON AIR */
+.ss-ui .ss-onair-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--ss-part);
+  border: 2px dashed var(--ss-muted);
+  color: var(--ss-line);
+}
+.ss-ui .ss-onair-tile b { font-family: var(--ss-disp); font-size: 24px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: .02em; }
+.ss-ui .ss-onair-tile span { font-family: var(--ss-mono); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; overflow-wrap: anywhere; }
+/* Live: white on rose passes at this size, 24 px bold. The small line sits on ink. */
+.ss-ui .ss-onair-tile.is-live { background: var(--ss-house); border: 2px solid var(--ss-line); box-shadow: 4px 4px 0 var(--ss-shadow); padding: 12px 12px 0; }
+.ss-ui .ss-onair-tile.is-live b { color: #fff; }
+.ss-ui .ss-onair-tile.is-live span { margin-inline: -12px; padding: 4px 12px; background: var(--ss-line); color: var(--ss-on-line); }
+
+/* ---------------------------------------------------- First run, as a leaflet */
+.ss-ui [data-home="welcome"] { position: relative; }
+.ss-ui [data-home="welcome"] h1 {
+  padding-right: 240px;
+  font-family: "Montserrat", sans-serif !important;
+  font-size: 32px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.01em;
+  text-transform: none;
+}
+.ss-ui [data-home="welcome"] > h1 + p { padding-right: 240px; }
+.ss-ui [data-home="welcome"] > .h-2 {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: 216px;
+  height: 10px;
+  margin: 0;
+  background: var(--ss-part) !important;
+}
+.ss-ui [data-home-progress] { display: none; }
+.ss-ui .ss-leaflet { margin-top: 20px; padding-top: 4px; border-top: 2px solid var(--ss-line); }
+.ss-ui .ss-progress {
+  display: block;
+  position: absolute;
+  top: 8px;
+  right: 0;
+  width: 216px;
+  padding: 4px 12px;
+  text-align: right;
+  background: var(--ss-mint);
+  color: var(--ss-lcd-ink);
+  font-family: var(--ss-mono);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ss-ui .ss-done {
+  display: inline-block;
+  flex: none;
+  padding: 4px 8px;
+  background: var(--ss-mint);
+  color: var(--ss-lcd-ink);
+  font-family: var(--ss-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ss-ui [data-home-step] .line-through { text-decoration: none; }
+@media (min-width: 1024px) {
+  .ss-ui .ss-leaflet { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 16px; align-items: start; }
+  .ss-ui .ss-figure { display: grid; grid-template-rows: auto 1fr; justify-items: center; align-self: stretch; gap: 12px; margin-top: 16px; padding: 12px 12px 16px; background: var(--ss-part); }
+  .ss-ui .ss-figure img { align-self: center; }
+  .ss-ui .ss-figure-label { justify-self: stretch; margin: 0; font-family: var(--ss-mono); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ss-line); }
+  .ss-ui .ss-figure img { display: block; image-rendering: pixelated; }
+}
+
+/* ---------------------------------------------------- Themes as cartridges */
+.ss-ui .ss-carts { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)) !important; gap: 14px !important; align-items: end; }
+@scope (.ss-ui) {
+  :scope[data-ss-edition] .ss-cart {
+    display: grid !important;
+    grid-template-rows: 1fr auto auto;
+    gap: 8px;
+    aspect-ratio: 4 / 5;
+    padding: 10px !important;
+    background: #1D1C1C !important;
+    border: 2px solid transparent !important;
+    box-shadow: 4px 4px 0 var(--ss-shadow) !important;
+    text-align: left;
+  }
+  :scope[data-ss-edition] .ss-cart[data-cart-light="yes"] { background: #F4E6C8 !important; border-color: #27272A !important; }
+  .ss-cart > div:first-child { display: none !important; }
+  :scope[data-ss-edition] .ss-cart h4 { align-self: start; margin: 0; font-family: var(--ss-mono) !important; font-size: 11px !important; font-weight: 700 !important; letter-spacing: .08em; line-height: 1.3; color: #F2EEE9 !important; }
+  :scope[data-ss-edition] .ss-cart[data-cart-light="yes"] h4 { color: #27272A !important; }
+  .ss-cart-strip { display: block; height: 28px; }
+  :scope[data-ss-edition] .ss-cart-foot { display: flex; justify-content: space-between; gap: 6px; font-family: var(--ss-mono); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #B5AEA6 !important; }
+  :scope[data-ss-edition] .ss-cart[data-cart-light="yes"] .ss-cart-foot { color: #5C5650 !important; }
+  /* Inserted: it stands proud of the row. */
+  :scope[data-ss-edition] .ss-cart[data-cart-on="yes"] { transform: translateY(-8px); border-color: var(--ss-house) !important; box-shadow: 6px 6px 0 var(--ss-shadow) !important; }
+  :scope[data-ss-edition] .ss-cart:hover { border-color: var(--ss-house) !important; }
+
+  /* ---------------------------------------------------- Deck keys as keycaps */
+  :scope[data-ss-edition] .ss-cap {
+    background-color: var(--ss-key) !important;
+    border-color: transparent !important;
+    box-shadow: 3px 3px 0 var(--ss-shadow);
+    font-family: var(--ss-mono);
+  }
+  :scope[data-ss-edition] .ss-cap:hover:not(:disabled) { border-color: var(--ss-house) !important; box-shadow: 3px 3px 0 var(--ss-house); }
+  :scope[data-ss-edition] .ss-cap:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ss-shadow); transform: translate(2px, 2px); }
+  :scope[data-ss-edition] .ss-cap :is(span, svg, svg *) { color: var(--ss-line) !important; font-family: var(--ss-mono) !important; }
+}
+
+/* The dock's key page is ours, unlike the chat dock, whose ground is a setting. */
+.ss-ui .h-dvh[class*="bg-[#0a0a0a]"] { background-color: var(--ss-ground) !important; }
+
+/* ---------------------------------------------------- Empty states: a blank tape */
+.ss-ui .ss-tape { display: grid; justify-items: center; gap: 10px; margin-bottom: 12px; }
+.ss-ui .ss-tape p { margin: 0; font-family: var(--ss-mono); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ss-line); }
+.ss-ui :has(+ .ss-tape) { display: none !important; }
+
+/* ---------------------------------------------------- The nameplate */
+.ss-ui .ss-nameplate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0;
+  margin-top: 16px;
+  background: var(--ss-part);
+  color: var(--ss-line);
+}
+.ss-ui .ss-nameplate > div { display: grid; gap: 2px; padding: 10px 16px; border-right: 1px solid var(--ss-muted); }
+.ss-ui .ss-nameplate small { font-family: var(--ss-mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ss-muted); }
+.ss-ui .ss-nameplate b { font-family: var(--ss-disp); font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ss-ui .ss-nameplate i {
+  flex: 1;
+  min-width: 96px;
+  margin: 10px 16px;
+  background: repeating-linear-gradient(90deg, var(--ss-line) 0 2px, transparent 2px 4px, var(--ss-line) 4px 7px, transparent 7px 9px, var(--ss-line) 9px 10px, transparent 10px 13px);
+}
+.ss-ui .ss-nameplate span {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  background: var(--ss-line);
+  color: var(--ss-on-line);
+  font-family: "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* 11.3 Reduced motion: moves become hard cuts. */
+/* The dashboard's own, not a preview's: an alert's entrance cut short would no longer show what viewers see. */
+@media (prefers-reduced-motion: reduce) {
+  @scope (.ss-ui) to (.canvas-stage, .ss-keep, [style*="linear-gradient(45deg"], [style*="rgb(11, 11, 14)"], [class*="bg-[#313338]"]) {
+    * { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+  }
+}

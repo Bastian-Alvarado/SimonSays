@@ -1,9 +1,26 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/readme/banner.png">
+    <img src="docs/readme/banner.gif" alt="Simon Systems SS-APP · SimonSays: stream automation that runs without a browser open, for Twitch, YouTube, TikTok, Discord, OBS and Spotify" width="100%">
+  </picture>
+</p>
+
 # SimonSays
 
 Multi-platform stream automation that **runs without a browser open**:
 Twitch, YouTube, TikTok LIVE, Discord, OBS and Spotify, driven by one small
 server you run on your own computer (or a spare phone or PC on your network).
 The web app is where you set it up; close it and everything keeps working.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/readme/arch.png">
+    <img src="docs/readme/arch.gif" alt="The server owns the platforms (Twitch, YouTube, TikTok, Discord, OBS, Spotify, DroidCam, TTS) and the engine; the config UI, chat dock and OBS overlay connect over one WebSocket and can all be closed" width="100%">
+  </picture>
+</p>
+
+<details>
+<summary>The same diagram as text</summary>
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -20,6 +37,8 @@ The web app is where you set it up; close it and everything keeps working.
    │ (closable)│       │ (closable) │     │  (closable) │
    └──────────┘        └────────────┘     └─────────────┘
 ```
+
+</details>
 
 ## What it does
 
@@ -65,9 +84,10 @@ value is mainly SimonSays itself.
 
 ## Getting started
 
-About half an hour from nothing to a first stream. The app also walks you
-through all of this itself, on its home screen and in **Guides**, in English
-and Spanish — this is the same path, written down. The SimonSays website,
+Installing takes a minute or two. Connecting your accounts and OBS takes
+about ten minutes more the first time, and the app walks you through it
+itself, on its home screen and in **Guides**, in English and Spanish. This
+is the same path, written down. The SimonSays website,
 linked under **About** on this page, has it step by step with pictures for
 Windows, Linux and Android phones, also in English and Spanish.
 
@@ -81,6 +101,10 @@ Windows, Linux and Android phones, also in English and Spanish.
   or Spotify if you want those too.
 
 ### 1. Install it
+
+<p align="center">
+  <img src="docs/readme/install.png" alt="Four ways to install: Windows (SimonSays-Setup.exe), Linux (install.sh or AppImage), Android (Termux, one command), or from source (npm run serve, Node 22 or newer)" width="100%">
+</p>
 
 On Windows, download **[SimonSays-Setup.exe](../../releases/latest/download/SimonSays-Setup.exe)**
 and run it. It brings everything SimonSays needs, Node included, and asks
@@ -355,7 +379,7 @@ To point a dev-mode UI at a server on another machine, append
 
 Twitch authorises whichever account your browser is already signed into, so
 clicking "Connect Bot" in the same window tends to reconnect your main account.
-The login now always shows Twitch's consent screen (`force_verify`), and warns
+The login always shows Twitch's consent screen (`force_verify`), and warns
 if the returning account is the one already connected as main — but the browser
 session is still the thing that decides.
 
@@ -418,23 +442,38 @@ second on a busy stream.
 ## Layout
 
 ```
+start.js          starts the server (what npm start, the tray and the
+                  installed copies run)
+
 server/           headless service — the whole application
   core/           event bus, atomic store, queues, logging
-  engine/         commands, cooldowns, conditions, steps, alerts, tags
-  platforms/      twitch, tiktok, youtube, discord, obs, spotify, droidcam, tts
+  engine/         commands, cooldowns, conditions, steps, alerts, tags,
+                  layouts, profiles, backups, the updater
+  platforms/      twitch, tiktok, youtube (chat and stream), discord (and
+                  voice), obs, spotify, droidcam, tts
   leveling/       unified XP + identity linking
-  api/            REST + WebSocket hub
+  api/            REST + WebSocket hub, sign-in
   scripts/smoke.js  end-to-end test, no network needed — runs scripts/smoke/,
                     a file per part of the app, on one engine, in order
 
-shared/           code both sides run: wire protocol, style presets,
-                  layer conditions and motion, dock built-ins
+shared/           code both sides run: wire protocol, style presets, looks,
+                  layer conditions and motion, dock built-ins, guides,
+                  pixel avatars
 
 web/              config UI, dock and overlays
   App.tsx         shell and navigation
   components/     screens (views/), layers, panels, overlays
   hooks/          thin client over the one server socket
+
+tray/             the Windows tray app (Rust)
+installer/        the Windows installer (Inno Setup), the Linux install.sh and
+                  the AppImage start
+scripts/          the release builds: portable, installer, AppImage, update
+                  package, Termux install, version bump
+docs/             ARCHITECTURE.md and the README's pictures
 ```
+
+How the parts fit together is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -459,3 +498,7 @@ Runs the server on `:8081` and the UI on `:5173`, reloading as you edit.
 It has no updater; keep a development copy up to date with git.
 
 ---
+
+<p align="center">
+  <img src="docs/readme/sig.png" alt="Simon Systems · Design · SimonDesigns · SS-APP // SimonSays" width="100%">
+</p>

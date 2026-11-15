@@ -72,7 +72,7 @@ const plate = (name, source = 'manual') => ({ uid: `p${name}`, type: 'nameplate'
 const FOUR = {
   id: 'four-players-x', name: '4 Players',
   // Out of order on purpose: seats are numbered as read, top row first.
-  layers: [slot(784, 516), slot(24, 24), slot(24, 516), slot(784, 24), plate('Player 1'), plate('Player 4'), plate('Rowan')],
+  layers: [slot(784, 516), slot(24, 24), slot(24, 516), slot(784, 24), plate('Player 1'), plate('Player 4'), plate('Simon')],
 };
 
 test('a layout made for remote players is pointed at the seats, as read, plates and all', () => {
@@ -162,7 +162,7 @@ rp.initRemotePlayers({
   layouts: { rewrite: (change) => { rewrites.push(change); return { live: ['4 Players'], profiles: 3 }; } },
   scene: () => 'Omnilayer',
   testChannelId: () => '1199000000000000006',
-  streamer: () => 'Rowan',
+  streamer: () => 'Simon',
   omnilayer: { refresh: (gone = []) => { refreshes += 1; released.push(...gone); } },
 });
 const first = rp.getRemotePlayers();
@@ -329,7 +329,7 @@ test('an invite goes by direct message with the link as a button; a test goes to
   const [open, send, test] = dms;
   assert.deepEqual(open, ['open', '700000000000000001']);
   assert.equal(send[1], 'dm-700000000000000001');
-  assert.match(send[2], /Rowan/);
+  assert.match(send[2], /Simon/);
   assert.match(send[2], /Player 2/);
   const button = send[3][0].components[0];
   assert.equal(button.style, 5);
@@ -384,7 +384,7 @@ test('the streamer’s own seat shows their capture in OBS, wears their name, an
   assert.deepEqual(meNow.me, { seat: 3, source: 'Screen Capture' });
   assert.equal(meNow.seats[2].me, true);
   assert.equal(meNow.seats[2].status.state, 'me');
-  assert.equal(meNow.seats[2].name, 'Rowan', 'their seat did not take their name');
+  assert.equal(meNow.seats[2].name, 'Simon', 'their seat did not take their name');
   assert.equal(aliasMine, 'Screen Capture');
   assert.equal(aliasOther, 'Player 2');
   assert.equal(aliasNotSeat, 'Screen Capture');

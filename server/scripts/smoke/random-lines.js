@@ -65,7 +65,7 @@ test('an alert caption and its speech each pick one of their lines, and every su
 const plain = plan.answerFor({ items: [{ id: 'a', text: 'Ranked' }], currentId: 'a', answer: { text: 'Now: {plan.current}\nOn now: {plan.current}' } });
 const planFirst = withRandom(0, () => plan.answerFor({ items: [{ id: 'a', text: 'Ranked' }], currentId: 'a', answer: { text: 'Now: {plan.current}\nOn now: {plan.current}' } }));
 const planLast = withRandom(0.99, () => plan.answerFor({ items: [{ id: 'a', text: 'Ranked' }], currentId: 'a', answer: { text: 'Now: {plan.current}\nOn now: {plan.current}' } }));
-const dm = withRandom(0.99, () => liveDms.dmFor('twitch', { name: 'Rowan', title: 'Speedruns' }, { message: '{streamer} is live!\n{streamer} just went live: {title}' }));
+const dm = withRandom(0.99, () => liveDms.dmFor('twitch', { name: 'Simon', title: 'Speedruns' }, { message: '{streamer} is live!\n{streamer} just went live: {title}' }));
 const greet = withRandom(0.99, () => welcome.greetingFor({
   sendCard: true, messages: ['hi'], cardTitle: 'Welcome!\nLook who is here!', cardDescription: 'Line one\nLine two', cardFooter: 'Footer A\nFooter B',
 }, { id: '1', username: 'ana' }, true));
@@ -74,7 +74,7 @@ test('the !plan answer, a live DM and a welcome card\'s title and footer pick a 
   assert.ok(['Now: Ranked', 'On now: Ranked'].includes(plain), plain);
   assert.equal(planFirst, 'Now: Ranked');
   assert.equal(planLast, 'On now: Ranked');
-  assert.equal(dm.content, 'Rowan just went live: Speedruns');
+  assert.equal(dm.content, 'Simon just went live: Speedruns');
   assert.equal(greet.embed.title, 'Look who is here!');
   assert.equal(greet.embed.footer, 'Footer B');
   assert.equal(greet.embed.description, 'Line one\nLine two', 'the description lost its lines');

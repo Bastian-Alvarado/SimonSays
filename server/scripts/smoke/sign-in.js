@@ -399,7 +399,7 @@ test('the dashboard: a moderator\'s menu, profile bar, Overlays and Looks', () =
   assert.equal(app.split('readOnly={system.auth.isMod}').length - 1, 2, 'Overlays and Looks');
   const stream = read('../../web/hooks/useStreamSystem.ts');
   assert.ok(stream.includes("profileSwitch: (group: string, id: string) => (isMod ? (group === 'overlays' ? peekProfile(group, id).catch(() => {}) : undefined) : send(C2S.PROFILE_SWITCH, { group, id })),"));
-  assert.ok(stream.includes("layouts: peeked('layouts', (snapshot as any).layouts ?? []),"));
+  assert.ok(stream.includes("layouts: peeked('layouts', unsavedLayouts ?? (snapshot as any).layouts ?? []),"));
   const layouts = read('../../web/components/views/LayoutsView.tsx');
   assert.ok(layouts.includes('.filter((l) => !readOnly && l.visible && !l.locked && shownIn(l, format))'), 'no handles to drag');
   assert.ok(layouts.includes('<Locked on={readOnly}>{layerEditor(chosen)}</Locked>'));
@@ -635,6 +635,16 @@ test('sign-in is said in both languages, and so is every refusal it gives', () =
     assert.equal(words.split(`    ${key}: `).length - 1, 2, key);
   }
   for (const key of ['signInSection', 'signInTwitch', 'signInEnableConfirm', 'signInPageKeyHint']) assert.equal(words.split(`    ${key}: `).length - 1, 2, key);
+});
+
+test('a bot token or secret is saved from any device by the owner signed in; with sign-in off, only on the machine the app runs on', () => {
+  const ws = fs.readFileSync(new URL('../api/ws.js', SCRIPT_URL), 'utf8');
+  assert.ok(ws.includes("if (!ws.isLocal && !(auth.isEnabled() && ws.who?.role === 'owner') && SECRET_FIELDS.some((f) => rest[f])) {"), 'secrets are not limited the way they should be');
+  assert.ok(ws.includes("throw refusal('secrets_local_only'"));
+  // Moderators and the pages OBS shows never set one, wherever they are.
+  assert.equal(mayAsk({ role: 'mod' }, C2S.SET_CREDENTIALS, {}), false);
+  assert.equal(mayAsk({ role: 'page' }, C2S.SET_CREDENTIALS, {}), false);
+  assert.equal(mayAsk({ role: 'owner' }, C2S.SET_CREDENTIALS, {}), true);
 });
 
 test('a backup is restored from any device by the owner signed in; with sign-in off, only on the machine the app runs on', () => {

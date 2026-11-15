@@ -35,7 +35,7 @@ test('the SimonSays Casual template has every scene and nobody\'s content: no av
     }
   }
   // Nothing of the streamer's it was made from, in any form.
-  for (const bad of ['as-mv0g5', 'All_stars', 'Screen Capture', 'Player on screen', 'example-shark', '"Rowan"', 'i_might_be']) assert.ok(!raw.includes(bad), `left in: ${bad}`);
+  for (const bad of ['as-mv0g5', 'All_stars', 'Screen Capture', 'Player on screen', 'example-shark', '"Simon"', 'i_might_be']) assert.ok(!raw.includes(bad), `left in: ${bad}`);
 });
 
 test('a template\'s words come in the dashboard\'s language, and every layout has an id of its own each time it is made', () => {

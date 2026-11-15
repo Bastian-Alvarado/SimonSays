@@ -305,7 +305,7 @@ test('how viewers ask travels with a backup; what they asked does not', () => {
   const { discordSent, normaliseChat } = await import('./harness.js');
   const queue = () => questions.getQuestions().items;
   const fromDiscord = (msg, over = {}) => bus.emit('discord:message_elsewhere', normaliseChat({
-    platform: 'discord', user: 'I_Am_Streamer', userId: 'd-rowan', msg, raw: { channelId: '1300000000000000001', messageId: '1300000000000000002' }, ...over,
+    platform: 'discord', user: 'I_Am_Streamer', userId: 'd-simon', msg, raw: { channelId: '1300000000000000001', messageId: '1300000000000000002' }, ...over,
   }));
 
   questions.clear();

@@ -142,6 +142,26 @@ export const DOCK_BUILTINS = [
   */
   { id: 'alert_skip', category: 'alerts', name: 'Skip alert', op: 'skip', icon: '⏭' },
   { id: 'alert_pause', category: 'alerts', name: 'Pause / resume alerts', op: 'toggle', icon: '⏸' },
+  /*
+    DroidCam, the phone used as a camera: what its own remote page offers,
+    without a one-step action around each. The light and the mic are one
+    button each, on and off, as the phone toggles them. Zoom and brightness
+    repeat — three presses are three steps, and they add up rather than
+    reading the lens mid-way (platforms/droidcam.js). Back to 1x, focus,
+    the exposure lock and switching cameras do not: a double-tap would undo
+    a lock or skip past the camera you wanted. Each says so when the phone
+    does not answer.
+  */
+  { id: 'droidcam_torch', category: 'droidcam', name: 'Light on / off', op: 'torch', icon: '🔦' },
+  { id: 'droidcam_autofocus', category: 'droidcam', name: 'Focus', op: 'autofocus', icon: '🎯' },
+  { id: 'droidcam_zoom_in', category: 'droidcam', name: 'Zoom in', op: 'zoom_in', icon: '🔍', repeatable: true },
+  { id: 'droidcam_zoom_out', category: 'droidcam', name: 'Zoom out', op: 'zoom_out', icon: '🔎', repeatable: true },
+  { id: 'droidcam_zoom_reset', category: 'droidcam', name: 'Zoom 1x', op: 'zoom_reset', icon: '⟲' },
+  { id: 'droidcam_brighter', category: 'droidcam', name: 'Brighter', op: 'exposure_up', icon: '☀️', repeatable: true },
+  { id: 'droidcam_darker', category: 'droidcam', name: 'Darker', op: 'exposure_down', icon: '🌙', repeatable: true },
+  { id: 'droidcam_exposure_lock', category: 'droidcam', name: 'Lock exposure', op: 'exposure_lock', icon: '🔒' },
+  { id: 'droidcam_switch', category: 'droidcam', name: 'Switch camera', op: 'camera_next', icon: '🔄' },
+  { id: 'droidcam_mic', category: 'droidcam', name: 'Mic on / off', op: 'mic', icon: '🎙️' },
 ];
 
 /** How long a face from the dock stays on, in seconds. */

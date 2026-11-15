@@ -22,7 +22,7 @@
 import React, { useState } from 'react';
 import { Gamepad2, Eye, Skull, Minus, Plus } from 'lucide-react';
 import { RunCard } from '../RunCard';
-import { ClearButton, Field, Heading, PREVIEW_GROUND, RunScreenProps, firstLayer } from '../RunParts';
+import { ClearButton, Field, Heading, PREVIEW_GROUND, RunScreenProps, TWO_COLUMNS, firstLayer } from '../RunParts';
 
 type GameViewProps = RunScreenProps & {
   /** The deaths count, and a way to change it: op add, subtract or reset. */
@@ -62,8 +62,8 @@ export const GameView = ({ run, setRun, layouts, t, deaths = 0, changeDeaths }: 
   const anything = hasGame || run?.platform || run?.year || run?.category || run?.estimate;
 
   return (
-    <div className="space-y-5 max-w-3xl">
-      <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-4">
+    <div className={TWO_COLUMNS} data-game-page>
+      <div className="glass-panel rounded-3xl border border-zinc-800 p-5 space-y-4 min-w-0">
         <Heading
           icon={<Gamepad2 size={14} />}
           text={t.runGame || 'The game'}
@@ -98,6 +98,7 @@ export const GameView = ({ run, setRun, layouts, t, deaths = 0, changeDeaths }: 
         </p>
       </div>
 
+      <div className="min-w-0 space-y-5">
       {/*
         The deaths count: the game's, for as long as the playthrough lasts, so
         it sits with the game rather than with tonight. Mostly changed from
@@ -151,7 +152,7 @@ export const GameView = ({ run, setRun, layouts, t, deaths = 0, changeDeaths }: 
           <>
             <div className={PREVIEW_GROUND}>
               <div style={{ height: 120 }}>
-                <RunCard config={firstLayer(layouts, 'runcard')} run={run} />
+                <div className="ss-keep contents"><RunCard config={firstLayer(layouts, 'runcard')} run={run} /></div>
               </div>
             </div>
             <p className="text-[10px] text-zinc-600 leading-relaxed">
@@ -163,6 +164,7 @@ export const GameView = ({ run, setRun, layouts, t, deaths = 0, changeDeaths }: 
             {t.gamePreviewEmpty || 'Nothing to show yet: the card appears once there is a game.'}
           </p>
         )}
+      </div>
       </div>
     </div>
   );

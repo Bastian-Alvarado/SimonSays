@@ -32,7 +32,7 @@ const member = (id, name, extra = {}) => ({ user: { id, username: name.toLowerCa
 
 bus.emit('discord:guild_create', {
   id: 'g1',
-  members: [member('100', 'Rowan'), member('200', 'Nolan', { nick: 'Nel' }), member('300', 'Music Bot'), member('400', 'Elsewhere')],
+  members: [member('100', 'Simon'), member('200', 'Nolan', { nick: 'Nel' }), member('300', 'Music Bot'), member('400', 'Elsewhere')],
   voice_states: [
     { user_id: '100', channel_id: 'vc1', self_mute: false, self_deaf: false },
     { user_id: '200', channel_id: 'vc1', self_mute: true, self_deaf: false },
@@ -47,7 +47,7 @@ bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '300', channel_id: 'v
 voice.setVoice({ channelId: 'vc1' });
 const firstLook = voice.getState();
 
-bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '100', channel_id: 'vc1', self_mute: false, self_deaf: true, member: member('100', 'Rowan') });
+bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '100', channel_id: 'vc1', self_mute: false, self_deaf: true, member: member('100', 'Simon') });
 bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '200', channel_id: null, member: member('200', 'Nolan', { nick: 'Nel' }) });
 bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '400', channel_id: 'vc1', member: member('400', 'Elsewhere') });
 const afterMoves = voice.getState();
@@ -61,19 +61,19 @@ await settle();
 await settle();
 // After a quiet spell, the next change is told at once rather than batched.
 const toldBefore = told.length;
-bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '100', channel_id: 'vc1', self_deaf: false, member: member('100', 'Rowan') });
+bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '100', channel_id: 'vc1', self_deaf: false, member: member('100', 'Simon') });
 const toldAtOnce = told.length - toldBefore;
 stopTold();
 
 test('the voice call shows who is in the chosen channel, in the order they came, by the name they go by here', () => {
-  assert.deepEqual(firstLook.members.map((m) => m.name), ['Rowan', 'Nel']);
+  assert.deepEqual(firstLook.members.map((m) => m.name), ['Simon', 'Nel']);
   assert.equal(firstLook.members[0].avatar, 'https://cdn.discordapp.com/avatars/100/hash100.png?size=128');
   assert.equal(firstLook.members[1].muted, true);
   assert.equal(firstLook.members[0].speaking, false, 'somebody is talking before the bot has heard anyone');
 });
 
 test('joining, leaving and deafening in the call follow along, and bots and other servers are left out', () => {
-  assert.deepEqual(afterMoves.members.map((m) => [m.name, m.deafened]), [['Rowan', true], ['Elsewhere', false]]);
+  assert.deepEqual(afterMoves.members.map((m) => [m.name, m.deafened]), [['Simon', true], ['Elsewhere', false]]);
   assert.ok(!afterMoves.members.some((m) => m.name === 'Stranger' || m.name === 'Music Bot'));
   assert.ok(told.length >= 1, 'the screens were not told');
 });
@@ -109,7 +109,7 @@ test('a voice layer keeps its tiles sized for the room it has, and leaves out wh
   assert.equal(layer({ slots: 99 }).slots, 25);
   assert.equal(layer({ arrange: 'spiral' }).arrange, 'row');
   assert.equal(layer({ show: 'talking' }).show, 'talking');
-  assert.deepEqual(layer({ hide: [{ id: '306050655881793586', name: 'Rowan' }, { id: 'not-an-id', name: 'x' }] }).hide, [{ id: '306050655881793586', name: 'Rowan' }]);
+  assert.deepEqual(layer({ hide: [{ id: '306050655881793586', name: 'Simon' }, { id: 'not-an-id', name: 'x' }] }).hide, [{ id: '306050655881793586', name: 'Simon' }]);
   // Two voice layers in one layout: one per person is a common way to lay a call out.
   const two = normaliseLayout({ id: 'v2', layers: [{ type: 'voice', uid: 'a' }, { type: 'voice', uid: 'b' }] }).layers;
   assert.equal(two.filter((l) => l.type === 'voice').length, 2);
@@ -119,29 +119,29 @@ test('a voice layer keeps its tiles sized for the room it has, and leaves out wh
 });
 
 test('other layers can wait for somebody talking, and text can say who', () => {
-  const state = { voice: { channelId: 'vc1', members: [{ name: 'Rowan', speaking: true }, { name: 'Nel', speaking: false }] } };
+  const state = { voice: { channelId: 'vc1', members: [{ name: 'Simon', speaking: true }, { name: 'Nel', speaking: false }] } };
   assert.equal(conditionMet('voice', false, state), true);
   assert.equal(conditionMet('voice', true, state), false);
-  assert.equal(fillTemplate('{voiceCount} in the call, {voiceTalking} talking', state), '2 in the call, Rowan talking');
+  assert.equal(fillTemplate('{voiceCount} in the call, {voiceTalking} talking', state), '2 in the call, Simon talking');
   const strings = fs.readFileSync(new URL('../../web/constants.ts', SCRIPT_URL), 'utf8');
   for (const key of ['voiceArrange', 'voiceSlots', 'voiceShowTalking', 'voiceHide', 'voiceGlow']) assert.equal(strings.split(key + ':').length - 1, 2, key);
 });
 
-// Pictures of their own, PNGtuber style: Rowan (100) is in the call; somebody given pictures before is not.
+// Pictures of their own, PNGtuber style: Simon (100) is in the call; somebody given pictures before is not.
 voice.setVoice({ pictures: {
-  100100100100: { name: 'Rowan', quiet: '/media/rowan-quiet.png', talking: '/media/rowan-talk.png', muted: 'javascript:alert(1)' },
+  100100100100: { name: 'Simon', quiet: '/media/simon-quiet.png', talking: '/media/simon-talk.png', muted: 'javascript:alert(1)' },
   200200200200: { name: 'Nel', quiet: 'https://example.com/nel.png' },
   'not-an-id': { quiet: '/media/x.png' },
   300300300300: { name: 'Nobody', quiet: '../../.env' },
 } });
-bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '100100100100', channel_id: 'vc1', member: member('100100100100', 'Rowan') });
+bus.emit('discord:voice_state', { guild_id: 'g1', user_id: '100100100100', channel_id: 'vc1', member: member('100100100100', 'Simon') });
 const pictured = voice.getState();
 
 test('somebody\'s own pictures are kept by their id, safe links only, and follow them into the call', () => {
   assert.deepEqual(Object.keys(pictured.pictures).sort(), ['100100100100', '200200200200']);
-  assert.deepEqual(pictured.pictures['100100100100'], { name: 'Rowan', quiet: '/media/rowan-quiet.png', talking: '/media/rowan-talk.png' });
-  const rowan = pictured.members.find((m) => m.id === '100100100100');
-  assert.equal(rowan?.pictures?.talking, '/media/rowan-talk.png', 'the person in the call does not carry their pictures');
+  assert.deepEqual(pictured.pictures['100100100100'], { name: 'Simon', quiet: '/media/simon-quiet.png', talking: '/media/simon-talk.png' });
+  const simon = pictured.members.find((m) => m.id === '100100100100');
+  assert.equal(simon?.pictures?.talking, '/media/simon-talk.png', 'the person in the call does not carry their pictures');
   // Nel is not in the call, and keeps hers for when she is.
   assert.equal(pictured.pictures['200200200200'].name, 'Nel');
   assert.ok(MANIFEST.some((e) => e.name === 'discord_voice'), 'the pictures would not travel in a backup');
@@ -162,7 +162,7 @@ test('a voice layer draws somebody\'s pictures whole, all loaded, and can be tol
 
 // In the call, by when they joined: 100, 400, then 100100100100. Pin the last to come first, then 400.
 const unpinnedOrder = voice.getState().members.map((m) => m.id);
-voice.setVoice({ pinned: [{ id: '100100100100', name: 'Rowan' }, { id: '400', name: 'Elsewhere' }, { id: '999999999', name: 'Away' }, { id: '100100100100', name: 'twice' }, { id: 'nope' }] });
+voice.setVoice({ pinned: [{ id: '100100100100', name: 'Simon' }, { id: '400', name: 'Elsewhere' }, { id: '999999999', name: 'Away' }, { id: '100100100100', name: 'twice' }, { id: 'nope' }] });
 const pinnedState = voice.getState();
 
 test('pinned people come first, in the order they are listed, and everybody else by when they joined', () => {
